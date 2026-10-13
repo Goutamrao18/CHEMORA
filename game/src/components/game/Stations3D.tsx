@@ -13,7 +13,6 @@ export const Stations3D: React.FC = () => {
   const analysisVesselId = useGameStore((s) => s.analysisVesselId);
   const hotplateTempC = useGameStore((s) => s.hotplateTempC);
   const isHotplateOn = useGameStore((s) => s.isHotplateOn);
-  const isStirrerOn = useGameStore((s) => s.isStirrerOn);
   const selectedDispenserReagentId = useGameStore((s) => s.selectedDispenserReagentId);
   const setSelectedDispenserReagent = useGameStore((s) => s.setSelectedDispenserReagent);
 

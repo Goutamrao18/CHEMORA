@@ -32,11 +32,9 @@ export const StationHUD: React.FC = () => {
   const activeStation = useGameStore((s) => s.activeStation);
   const setActiveStation = useGameStore((s) => s.setActiveStation);
   const vessels = useGameStore((s) => s.vessels);
-  const heldVesselId = useGameStore((s) => s.heldVesselId);
   const workbenchVesselId = useGameStore((s) => s.workbenchVesselId);
   const scaleVesselId = useGameStore((s) => s.scaleVesselId);
   const analysisVesselId = useGameStore((s) => s.analysisVesselId);
-  const pickUpVessel = useGameStore((s) => s.pickUpVessel);
   const placeVessel = useGameStore((s) => s.placeVessel);
   const emptyVessel = useGameStore((s) => s.emptyVessel);
   const dispenseReagentIntoVessel = useGameStore((s) => s.dispenseReagentIntoVessel);

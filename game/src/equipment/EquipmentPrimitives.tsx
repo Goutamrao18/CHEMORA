@@ -83,7 +83,6 @@ export const EquipmentItem: React.FC<{ item: EquipmentSpec }> = ({ item }) => {
       <mesh position={[0, size[1] / 2, 0]} castShadow={shadow} receiveShadow material={surface}><boxGeometry args={size} /></mesh>
       <mesh position={[0, size[1] * 0.55, size[2] / 2 + 0.008]} material={dark}><boxGeometry args={[size[0] * 0.84, size[1] * 0.58, 0.025]} /></mesh>
       <mesh position={[size[0] * 0.3, size[1] * 0.55, size[2] / 2 + 0.035]} material={steel}><sphereGeometry args={[0.035, 10, 8]} /></mesh>
-      {item.kind === 'hood' && <mesh position={[0, size[1] * 1.1, 0]} material={steel}><boxGeometry args={[size[0] * 1.05, 0.12, size[2] * 1.05]} /></mesh>}
     </>}
     {item.kind === 'hood' && <>
       <mesh position={[0,size[1]*0.18,0]} material={dark} castShadow={shadow}><boxGeometry args={[size[0]*0.96,size[1]*0.36,size[2]*0.96]}/></mesh>
@@ -97,7 +96,7 @@ export const EquipmentItem: React.FC<{ item: EquipmentSpec }> = ({ item }) => {
       <mesh position={[0,size[1]*0.31,size[2]*0.5]} material={dark}><boxGeometry args={[size[0]*0.35,size[1]*0.025,0.035]}/></mesh>
     </>}
     {item.kind === 'rack' && <>{[-1, 1].map((s) => <mesh key={`post-${s}`} position={[s * size[0] * 0.48, size[1] * 0.5, 0]} material={steel}><boxGeometry args={[0.045, Math.max(0.18, size[1]), Math.max(0.08, size[2] * 0.7)]} /></mesh>)}{[0.1, 0.5, 0.9].map((level) => <mesh key={level} position={[0, size[1] * level, 0]} material={dark}><boxGeometry args={[size[0], Math.max(0.035, size[1] * 0.04), size[2]]} /></mesh>)}</>}
-    {item.kind === 'gasTap' && <><mesh position={[0, size[1] * 0.45, 0]} material={steel}><cylinderGeometry args={[0.025, 0.025, size[1] * 0.9, 10]} /></mesh><mesh position={[size[0] * 0.35, size[1] * 0.8, 0]} material={steel}><cylinderGeometry args={[0.022, 0.022, size[0] * 0.7, 10]} rotation={[0, 0, Math.PI / 2]} /></mesh><mesh position={[size[0] * 0.12, size[1] * 0.63, 0]} material={accentMaterial(accent)}><sphereGeometry args={[0.07, 10, 8]} /></mesh></>}
+    {item.kind === 'gasTap' && <><mesh position={[0, size[1] * 0.45, 0]} material={steel}><cylinderGeometry args={[0.025, 0.025, size[1] * 0.9, 10]} /></mesh><mesh position={[size[0] * 0.35, size[1] * 0.8, 0]} rotation={[0, 0, Math.PI / 2]} material={steel}><cylinderGeometry args={[0.022, 0.022, size[0] * 0.7, 10]} /></mesh><mesh position={[size[0] * 0.12, size[1] * 0.63, 0]} material={accentMaterial(accent)}><sphereGeometry args={[0.07, 10, 8]} /></mesh></>}
     {item.kind === 'clamp' && <><mesh position={[0, size[1] * 0.5, 0]} material={steel}><boxGeometry args={[size[0], 0.035, 0.035]} /></mesh><mesh position={[-size[0] * 0.28, size[1] * 0.7, 0]} material={steel}><boxGeometry args={[0.035, size[1] * 0.55, 0.035]} /></mesh></>}
     {item.kind === 'board' && <>
       <mesh position={[0, size[1] * 0.5, 0]} material={steel}><boxGeometry args={[size[0], size[1], size[2]]} /></mesh>
@@ -151,7 +150,7 @@ export const EquipmentItem: React.FC<{ item: EquipmentSpec }> = ({ item }) => {
     </>}
     {item.kind === 'burner' && <>
       <mesh position={[0,size[1]*0.62,0]} material={steel}><cylinderGeometry args={[size[0]*0.17,size[0]*0.24,size[1]*0.6,20]}/></mesh>
-      <mesh position={[size[0]*0.35,size[1]*0.28,0]} material={dark}><cylinderGeometry args={[0.035,0.035,0.11,12]} rotation={[0,0,Math.PI/2]}/></mesh>
+      <mesh position={[size[0]*0.35,size[1]*0.28,0]} material={dark} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.035,0.035,0.11,12]} /></mesh>
       <mesh position={[0,size[1]*1.02,0]} material={steel}><cylinderGeometry args={[size[0]*0.19,size[0]*0.19,0.045,20]}/></mesh>
     </>}
     {item.kind === 'balance' && <mesh position={[0,size[1]*0.66,-size[2]*0.05]} material={SHARED_BALANCE_PANEL}><boxGeometry args={[size[0]*0.94,size[1]*0.65,size[2]*0.62]}/></mesh>}

@@ -118,7 +118,7 @@ export const LiquidPourStream: React.FC = () => {
         <tubeGeometry args={[curve.current, 20, 0.008, 6, false]} />
         <meshBasicMaterial color={color} transparent opacity={0.78} depthWrite={false} toneMapped={false} />
       </mesh>
-      {dots.map((dot, i) => (
+      {dots.map((_dot, i) => (
         <mesh key={i} ref={(node) => { dropletRefs.current[i] = node; }}>
           <sphereGeometry args={[0.012 + (i % 2) * 0.005, 7, 7]} />
           <meshBasicMaterial color={color} transparent opacity={0.62} depthWrite={false} />

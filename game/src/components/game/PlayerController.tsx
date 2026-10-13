@@ -270,7 +270,7 @@ export const PlayerController: React.FC = () => {
       const current = collider.translation();
       const next = nextTranslation.current;
       next.x = current.x + corrected.x; next.y = Math.max(1.2, current.y + corrected.y); next.z = current.z + corrected.z;
-      collider.setTranslation(next, true);
+      collider.setTranslation(next);
       playerPos.current.set(next.x, 1.65, next.z);
     } else {
       playerPos.current.x += velocity.current.x * delta;
