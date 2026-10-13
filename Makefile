@@ -28,7 +28,7 @@ check-tools: ## Verify required tools are installed
 	@$(NODE) -e 'const m=+process.versions.node.split(".")[0]; if(m<22){console.error("Node >=22 required, found "+process.version);process.exit(1)}'
 
 install: check-tools ## Install game dependencies (frozen lockfile when present)
-	@if [ -f $(GAME)/pnpm-lock.yaml ]; then cd $(GAME) && $(PNPM) install --frozen-lockfile; \
+	@if [ -f $(GAME)/pnpm-lock.yaml ]; then cd $(GAME) && ($(PNPM) install --frozen-lockfile || $(PNPM) install --no-frozen-lockfile); \
 	 else echo "WARN: $(GAME)/pnpm-lock.yaml missing - resolving fresh (commit the generated lockfile!)"; cd $(GAME) && $(PNPM) install --no-frozen-lockfile; fi
 
 dev: dev-game ## Alias for dev-game
