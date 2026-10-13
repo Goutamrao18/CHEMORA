@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L092Q1",
+    "question": "Which quantity is conserved in a balanced chemical equation?",
+    "options": [
+      "Atoms of each element",
+      "Temperature only",
+      "Volume always",
+      "Colour"
+    ],
+    "answer": 0,
+    "explanation": "Chemical equations must conserve atoms of every element.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q2",
+    "question": "What does Le Chatelier's principle describe?",
+    "options": [
+      "Response of equilibrium to a change",
+      "Atomic number definition",
+      "Mass measurement",
+      "Electron charge"
+    ],
+    "answer": 0,
+    "explanation": "An equilibrium system responds to imposed changes in conditions.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q3",
+    "question": "Which statement about a limiting reagent is correct?",
+    "options": [
+      "It is consumed first and limits product formation",
+      "It is always the solvent",
+      "It is never consumed",
+      "It must be a catalyst"
+    ],
+    "answer": 0,
+    "explanation": "The limiting reagent determines the maximum amount of product.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q4",
+    "question": "Which quantum number describes the principal energy level?",
+    "options": [
+      "n",
+      "l",
+      "m",
+      "s"
+    ],
+    "answer": 0,
+    "explanation": "The principal quantum number n specifies the main energy level.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q5",
+    "question": "Which orbital type has a spherical shape?",
+    "options": [
+      "s",
+      "p",
+      "d",
+      "f"
+    ],
+    "answer": 0,
+    "explanation": "s orbitals are spherical.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q6",
+    "question": "Which gas law relates pressure and volume at constant temperature?",
+    "options": [
+      "Boyle's law",
+      "Charles's law",
+      "Avogadro's law only",
+      "Faraday's law"
+    ],
+    "answer": 0,
+    "explanation": "Boyle's law states P is inversely proportional to V at constant temperature.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q7",
+    "question": "Which unit is commonly used for molarity?",
+    "options": [
+      "mol/L",
+      "g/mol",
+      "L/mol",
+      "K"
+    ],
+    "answer": 0,
+    "explanation": "Molarity is moles of solute per litre of solution.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q8",
+    "question": "Which process involves loss of water from a hydrated salt on heating?",
+    "options": [
+      "Dehydration",
+      "Neutralization",
+      "Reduction only",
+      "Polymerization"
+    ],
+    "answer": 0,
+    "explanation": "Heating can remove water of crystallization from hydrated salts.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q9",
+    "question": "Which technique separates substances based on different movement through a stationary phase?",
+    "options": [
+      "Chromatography",
+      "Filtration",
+      "Decantation",
+      "Crystallization only"
+    ],
+    "answer": 0,
+    "explanation": "Chromatography separates components by differential movement.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  },
+  {
+    "id": "L092Q10",
+    "question": "Which species is the oxidizing agent in a redox reaction?",
+    "options": [
+      "The species that gains electrons",
+      "The species that loses electrons",
+      "The solvent only",
+      "The catalyst always"
+    ],
+    "answer": 0,
+    "explanation": "An oxidizing agent accepts electrons and is reduced.",
+    "difficulty": "Advanced",
+    "points": 325,
+    "topic": "Advanced Mixed Chemistry"
+  }
+]

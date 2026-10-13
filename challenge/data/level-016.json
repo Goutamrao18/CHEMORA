@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L016Q1",
+    "question": "Which subatomic particle determines an element's identity?",
+    "options": [
+      "Electron",
+      "Proton",
+      "Neutron",
+      "Photon"
+    ],
+    "answer": 1,
+    "explanation": "The number of protons is the atomic number and identifies the element.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q2",
+    "question": "How many electrons does a neutral atom with 11 protons have?",
+    "options": [
+      "10",
+      "11",
+      "12",
+      "22"
+    ],
+    "answer": 1,
+    "explanation": "A neutral atom has equal numbers of protons and electrons.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q3",
+    "question": "What is the mass number of an atom with 6 protons and 8 neutrons?",
+    "options": [
+      "6",
+      "8",
+      "14",
+      "48"
+    ],
+    "answer": 2,
+    "explanation": "Mass number is the total of protons and neutrons.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q4",
+    "question": "Which particle has a relative charge of +1?",
+    "options": [
+      "Electron",
+      "Neutron",
+      "Proton",
+      "Atom"
+    ],
+    "answer": 2,
+    "explanation": "A proton carries a positive charge.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q5",
+    "question": "Where are protons located?",
+    "options": [
+      "In the nucleus",
+      "In electron shells",
+      "Outside the atom",
+      "Between atoms"
+    ],
+    "answer": 0,
+    "explanation": "Protons are located in the atomic nucleus.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q6",
+    "question": "Atoms of different elements always have different numbers of:",
+    "options": [
+      "Neutrons",
+      "Protons",
+      "Shells",
+      "Isotopes"
+    ],
+    "answer": 1,
+    "explanation": "Different elements have different proton numbers.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q7",
+    "question": "What is the charge of an ion formed when an atom gains one electron?",
+    "options": [
+      "+1",
+      "0",
+      "-1",
+      "+2"
+    ],
+    "answer": 2,
+    "explanation": "Gaining one negatively charged electron gives a 1− charge.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q8",
+    "question": "Which pair represents isotopes of the same element?",
+    "options": [
+      "Same protons, different neutrons",
+      "Different protons, same electrons",
+      "Same mass, different protons",
+      "Same neutrons, different protons"
+    ],
+    "answer": 0,
+    "explanation": "Isotopes share the same proton number but differ in neutron number.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q9",
+    "question": "Which model is associated with a small, dense nucleus?",
+    "options": [
+      "Dalton's solid sphere",
+      "Rutherford's nuclear model",
+      "Bohr's energy levels only",
+      "Plum pudding model"
+    ],
+    "answer": 1,
+    "explanation": "Rutherford's scattering experiment supported a small, dense nucleus.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L016Q10",
+    "question": "An atom has 17 protons and 18 electrons. What is its overall charge?",
+    "options": [
+      "+1",
+      "0",
+      "-1",
+      "-2"
+    ],
+    "answer": 2,
+    "explanation": "One more electron than proton gives the ion a −1 charge.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  }
+]

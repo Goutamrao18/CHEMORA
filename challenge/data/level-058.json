@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L058Q1",
+    "question": "Which is a strong acid?",
+    "options": [
+      "HCl",
+      "CH₃COOH",
+      "H₂O",
+      "NH₃"
+    ],
+    "answer": 0,
+    "explanation": "Hydrochloric acid is a strong acid in aqueous solution.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q2",
+    "question": "A solution with pH 3 is:",
+    "options": [
+      "Acidic",
+      "Neutral",
+      "Basic",
+      "Always pure water"
+    ],
+    "answer": 0,
+    "explanation": "pH values below 7 are acidic at 25°C.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q3",
+    "question": "Common table salt is:",
+    "options": [
+      "NaCl",
+      "NaOH",
+      "HCl",
+      "KOH"
+    ],
+    "answer": 0,
+    "explanation": "Table salt is sodium chloride, NaCl.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q4",
+    "question": "What is the pH of a neutral aqueous solution at 25°C?",
+    "options": [
+      "0",
+      "5",
+      "7",
+      "14"
+    ],
+    "answer": 2,
+    "explanation": "At 25°C, neutral water has pH 7.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q5",
+    "question": "An acid turns blue litmus:",
+    "options": [
+      "Blue",
+      "Red",
+      "Green",
+      "Black"
+    ],
+    "answer": 1,
+    "explanation": "Acids turn blue litmus red.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q6",
+    "question": "A base turns red litmus:",
+    "options": [
+      "Blue",
+      "Red",
+      "Yellow",
+      "Colourless"
+    ],
+    "answer": 0,
+    "explanation": "Bases turn red litmus blue.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q7",
+    "question": "Which acid is present in vinegar?",
+    "options": [
+      "Acetic acid",
+      "Sulfuric acid",
+      "Nitric acid",
+      "Hydrochloric acid"
+    ],
+    "answer": 0,
+    "explanation": "Vinegar contains acetic acid.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q8",
+    "question": "Which substance is commonly used as an antacid?",
+    "options": [
+      "Magnesium hydroxide",
+      "Sodium chloride",
+      "Copper sulfate",
+      "Sand"
+    ],
+    "answer": 0,
+    "explanation": "Magnesium hydroxide neutralizes excess stomach acid.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q9",
+    "question": "A reaction between an acid and a base is called:",
+    "options": [
+      "Neutralization",
+      "Sublimation",
+      "Oxidation only",
+      "Crystallization"
+    ],
+    "answer": 0,
+    "explanation": "Acid-base neutralization commonly produces salt and water.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  },
+  {
+    "id": "L058Q10",
+    "question": "Phenolphthalein is pink in a:",
+    "options": [
+      "Strongly acidic solution",
+      "Basic solution",
+      "Neutral gas",
+      "Pure metal"
+    ],
+    "answer": 1,
+    "explanation": "Phenolphthalein is pink in basic conditions.",
+    "difficulty": "Hard",
+    "points": 225,
+    "topic": "Acids Bases Salts"
+  }
+]

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /challenge/data/
+
+Sitemap: https://project-draft-three.vercel.app/sitemap.xml

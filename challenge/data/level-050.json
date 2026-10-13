@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L050Q1",
+    "question": "The empirical formula gives the:",
+    "options": [
+      "Simplest whole-number ratio",
+      "Actual mass only",
+      "Boiling point",
+      "Electron speed"
+    ],
+    "answer": 0,
+    "explanation": "An empirical formula gives the simplest whole-number ratio of atoms.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q2",
+    "question": "The SI unit for amount of substance is:",
+    "options": [
+      "Gram",
+      "Mole",
+      "Litre",
+      "Kelvin"
+    ],
+    "answer": 1,
+    "explanation": "The mole is the SI base unit for amount of substance.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q3",
+    "question": "Avogadro's constant is approximately:",
+    "options": [
+      "6.022×10²³",
+      "9.81",
+      "3.00×10⁸",
+      "1.602×10⁻¹⁹"
+    ],
+    "answer": 0,
+    "explanation": "One mole contains approximately 6.022×10²³ entities.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q4",
+    "question": "The molar mass of water is approximately:",
+    "options": [
+      "10 g/mol",
+      "18 g/mol",
+      "22 g/mol",
+      "36 g/mol"
+    ],
+    "answer": 1,
+    "explanation": "H₂O has a molar mass of about 18 g/mol.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q5",
+    "question": "One mole of carbon-12 has a mass of:",
+    "options": [
+      "6 g",
+      "12 g",
+      "18 g",
+      "24 g"
+    ],
+    "answer": 1,
+    "explanation": "The molar mass of carbon-12 is defined as 12 g/mol.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q6",
+    "question": "How many moles are in 18 g of water?",
+    "options": [
+      "0.5 mol",
+      "1 mol",
+      "2 mol",
+      "18 mol"
+    ],
+    "answer": 1,
+    "explanation": "18 g divided by 18 g/mol equals 1 mol.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q7",
+    "question": "Molar mass is measured in:",
+    "options": [
+      "g/mol",
+      "mol/g",
+      "g/L only",
+      "K/mol"
+    ],
+    "answer": 0,
+    "explanation": "Molar mass is commonly expressed in grams per mole.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q8",
+    "question": "Which quantity counts particles on a microscopic scale?",
+    "options": [
+      "Moles",
+      "Number of entities",
+      "Temperature",
+      "Pressure"
+    ],
+    "answer": 1,
+    "explanation": "A particle count gives the number of individual entities.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q9",
+    "question": "What is the formula for number of moles from mass?",
+    "options": [
+      "n=m/M",
+      "n=M/m",
+      "n=mM",
+      "n=m+M"
+    ],
+    "answer": 0,
+    "explanation": "Moles n equal mass m divided by molar mass M.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L050Q10",
+    "question": "How many particles are in one mole?",
+    "options": [
+      "6.022×10²³",
+      "1.00×10³",
+      "9.81",
+      "3.14"
+    ],
+    "answer": 0,
+    "explanation": "One mole corresponds to Avogadro's number of entities.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  }
+]

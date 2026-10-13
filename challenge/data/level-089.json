@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L089Q1",
+    "question": "Which equation relates Gibbs free energy to enthalpy and entropy?",
+    "options": [
+      "ΔG = ΔH − TΔS",
+      "ΔG = ΔH + TΔS",
+      "ΔG = TΔH − ΔS",
+      "ΔG = ΔS − TΔH"
+    ],
+    "answer": 0,
+    "explanation": "At constant temperature and pressure, ΔG = ΔH − TΔS.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q2",
+    "question": "A reaction is thermodynamically spontaneous under given conditions when:",
+    "options": [
+      "ΔG is positive",
+      "ΔG is negative",
+      "ΔH must be positive",
+      "Entropy must be zero"
+    ],
+    "answer": 1,
+    "explanation": "A negative Gibbs free-energy change indicates spontaneity under the specified conditions.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q3",
+    "question": "Which factor does not change the equilibrium constant Kc at a fixed temperature?",
+    "options": [
+      "Adding a catalyst",
+      "Changing temperature",
+      "Changing the reaction equation",
+      "Changing temperature units correctly"
+    ],
+    "answer": 0,
+    "explanation": "A catalyst changes the rate of reaching equilibrium, not the equilibrium constant.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q4",
+    "question": "In electrochemistry, oxidation occurs at the:",
+    "options": [
+      "Cathode",
+      "Anode",
+      "Salt bridge",
+      "Voltmeter"
+    ],
+    "answer": 1,
+    "explanation": "Oxidation is loss of electrons and occurs at the anode.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q5",
+    "question": "What is the standard cell potential if E°cathode = +0.80 V and E°anode = −0.44 V as reduction potentials?",
+    "options": [
+      "+0.36 V",
+      "+1.24 V",
+      "−1.24 V",
+      "−0.36 V"
+    ],
+    "answer": 1,
+    "explanation": "E°cell = E°cathode − E°anode = 0.80 − (−0.44) = +1.24 V.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q6",
+    "question": "For an ideal gas, which relationship holds at constant temperature?",
+    "options": [
+      "PV = constant for a fixed amount",
+      "P/T = constant at any volume",
+      "V/T = constant at any pressure",
+      "P + V = constant"
+    ],
+    "answer": 0,
+    "explanation": "Boyle's law states that pressure times volume is constant for a fixed amount of gas at constant temperature.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q7",
+    "question": "Which statement about a buffer solution is correct?",
+    "options": [
+      "It resists pH change when small amounts of acid or base are added",
+      "It always has pH 7",
+      "It contains only a strong acid",
+      "It cannot contain a salt"
+    ],
+    "answer": 0,
+    "explanation": "Buffers contain a conjugate acid-base pair and resist modest pH changes.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q8",
+    "question": "What is the approximate pH when [H⁺] = 1 × 10⁻³ mol dm⁻³?",
+    "options": [
+      "1",
+      "3",
+      "7",
+      "11"
+    ],
+    "answer": 1,
+    "explanation": "pH = −log₁₀[H⁺] = 3.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q9",
+    "question": "What does the rate-determining step describe?",
+    "options": [
+      "The fastest step in every mechanism",
+      "The slowest step controlling the overall rate",
+      "The final product only",
+      "The equilibrium constant"
+    ],
+    "answer": 1,
+    "explanation": "The slowest step in a multistep mechanism limits the overall reaction rate.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L089Q10",
+    "question": "Why can increasing temperature shift an exothermic equilibrium toward reactants?",
+    "options": [
+      "Heat behaves like a product, so adding heat favors the reverse direction",
+      "Temperature removes all products",
+      "The catalyst is destroyed",
+      "Pressure always decreases"
+    ],
+    "answer": 0,
+    "explanation": "For an exothermic forward reaction, heat is a product; adding heat favors the reverse direction.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  }
+]

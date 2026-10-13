@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Interactive chemistry learning with a knowledge library, guided experiments, challenges and CHEMORA AI."><title>CHEMORA — Chemistry Learning Platform</title><link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2-enhancements.css"><link rel="stylesheet" href="modern-overhaul.css"><link rel="stylesheet" href="reference-ui.css">
+
+<link rel="canonical" href="https://project-draft-three.vercel.app/">
+<meta property="og:title" content="CHEMORA — Chemistry Learning Platform">
+<meta property="og:description" content="Interactive chemistry learning with a knowledge library, guided experiments, challenges and CHEMORA AI.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://project-draft-three.vercel.app/">
+<meta property="og:image" content="https://project-draft-three.vercel.app/assets/chemora-share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CHEMORA — Chemistry Learning Platform">
+<meta name="twitter:description" content="Interactive chemistry learning with a knowledge library, guided experiments, challenges and CHEMORA AI.">
+<meta name="twitter:image" content="https://project-draft-three.vercel.app/assets/chemora-share.png">
+
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#111a34"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="stylesheet" href="site-polish.css">
+</head>
+<body>
+<header class="topbar">
+<a href="index.html" class="brand" aria-label="CHEMORA home">
+<img src="assets/chemora-mark.svg" alt="" class="brand-logo" width="40" height="40">
+<span class="brand-copy"><strong class="brand-title">CHEMORA</strong><small class="brand-tagline">TOUCH. MIX. REACT.</small></span>
+</a>
+<nav class="main-nav"><a href="index.html" class="active" aria-current="page">Home</a><a href="know/know.html">Know</a><a href="challenge/challenge.html">Challenge</a><a href="progress.html">Progress</a><a href="experiments/experiments.html">Experiments</a><a href="play/">Play</a></nav>
+<a href="account.html" class="account-btn" aria-label="Account"><span class="account-icon" aria-hidden="true"></span></a>
+</header>
+<main>
+<section class="hero">
+<div class="hero-video-bg" aria-hidden="true"><video id="heroVideo" autoplay muted loop playsinline preload="auto"><source src="videos/chemora-intro.mp4" type="video/mp4"></video></div><div class="hero-video-overlay" aria-hidden="true"></div>
+<div class="eyebrow">LEARN · EXPERIMENT · CREATE</div>
+<h1>Welcome to <span>CHEMORA</span></h1><h2>Explore. Learn. Experiment. Create.</h2>
+<p>Your complete chemistry learning platform with interactive tools, experiments, challenges and AI assistance — all in one luminous workspace.</p>
+<div class="hero-actions"><a class="primary-btn" href="know/know.html">Start Exploring →</a><button type="button" class="secondary-btn" id="watchDemo">▶ Watch Demo</button></div>
+</section>
+<section class="explore-lab"><div class="section-heading"><span>CHEMORA WORKSPACE</span><h2>Everything you need for chemistry</h2><p>Jump directly into the part of the platform you want to use.</p></div>
+<div class="explore-grid">
+<a class="explore-card" href="know/know.html"><div class="explore-icon"><img src="assets/chemistry/carbon.svg" alt="Carbon element"></div><div class="explore-card-body"><span class="explore-label">KNOW</span><h3>Know</h3><p>Explore chemicals, tools and important concepts.</p><span class="explore-link">Open library →</span></div></a>
+
+<a class="explore-card" href="challenge/challenge.html"><div class="explore-icon"><img src="assets/chemistry/molecule-cluster.svg" alt="Molecular model"></div><div class="explore-card-body"><span class="explore-label">CHALLENGE</span><h3>Challenge</h3><p>Test your knowledge through 100 progressive levels.</p><span class="explore-link">Start challenge →</span></div></a>
+<a class="explore-card" href="progress.html"><div class="explore-icon"><span aria-hidden="true">↗</span></div><div class="explore-card-body"><span class="explore-label">PROGRESS</span><h3>Learning Progress</h3><p>Track completed levels, best scores, XP and topic strengths.</p><span class="explore-link">View your progress →</span></div></a>
+<a class="explore-card" href="experiments/experiments.html"><div class="explore-icon"><img src="assets/chemistry/oxygen.svg" alt="Oxygen element"></div><div class="explore-card-body"><span class="explore-label">EXPERIMENTS</span><h3>Experiments</h3><p>Follow step-by-step practical chemistry activities.</p><span class="explore-link">Open experiments →</span></div></a>
+<a class="explore-card" href="play/"><div class="explore-icon"><span aria-hidden="true">⚗</span></div><div class="explore-card-body"><span class="explore-label">PLAY</span><h3>3D Chemistry Lab</h3><p>Walk through a first-person virtual laboratory and run guided protocols.</p><span class="explore-link">Enter the lab →</span></div></a>
+</div></section>
+<section class="new-lab-features"><div class="section-heading"><span>AI + INTERACTIVE TOOLS</span><h2>Go beyond the textbook</h2><p>Use CHEMORA AI, guided practicals and personalized progress.</p></div></section>
+
+<section class="launch-info" aria-labelledby="faq-title" style="max-width:1100px;margin:0 auto;padding:56px 24px">
+<div class="section-heading"><span>HELP &amp; TRUST</span><h2 id="faq-title">Frequently asked questions</h2><p>Quick answers based on what CHEMORA currently provides.</p></div>
+<div style="display:grid;gap:14px">
+<details><summary>What is CHEMORA?</summary><p>CHEMORA is a chemistry learning platform with a knowledge library, guided experiments, progressive challenges and an AI chemistry tutor.</p></details>
+<details><summary>Can I track my learning progress?</summary><p>Yes. Challenge and learning progress is stored in your browser, and signed-in accounts can store profile and account-related progress through Supabase.</p></details>
+<details><summary>Does CHEMORA replace a real laboratory?</summary><p>No. The virtual tools are for learning and simulation. Follow your school or laboratory's safety rules for real experiments.</p></details>
+<details><summary>How does CHEMORA AI work?</summary><p>The site sends your question to a server endpoint, which uses OpenRouter to generate a chemistry-focused response.</p></details>
+<details><summary>Is my account required?</summary><p>Most public learning pages can be explored without signing in. The Account page provides optional profile and progress features.</p></details>
+</div>
+</section>
+<section class="launch-info review-section" aria-labelledby="feedback-title">
+  <div class="section-heading">
+    <span>LEARNER FEEDBACK</span>
+    <h2 id="feedback-title">Help CHEMORA get better</h2>
+    <p>Your honest feedback helps shape a better chemistry learning experience. We never invent reviews or publish your words without permission.</p>
+  </div>
+  <div class="review-feedback-grid">
+    <article class="review-invite-card">
+      <div class="review-invite-icon" aria-hidden="true">✦</div>
+      <p class="review-kicker">YOUR VOICE MATTERS</p>
+      <h3>Share your CHEMORA experience</h3>
+      <p>Tell us what you learned, which features helped, and what you would like us to improve next.</p>
+      <a class="review-email-button" href="mailto:support@chemora.work.gd?subject=CHEMORA%20Learner%20Review%20%26%20Feedback&amp;body=Hi%20CHEMORA%20team%2C%0D%0A%0D%0AMy%20name%20(optional)%3A%20%0D%0AWhat%20I%20used%20on%20CHEMORA%3A%20%0D%0AMy%20rating%20(1%E2%80%935)%3A%20%0D%0AWhat%20worked%20well%3A%20%0D%0AWhat%20could%20be%20better%3A%20%0D%0AYou%20may%20publish%20my%20feedback%20only%20with%20my%20permission%3A%20Yes%20%2F%20No%0D%0A%0D%0AThank%20you">Write a review <span aria-hidden="true">↗</span></a>
+      <small>This opens your email app with a feedback template addressed to CHEMORA support.</small>
+    </article>
+    <div class="review-guidance-card" aria-label="Review guidance">
+      <h3>What to include</h3>
+      <div class="review-guidance-row"><span>01</span><div><strong>Your experience</strong><p>Which pages or features did you try?</p></div></div>
+      <div class="review-guidance-row"><span>02</span><div><strong>Honest feedback</strong><p>What worked well, and what could be clearer?</p></div></div>
+      <div class="review-guidance-row"><span>03</span><div><strong>Publishing choice</strong><p>Tell us explicitly whether we may publish your feedback.</p></div></div>
+      <p class="review-honesty-note"><span aria-hidden="true">ⓘ</span> Community reviews will appear here only after feedback is received and permission to publish is confirmed.</p>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="chemora-site-footer"><span class="footer-brand-name">⚗ CHEMORA</span><span>EXPLORE • REACT • DISCOVER</span><nav aria-label="Footer links"><a href="#feedback-title">Reviews</a><a href="privacy.html">Privacy</a><a href="mailto:support@chemora.work.gd">Support: support@chemora.work.gd</a></nav></footer>
+<div class="demo-modal" id="demoModal" role="dialog" aria-modal="true" aria-label="CHEMORA demo video" hidden>
+<div class="demo-dialog">
+<button type="button" class="demo-close" id="demoClose" aria-label="Close demo">&times;</button>
+<video id="demoVideo" controls playsinline preload="none"></video>
+<p class="demo-msg" id="demoMsg" hidden>The demo video could not be played. <a href="experiments/experiments.html">Browse the experiments instead</a>.</p>
+</div>
+</div>
+<script src="app.js"></script><script src="voice-assistant.js"></script>
+<script>
+(function(){
+  // Hero background: keep looping even if the browser pauses it
+  var hero=document.getElementById('heroVideo');
+  if(hero){
+    hero.muted=true;
+    var go=function(){var p=hero.play();if(p&&p.catch)p.catch(function(){})};
+    hero.addEventListener('canplay',go);
+    hero.addEventListener('ended',function(){hero.currentTime=0;go()});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)go()});
+    go();
+  }
+  // Demo video modal
+  var btn=document.getElementById('watchDemo'),modal=document.getElementById('demoModal'),
+      vid=document.getElementById('demoVideo'),msg=document.getElementById('demoMsg'),
+      closeBtn=document.getElementById('demoClose');
+  if(!btn||!modal||!vid)return;
+  function open(){
+    msg.hidden=true;
+    if(!vid.getAttribute('src'))vid.src='videos/chemora-showcase.mp4';
+    modal.hidden=false;document.body.style.overflow='hidden';
+    if(hero)hero.pause();
+    var p=vid.play();if(p&&p.catch)p.catch(function(){});
+    closeBtn.focus();
+  }
+  function close(){
+    vid.pause();vid.currentTime=0;modal.hidden=true;document.body.style.overflow='';
+    if(hero){var p=hero.play();if(p&&p.catch)p.catch(function(){})}
+    btn.focus();
+  }
+  btn.addEventListener('click',open);
+  closeBtn.addEventListener('click',close);
+  modal.addEventListener('click',function(e){if(e.target===modal)close()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)close()});
+  vid.addEventListener('error',function(){msg.hidden=false});
+})();
+</script>
+</body></html>

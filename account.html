@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account | CHEMORA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="account.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="description" content="Sign in to CHEMORA to manage your profile and track chemistry learning progress.">
+
+<link rel="canonical" href="https://project-draft-three.vercel.app/account.html">
+<meta property="og:title" content="Account | CHEMORA">
+<meta property="og:description" content="Sign in to CHEMORA to manage your profile and track chemistry learning progress.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://project-draft-three.vercel.app/account.html">
+<meta property="og:image" content="https://project-draft-three.vercel.app/assets/chemora-share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Account | CHEMORA">
+<meta name="twitter:description" content="Sign in to CHEMORA to manage your profile and track chemistry learning progress.">
+<meta name="twitter:image" content="https://project-draft-three.vercel.app/assets/chemora-share.png">
+
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#111a34"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="stylesheet" href="site-polish.css">
+</head>
+<body class="account-page">
+  <header class="site-header">
+    <div class="header-container">
+      <a href="index.html" class="logo">
+        <span class="logo-mark"><i class="fa-solid fa-atom"></i></span>
+        <span class="logo-text">Chemora</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="challenge/challenge.html">Challenges</a>
+        <a href="progress.html">Progress</a>
+        <a href="account.html" class="active" aria-current="page">Account</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="account-shell">
+    <div class="account-container">
+
+      <!-- AUTHENTICATION SECTION (Visible when logged out) -->
+      <section id="authSection" class="card auth-card">
+        <div class="auth-brand-mark" aria-hidden="true"><i class="fa-solid fa-atom"></i></div>
+        <p class="auth-eyebrow">YOUR CHEMORA ACCOUNT</p>
+        <div class="panel-header text-center">
+          <h1>Welcome back, <span>chemist.</span></h1>
+          <p>Sign in to continue learning, keep track of your progress, and manage your profile.</p>
+        </div>
+        <form id="authForm" class="form-grid column-layout">
+          <div class="form-group full-width">
+            <label for="authEmail">Email address</label>
+            <input type="email" id="authEmail" name="email" placeholder="you@example.com" autocomplete="email" required />
+          </div>
+          <div class="form-group full-width">
+            <label for="authPassword">Password</label>
+            <input type="password" id="authPassword" name="password" placeholder="Enter your password" autocomplete="current-password" required />
+          </div>
+          <p id="authError" class="auth-error-text" role="alert"></p>
+          <div class="form-actions full-width flex-row">
+            <button type="button" id="loginBtn" class="btn btn-primary flex-1">Sign in</button>
+            <button type="button" id="signupBtn" class="btn btn-outline flex-1">Create account</button>
+          </div>
+        </form>
+        <p class="auth-footnote"><i class="fa-solid fa-lock" aria-hidden="true"></i> Your account is protected by secure authentication.</p>
+        <a class="auth-back-link" href="index.html"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to CHEMORA</a>
+      </section>
+
+      <!-- DASHBOARD SECTION (Visible when logged in) -->
+      <div id="dashboardSection" style="display: none;">
+        
+        <div class="dashboard-heading">
+          <div><p class="account-kicker">PERSONAL WORKSPACE</p><h1>Your learning space</h1><p>Keep your chemistry journey organised and moving forward.</p></div>
+          <a href="progress.html" class="dashboard-progress-link"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> View progress</a>
+        </div>
+        <!-- User Hero / Profile Summary Card -->
+        <section class="profile-hero">
+          <div class="profile-avatar-wrapper">
+            <div class="avatar-ring">
+              <img src="favicon.png" alt="Profile Avatar" id="userAvatar" class="avatar-img" />
+            </div>
+            <button class="avatar-edit-btn" title="Change Avatar">
+              <i class="fa-solid fa-camera"></i>
+            </button>
+          </div>
+
+          <div class="profile-meta">
+            <div class="profile-title-row">
+              <h1 class="user-display-name" id="profileName">Loading Profile...</h1>
+              <span class="badge badge-rank" id="profileRank"><i class="fa-solid fa-flask"></i> Chemistry Explorer</span>
+            </div>
+            <p class="user-email" id="profileEmail">loading@chemora.io</p>
+            <p class="user-id" id="profileId">Researcher ID: #---</p>
+          </div>
+
+          <div class="profile-stats-pill">
+            <div class="stat-item">
+              <span class="stat-value" id="statLevels">0</span>
+              <span class="stat-label">Levels completed</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-value" id="statXP">0</span>
+              <span class="stat-label">Total XP</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-value" id="statStreak">0 d</span>
+              <span class="stat-label">Learning streak</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Main Dashboard Layout Grid -->
+        <div class="account-grid">
+          <aside class="account-sidebar">
+            <nav class="tab-nav">
+              <button class="tab-link active" type="button" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="tab-overview">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Overview</span>
+              </button>
+              <button class="tab-link" type="button" role="tab" aria-selected="false" aria-controls="tab-achievements" data-tab="tab-achievements">
+                <i class="fa-solid fa-medal"></i>
+                <span>Achievements</span>
+              </button>
+              <button class="tab-link" type="button" role="tab" aria-selected="false" aria-controls="tab-profile" data-tab="tab-profile">
+                <i class="fa-solid fa-user-pen"></i>
+                <span>Profile</span>
+              </button>
+              <button class="tab-link" type="button" role="tab" aria-selected="false" aria-controls="tab-security" data-tab="tab-security">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Security</span>
+              </button>
+            </nav>
+            <button class="btn btn-logout" id="logoutBtn">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+              <span>Sign out</span>
+            </button>
+          </aside>
+
+          <section class="account-content">
+            
+            <!-- TAB 1: Overview & Progress -->
+            <div class="tab-panel active" id="tab-overview" role="tabpanel" tabindex="0">
+              <div class="panel-header">
+                <h2>Your progress</h2>
+                <p>A snapshot of the chemistry topics you have been exploring.</p>
+              </div>
+              <div class="overview-cards">
+                <div class="card metric-card">
+                  <div class="metric-icon"><i class="fa-solid fa-dna"></i></div>
+                  <div class="metric-body">
+                    <h3>Challenge completion</h3>
+                    <div class="progress-bar-bg">
+                      <div class="progress-bar-fill" id="progOrganic" style="width: 0%;" role="progressbar" aria-label="Challenge completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+                    </div>
+                    <span class="progress-caption" id="captionOrganic">0 of 100 levels completed</span>
+                  </div>
+                </div>
+                <div class="card metric-card">
+                  <div class="metric-icon"><i class="fa-solid fa-vial-circle-check"></i></div>
+                  <div class="metric-body">
+                    <h3>Acids and bases</h3>
+                    <div class="progress-bar-bg">
+                      <div class="progress-bar-fill" id="progTitration" style="width: 95%;"></div>
+                    </div>
+                    <span class="progress-caption" id="captionTitration">95% Mastery (Chemistry Practice)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: Achievements & Badges -->
+            <div class="tab-panel" id="tab-achievements" role="tabpanel" tabindex="0">
+              <div class="panel-header">
+                <h2>Your achievements</h2>
+                <p>Celebrate the milestones you reach as you learn.</p>
+              </div>
+              <div class="achievements-grid">
+                <div class="achievement-card unlocked">
+                  <div class="achievement-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
+                  <div class="achievement-info">
+                    <h4>Pyromancer</h4>
+                    <p>Successfully executed 50 safe exothermic reactions.</p>
+                  </div>
+                </div>
+                <div class="achievement-card unlocked">
+                  <div class="achievement-icon"><i class="fa-solid fa-bolt"></i></div>
+                  <div class="achievement-info">
+                    <h4>Ionic Conductor</h4>
+                    <p>Mapped electrical conductivity profiles across 20 solutions.</p>
+                  </div>
+                </div>
+                <div class="achievement-card locked">
+                  <div class="achievement-icon"><i class="fa-solid fa-lock"></i></div>
+                  <div class="achievement-info">
+                    <h4>Alchemist Supreme</h4>
+                    <p>Reach Level 50 and master all synthesis paths.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: Personal Profile Form -->
+            <div class="tab-panel" id="tab-profile" role="tabpanel" tabindex="0">
+              <div class="panel-header">
+                <h2>Researcher Profile</h2>
+                <p>Keep your account name up to date.</p>
+              </div>
+              <form class="form-grid" id="profileForm">
+                <div class="form-group full-width">
+                  <label for="fullName">Display name</label>
+                  <input type="text" id="fullName" name="fullName" placeholder="Your name" required />
+                </div>
+                <div class="form-actions full-width">
+                  <button type="button" class="btn btn-primary" id="saveProfileBtn">Update Profile</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- TAB 4: Security -->
+            <div class="tab-panel" id="tab-security" role="tabpanel" tabindex="0">
+              <div class="panel-header">
+                <h2>Account security</h2>
+                <p>Keep your account secure by choosing a strong password.</p>
+              </div>
+              <form class="form-grid" id="securityForm">
+                <div class="form-group full-width">
+                  <label for="newPassword">New password</label>
+                  <input type="password" id="newPassword" placeholder="At least 6 characters" autocomplete="new-password" />
+                </div>
+                <div class="form-actions full-width">
+                  <button type="button" class="btn btn-primary" id="changePasswordBtn">Update password</button>
+                </div>
+              </form>
+            </div>
+
+          </section>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+  (() => {
+    // ---- Supabase client (declared once) ----
+    const SUPABASE_URL = 'https://mcwadkgzplurjtstrhdd.supabase.co';
+    // NOTE: your original file had two different keys. Confirm this one against
+    // Supabase Dashboard > Project Settings > API (publishable key).
+    const SUPABASE_ANON_KEY = 'sb_publishable__35lrwlwhFj4SkhofWXJVw__Jca6f5P';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const $ = (id) => document.getElementById(id);
+    const authSection = $('authSection');
+    const dashboardSection = $('dashboardSection');
+    const emailInput = $('authEmail');
+    const passwordInput = $('authPassword');
+    const authError = $('authError');
+    const avatarImg = $('userAvatar');
+    const editBtn = document.querySelector('.avatar-edit-btn');
+    const CAMERA_ICON = '<i class="fa-solid fa-camera"></i>';
+    const DEFAULT_AVATAR = 'favicon.png';
+
+    // ---- Tabs ----
+    document.querySelectorAll('.tab-link').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.tab-link').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        button.classList.add('active');
+        button.setAttribute('aria-selected', 'true');
+        $(button.dataset.tab)?.classList.add('active');
+      });
+    });
+
+    // ---- View switching ----
+    function showAuth() {
+      authSection.style.display = 'block';
+      dashboardSection.style.display = 'none';
+      passwordInput.value = '';
+    }
+
+    function updateLocalLearningSummary() {
+      let saved = {};
+      try {
+        saved = JSON.parse(localStorage.getItem('chemoraChallengeState') || '{}') || {};
+      } catch (_) {
+        saved = {};
+      }
+      const levels = Array.isArray(saved.levels) ? [...new Set(saved.levels.filter(n => Number.isInteger(n) && n >= 1 && n <= 100))] : [];
+      const answered = Math.max(0, Number(saved.answers) || 0);
+      const correct = Math.max(0, Number(saved.correct) || 0);
+      const completedPct = levels.length;
+      const accuracy = answered ? Math.max(0, Math.min(100, Math.round(correct / answered * 100))) : 0;
+      const levelBar = $('progOrganic');
+      const accuracyBar = $('progTitration');
+      levelBar.style.width = completedPct + '%';
+      levelBar.setAttribute('aria-valuenow', String(completedPct));
+      $('captionOrganic').textContent = `${levels.length} of 100 levels completed`;
+      accuracyBar.style.width = accuracy + '%';
+      accuracyBar.setAttribute('aria-valuenow', String(accuracy));
+      $('captionTitration').textContent = answered ? `${accuracy}% accuracy across ${answered.toLocaleString()} answers` : 'Complete a challenge to start tracking accuracy';
+    }
+
+    async function showDashboard(user) {
+      authSection.style.display = 'none';
+      dashboardSection.style.display = 'block';
+      updateLocalLearningSummary();
+      $('profileEmail').textContent = user.email || '';
+      $('profileName').textContent = 'Loading Profile...';
+
+      let { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) console.error('Profile load error:', error.message);
+
+      // No row yet (e.g. account created before the signup trigger existed): create it
+      if (!error && !data) {
+        const created = await supabaseClient
+          .from('profiles')
+          .insert({ user_id: user.id, full_name: 'New Researcher' })
+          .select()
+          .maybeSingle();
+        if (created.error) console.error('Profile create error:', created.error.message);
+        else data = created.data;
+      }
+
+      if (!data) {
+        // No profile row yet (or it couldn't be read)
+        $('profileName').textContent = 'New Researcher';
+        avatarImg.src = DEFAULT_AVATAR;
+        return;
+      }
+
+      $('profileId').textContent = 'Researcher ID: #' + (data.id ?? '---');
+      $('profileName').textContent = data.full_name || 'New Researcher';
+      $('fullName').value = data.full_name || '';
+      $('statLevels').textContent = data.levels_cleared ?? 0;
+      $('statXP').textContent = Number(data.xp_earned ?? 0).toLocaleString();
+      $('statStreak').textContent = (data.daily_streak ?? 0) + ' d';
+      avatarImg.src = data.avatar_url || DEFAULT_AVATAR;
+    }
+
+    // ---- Auth ----
+    async function handleLogin() {
+      authError.textContent = 'Authenticating session...';
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: emailInput.value.trim(),
+        password: passwordInput.value,
+      });
+      if (error) { authError.textContent = error.message; return; }
+      authError.textContent = '';
+      showDashboard(data.user);
+    }
+
+    async function handleSignUp() {
+      authError.textContent = 'Initializing researcher record...';
+      const { data, error } = await supabaseClient.auth.signUp({
+        email: emailInput.value.trim(),
+        password: passwordInput.value,
+      });
+      if (error) { authError.textContent = error.message; return; }
+      if (!data.session) {
+        // Email confirmation is enabled: no session until they verify
+        authError.textContent = 'Account created. Check your email to confirm, then log in.';
+        return;
+      }
+      authError.textContent = '';
+      showDashboard(data.user);
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      showAuth();
+    }
+
+    $('loginBtn').addEventListener('click', handleLogin);
+    $('signupBtn').addEventListener('click', handleSignUp);
+    $('logoutBtn').addEventListener('click', handleLogout);
+    // Pressing Enter in the form logs in
+    $('authForm').addEventListener('submit', (e) => { e.preventDefault(); handleLogin(); });
+
+    // ---- Update name ----
+    $('saveProfileBtn').addEventListener('click', async () => {
+      const btn = $('saveProfileBtn');
+      const newName = $('fullName').value.trim();
+      if (!newName) return;
+      btn.textContent = 'Updating...';
+
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) { btn.textContent = 'Save changes'; showAuth(); return; }
+
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .update({ full_name: newName })
+        .eq('user_id', session.user.id)
+        .select();
+
+      if (error || !data || data.length === 0) {
+        alert('Error updating profile: ' + (error ? error.message : 'no profile row found for this account'));
+        btn.textContent = 'Save changes';
+        return;
+      }
+      $('profileName').textContent = newName;
+      btn.textContent = 'Successfully Updated!';
+      setTimeout(() => { btn.textContent = 'Save changes'; }, 2000);
+    });
+
+    // ---- Change password ----
+    $('changePasswordBtn').addEventListener('click', async () => {
+      const btn = $('changePasswordBtn');
+      const pw = $('newPassword').value;
+      if (pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
+      btn.textContent = 'Updating...';
+      const { error } = await supabaseClient.auth.updateUser({ password: pw });
+      if (error) {
+        alert('Could not update password: ' + error.message);
+        btn.textContent = 'Update password';
+        return;
+      }
+      $('newPassword').value = '';
+      btn.textContent = 'Password updated!';
+      setTimeout(() => { btn.textContent = 'Update password'; }, 2000);
+    });
+
+    // ---- Avatar upload (one handler) ----
+    const avatarFileInput = document.createElement('input');
+    avatarFileInput.type = 'file';
+    avatarFileInput.accept = 'image/png, image/jpeg, image/webp';
+
+    editBtn.addEventListener('click', () => avatarFileInput.click());
+
+    avatarFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = ''; // allow re-selecting the same file later
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) { alert('File size must be under 2MB.'); return; }
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        alert('Only PNG, JPEG, or WEBP images are allowed.');
+        return;
+      }
+
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) { alert('Session expired. Please log in again.'); showAuth(); return; }
+
+      editBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      const filePath = `${session.user.id}/avatar`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        alert('Upload failed: ' + uploadError.message);
+        editBtn.innerHTML = CAMERA_ICON;
+        return;
+      }
+
+      const { data: { publicUrl } } = supabaseClient.storage.from('avatars').getPublicUrl(filePath);
+      const versionedUrl = publicUrl + '?v=' + Date.now(); // bust the cache after overwrite
+
+      const { data: rows, error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ avatar_url: versionedUrl })
+        .eq('user_id', session.user.id)
+        .select();
+
+      if (updateError || !rows || rows.length === 0) {
+        alert('Failed to save avatar: ' + (updateError ? updateError.message : 'no profile row found for this account'));
+      } else {
+        avatarImg.src = versionedUrl;
+      }
+      editBtn.innerHTML = CAMERA_ICON;
+    });
+
+    // ---- Start ----
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) showDashboard(session.user); else showAuth();
+    });
+  })();
+  </script>
+  <footer class="chemora-support-strip" aria-label="CHEMORA support">
+    <span>Need help with your account?</span>
+    <a href="mailto:support@chemora.work.gd">support@chemora.work.gd</a>
+  </footer>
+
+</body>
+</html>

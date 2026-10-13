@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L035Q1",
+    "question": "What is the formula of calcium oxide?",
+    "options": [
+      "CaO",
+      "Ca₂O",
+      "CaO₂",
+      "Ca₂O₃"
+    ],
+    "answer": 0,
+    "explanation": "Ca²⁺ and O²⁻ combine in a 1:1 ratio.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q2",
+    "question": "Which molecule has a double covalent bond between its atoms?",
+    "options": [
+      "H₂",
+      "Cl₂",
+      "O₂",
+      "CH₄"
+    ],
+    "answer": 2,
+    "explanation": "Each oxygen atom shares two pairs of electrons in O₂.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q3",
+    "question": "What is a common property of metals?",
+    "options": [
+      "Brittle and nonconductive",
+      "Malleable and electrically conductive",
+      "Always gaseous",
+      "Soluble in all solvents"
+    ],
+    "answer": 1,
+    "explanation": "Metallic bonding allows layers to slide and electrons to move.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q4",
+    "question": "Which formula correctly represents aluminium oxide?",
+    "options": [
+      "AlO",
+      "Al₂O₃",
+      "Al₃O₂",
+      "AlO₃"
+    ],
+    "answer": 1,
+    "explanation": "Two Al³⁺ ions balance three O²⁻ ions.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q5",
+    "question": "Which substance is made of a giant covalent structure?",
+    "options": [
+      "Diamond",
+      "Water",
+      "Carbon dioxide",
+      "Sodium chloride"
+    ],
+    "answer": 0,
+    "explanation": "Diamond is a three-dimensional network of covalently bonded carbon atoms.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q6",
+    "question": "Why does graphite conduct electricity?",
+    "options": [
+      "It contains mobile ions",
+      "It has delocalised electrons between carbon layers",
+      "It melts easily",
+      "It is made of metal atoms"
+    ],
+    "answer": 1,
+    "explanation": "One electron per carbon can be delocalised within graphite's layers.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q7",
+    "question": "Which statement describes a polar covalent bond?",
+    "options": [
+      "Electrons are shared unequally",
+      "Electrons are completely transferred",
+      "No electrons are involved",
+      "Both atoms lose all valence electrons"
+    ],
+    "answer": 0,
+    "explanation": "Different electronegativities can cause unequal sharing of a bonding pair.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q8",
+    "question": "What is the formula of potassium sulfide?",
+    "options": [
+      "KS",
+      "K₂S",
+      "KS₂",
+      "K₂S₃"
+    ],
+    "answer": 1,
+    "explanation": "Two K⁺ ions balance one S²⁻ ion.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q9",
+    "question": "Which type of bonding explains the high melting point of magnesium oxide?",
+    "options": [
+      "Weak intermolecular forces",
+      "Strong electrostatic attractions in an ionic lattice",
+      "Hydrogen bonds only",
+      "Metallic bonding"
+    ],
+    "answer": 1,
+    "explanation": "The ionic lattice contains strong attractions between Mg²⁺ and O²⁻ ions.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L035Q10",
+    "question": "Which particle is shared in a covalent bond?",
+    "options": [
+      "Proton",
+      "Neutron",
+      "Electron pair",
+      "Whole atom"
+    ],
+    "answer": 2,
+    "explanation": "A covalent bond is a shared pair of electrons.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  }
+]

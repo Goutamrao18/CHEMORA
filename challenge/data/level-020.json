@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L020Q1",
+    "question": "Which model introduced electrons moving in fixed energy levels?",
+    "options": [
+      "Bohr model",
+      "Dalton model",
+      "Thomson model",
+      "Avogadro model"
+    ],
+    "answer": 0,
+    "explanation": "Bohr proposed quantized electron energy levels.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q2",
+    "question": "Which particle has a negative charge?",
+    "options": [
+      "Proton",
+      "Neutron",
+      "Electron",
+      "Nucleus"
+    ],
+    "answer": 2,
+    "explanation": "Electrons carry negative charge.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q3",
+    "question": "Which particle has no electrical charge?",
+    "options": [
+      "Proton",
+      "Neutron",
+      "Electron",
+      "Ion"
+    ],
+    "answer": 1,
+    "explanation": "Neutrons are electrically neutral.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q4",
+    "question": "What determines the atomic number of an element?",
+    "options": [
+      "Neutrons",
+      "Electrons only",
+      "Protons",
+      "Nucleons"
+    ],
+    "answer": 2,
+    "explanation": "Atomic number equals the number of protons.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q5",
+    "question": "The mass number is the total number of:",
+    "options": [
+      "Protons and neutrons",
+      "Electrons and protons",
+      "Neutrons and electrons",
+      "Only protons"
+    ],
+    "answer": 0,
+    "explanation": "Mass number is protons plus neutrons.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q6",
+    "question": "Atoms of the same element with different numbers of neutrons are called:",
+    "options": [
+      "Ions",
+      "Isotopes",
+      "Isobars",
+      "Allotropes"
+    ],
+    "answer": 1,
+    "explanation": "Isotopes have the same proton number but different neutron numbers.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q7",
+    "question": "Which particle is found outside the nucleus?",
+    "options": [
+      "Proton",
+      "Neutron",
+      "Electron",
+      "Nucleon"
+    ],
+    "answer": 2,
+    "explanation": "Electrons occupy regions outside the nucleus.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q8",
+    "question": "The nucleus contains:",
+    "options": [
+      "Only electrons",
+      "Protons and neutrons",
+      "Only neutrons",
+      "Electrons and neutrons"
+    ],
+    "answer": 1,
+    "explanation": "The nucleus contains protons and neutrons.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q9",
+    "question": "An atom becomes a positive ion when it:",
+    "options": [
+      "Gains electrons",
+      "Loses electrons",
+      "Gains neutrons",
+      "Loses protons"
+    ],
+    "answer": 1,
+    "explanation": "Loss of electrons leaves a net positive charge.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  },
+  {
+    "id": "L020Q10",
+    "question": "Which number is equal to the number of protons in a neutral carbon atom?",
+    "options": [
+      "4",
+      "6",
+      "8",
+      "12"
+    ],
+    "answer": 1,
+    "explanation": "Carbon has atomic number 6.",
+    "difficulty": "Easy",
+    "points": 125,
+    "topic": "Atomic Structure"
+  }
+]

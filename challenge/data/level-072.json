@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L072Q1",
+    "question": "Which apparatus is used to deliver measured variable volumes during titration?",
+    "options": [
+      "Burette",
+      "Crucible",
+      "Tripod",
+      "Mortar"
+    ],
+    "answer": 0,
+    "explanation": "A burette delivers measured volumes accurately.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q2",
+    "question": "Which apparatus is commonly used to transfer a small measured volume?",
+    "options": [
+      "Pipette",
+      "Funnel",
+      "Wire gauze",
+      "Spatula"
+    ],
+    "answer": 0,
+    "explanation": "A pipette transfers a measured volume.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q3",
+    "question": "Which apparatus is used for filtration support?",
+    "options": [
+      "Funnel",
+      "Thermometer",
+      "Burette",
+      "Volumetric flask"
+    ],
+    "answer": 0,
+    "explanation": "A funnel can hold filter paper for filtration.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q4",
+    "question": "What should be worn to protect eyes in the laboratory?",
+    "options": [
+      "Safety goggles",
+      "Lab coat only",
+      "Sandals",
+      "Earphones"
+    ],
+    "answer": 0,
+    "explanation": "Safety goggles protect the eyes from splashes and particles.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q5",
+    "question": "Which apparatus is designed for strong heating of a small solid sample?",
+    "options": [
+      "Crucible",
+      "Pipette",
+      "Burette",
+      "Wash bottle"
+    ],
+    "answer": 0,
+    "explanation": "A crucible is used for strong heating of solids.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q6",
+    "question": "Which tool is commonly used to hold a test tube while heating?",
+    "options": [
+      "Test-tube holder",
+      "Balance",
+      "Volumetric flask",
+      "Funnel"
+    ],
+    "answer": 0,
+    "explanation": "A test-tube holder provides a safe grip during heating.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q7",
+    "question": "Which instrument measures mass?",
+    "options": [
+      "Balance",
+      "Thermometer",
+      "Burette",
+      "Pipette"
+    ],
+    "answer": 0,
+    "explanation": "A laboratory balance measures mass.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q8",
+    "question": "Which apparatus separates immiscible liquids?",
+    "options": [
+      "Separating funnel",
+      "Crucible",
+      "Watch glass",
+      "Bunsen burner"
+    ],
+    "answer": 0,
+    "explanation": "A separating funnel separates liquids that form distinct layers.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q9",
+    "question": "Which apparatus is commonly used to evaporate a solution?",
+    "options": [
+      "Evaporating dish",
+      "Burette",
+      "Pipette",
+      "Gas jar"
+    ],
+    "answer": 0,
+    "explanation": "An evaporating dish is designed for evaporation.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  },
+  {
+    "id": "L072Q10",
+    "question": "Which apparatus measures a fixed volume accurately?",
+    "options": [
+      "Volumetric flask",
+      "Beaker",
+      "Watch glass",
+      "Evaporating dish"
+    ],
+    "answer": 0,
+    "explanation": "A volumetric flask is calibrated for one precise volume.",
+    "difficulty": "Hard",
+    "points": 275,
+    "topic": "Lab & Qualitative Analysis"
+  }
+]
