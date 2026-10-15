@@ -35,11 +35,19 @@ async function startServer() {
     }
   });
 
+  // Explicit route for standalone account.html
+  app.get('/account.html', (_req: Request, res: Response) => {
+    const filePath = isProd
+      ? path.resolve(__dirname, 'dist', 'account.html')
+      : path.resolve(__dirname, 'account.html');
+    res.sendFile(filePath);
+  });
+
   // Frontend routing
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);

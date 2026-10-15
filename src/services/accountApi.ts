@@ -1,6 +1,4 @@
-// Frontend Client for Backend Account & Auth Services (/api/account/*)
-// All database credentials and Supabase client logic remain strictly on the backend.
-// Zero-localStorage policy enforced: Account credentials and profiles are NEVER stored in localStorage.
+import { supabase } from './supabaseClient';
 
 export interface AccountUser {
   id: string;
@@ -96,6 +94,17 @@ export function getAuthToken(): string | null {
   return inMemoryToken;
 }
 
+export async function getLiveAuthToken(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      inMemoryToken = session.access_token;
+      return session.access_token;
+    }
+  } catch {}
+  return getAuthToken();
+}
+
 export function setAuthToken(token: string | null): void {
   inMemoryToken = token;
   purgeLocalStorageAccountTokens();
@@ -112,11 +121,11 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
-function getAuthHeaders(): HeadersInit {
-  const headers: HeadersInit = {
+export async function getAuthHeaders(): Promise<HeadersInit> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  const token = getAuthToken();
+  const token = await getLiveAuthToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -159,14 +168,15 @@ export async function fetchCurrentAccount(): Promise<{
   user?: AccountUser;
   profile?: AccountProfile;
 }> {
-  const token = getAuthToken();
+  const token = await getLiveAuthToken();
   if (!token) {
     return { authenticated: false };
   }
 
   try {
+    const headers = await getAuthHeaders();
     const res = await fetch('/api/account/me', {
-      headers: getAuthHeaders(),
+      headers,
     });
 
     if (res.status === 401) {
@@ -238,9 +248,10 @@ export async function signInResearcher(email: string, password: string): Promise
 
 export async function signOutResearcher(): Promise<void> {
   try {
+    const headers = await getAuthHeaders();
     await fetch('/api/account/logout', {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
     });
   } catch {
     // Continue with client logout
@@ -254,9 +265,10 @@ export async function updateResearcherProfile(updates: {
   avatar_url?: string;
   rank?: string;
 }): Promise<AccountProfile> {
+  const headers = await getAuthHeaders();
   const res = await fetch('/api/account/profile', {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers,
     body: JSON.stringify(updates),
   });
 
@@ -269,9 +281,10 @@ export async function updateResearcherProfile(updates: {
 }
 
 export async function updateResearcherPassword(newPassword: string): Promise<void> {
+  const headers = await getAuthHeaders();
   const res = await fetch('/api/account/password', {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers,
     body: JSON.stringify({ new_password: newPassword }),
   });
 
@@ -299,9 +312,10 @@ export async function requestPasswordReset(email: string): Promise<string> {
 export async function syncResearcherProgressToDatabase(
   progress: Partial<ResearcherProgressData>
 ): Promise<{ success: boolean; progress: ResearcherProgressData; source: 'supabase' | 'server-store' }> {
+  const headers = await getAuthHeaders();
   const res = await fetch('/api/account/sync', {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers,
     body: JSON.stringify(progress),
   });
 
@@ -316,8 +330,9 @@ export async function fetchResearcherProgressFromDatabase(): Promise<{
   progress: ResearcherProgressData;
   source: 'supabase' | 'server-store';
 }> {
+  const headers = await getAuthHeaders();
   const res = await fetch('/api/account/progress', {
-    headers: getAuthHeaders(),
+    headers,
   });
 
   const data = await res.json();

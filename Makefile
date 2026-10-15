@@ -10,7 +10,7 @@ SHELL      := /bin/bash
 .DEFAULT_GOAL := help
 
 NODE  ?= node
-PNPM  ?= pnpm
+NPM   ?= npm
 PORT  ?= 4173
 DIST  := dist
 GAME  := game
@@ -24,18 +24,16 @@ help: ## Show this help
 
 check-tools: ## Verify required tools are installed
 	@command -v $(NODE) >/dev/null || { echo "node is required (>=22)"; exit 1; }
-	@command -v $(PNPM) >/dev/null || { echo "pnpm is required (>=10): corepack enable && corepack prepare pnpm@10 --activate"; exit 1; }
+	@command -v $(NPM) >/dev/null || { echo "npm is required"; exit 1; }
 	@$(NODE) -e 'const m=+process.versions.node.split(".")[0]; if(m<22){console.error("Node >=22 required, found "+process.version);process.exit(1)}'
 
-install: check-tools ## Install game dependencies (PNPM=npm for the npm fallback used on Vercel)
-	@if [ "$(PNPM)" = "npm" ]; then cd $(GAME) && npm install --no-audit --no-fund --legacy-peer-deps; \
-	 elif [ -f $(GAME)/pnpm-lock.yaml ]; then cd $(GAME) && ($(PNPM) install --frozen-lockfile || $(PNPM) install --no-frozen-lockfile); \
-	 else echo "WARN: $(GAME)/pnpm-lock.yaml missing - resolving fresh"; cd $(GAME) && $(PNPM) install --no-frozen-lockfile; fi
+install: check-tools ## Install game dependencies
+	cd $(GAME) && npm install --no-audit --no-fund --legacy-peer-deps
 
 dev: dev-game ## Alias for dev-game
 
 dev-game: ## Run the game dev server (http://localhost:5173/)
-	cd $(GAME) && $(PNPM) run dev
+	cd $(GAME) && $(NPM) run dev
 
 dev-site: ## Serve the static site only (http://localhost:4173/)
 	$(NODE) scripts/serve.mjs . $(PORT)
@@ -48,18 +46,18 @@ test-site: validate ## Site checks: validator, API smoke test, experiments regre
 	$(NODE) scripts/test-experiments.mjs
 
 typecheck: ## Typecheck the game
-	cd $(GAME) && $(PNPM) run typecheck
+	cd $(GAME) && $(NPM) run typecheck
 
 lint: ## Lint the game
-	cd $(GAME) && $(PNPM) run lint
+	cd $(GAME) && $(NPM) run lint
 
 test-game: ## Unit-test the game (chemistry engine)
-	cd $(GAME) && $(PNPM) run test
+	cd $(GAME) && $(NPM) run test
 
 test: test-site test-game ## Run every test
 
 build-game: ## Production build of the game (base path /play/)
-	cd $(GAME) && $(PNPM) run build
+	cd $(GAME) && $(NPM) run build
 
 assemble: ## Combine site + built game into dist/
 	$(NODE) scripts/assemble-dist.mjs $(DIST) $(GAME)/dist

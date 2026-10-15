@@ -4,14 +4,14 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
-  ''
+  'https://mcwadkgzplurjtstrhdd.supabase.co'
 ).trim().replace(/\/$/, '');
 
 const SUPABASE_KEY = (
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
-  ''
+  'sb_publishable__35lrwlwhFj4SkhofWXJVw__Jca6f5P'
 ).trim();
 
 export interface ServerUserProfile {
@@ -47,17 +47,13 @@ export function isSupabaseBackendConfigured(): boolean {
 export function isApiKeyOrNetworkError(err: any): boolean {
   if (!err) return false;
   const msg = (typeof err === 'string' ? err : err.message || JSON.stringify(err)).toLowerCase();
+  // DO NOT match 'unauthorized', 'jwt', or 'invalid login credentials' as network errors!
+  // Those are legitimate user authentication rejections that must be reported to the user.
   return (
-    msg.includes('invalid api') ||
-    msg.includes('api key') ||
-    msg.includes('apikey') ||
-    msg.includes('jwt') ||
-    msg.includes('bad api') ||
-    msg.includes('unauthorized') ||
     msg.includes('fetch failed') ||
     msg.includes('enotfound') ||
-    msg.includes('network') ||
-    msg.includes('failed to fetch')
+    msg.includes('econnrefused') ||
+    msg.includes('network error')
   );
 }
 
@@ -159,21 +155,11 @@ function fallbackSignIn(email: string, password: string) {
     }
   }
 
-  // If user does not exist in local session, auto-provision so they are never blocked by missing/invalid APIs
+  // Never auto-provision on sign in! If the user account doesn't exist, throw an authentication error
   if (!foundUser) {
-    const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    foundUser = {
-      id: userId,
-      email: normalizedEmail,
-      passwordHash: password,
-      full_name: normalizedEmail.split('@')[0].replace(/[._]/g, ' ') || 'Researcher',
-      avatar_url: '/favicon.png',
-      rank: 'Novice Alchemist',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    fallbackUsers.set(userId, foundUser);
-  } else if (foundUser.passwordHash !== password) {
+    throw new Error('Invalid email or password. Please verify your credentials or create an account.');
+  }
+  if (foundUser.passwordHash !== password) {
     throw new Error('Invalid email or laboratory password.');
   }
 
@@ -235,15 +221,15 @@ export async function backendSignUp(email: string, password: string, fullName: s
       try {
         await client.from('profiles').upsert(
           {
-            id: user.id,
             user_id: user.id,
-            email: user.email,
             full_name: fullName || user.email?.split('@')[0] || 'Researcher',
             avatar_url: '/favicon.png',
-            rank: 'Novice Alchemist',
-            updated_at: new Date().toISOString(),
+            rank_title: 'Novice Alchemist',
+            levels_cleared: 0,
+            xp_earned: 0,
+            daily_streak: 0,
           },
-          { onConflict: 'id' }
+          { onConflict: 'user_id' }
         );
       } catch (dbErr) {
         console.warn('Note: Profile table insert handled by Supabase trigger or deferred:', dbErr);
@@ -370,21 +356,52 @@ export async function backendGetProfile(
 ): Promise<ServerUserProfile> {
   const client = (token ? getUserScopedSupabaseClient(token) : null) || getSupabaseBackendClient();
 
+  let userMeta: any = null;
   if (client) {
+    if (token) {
+      try {
+        const { data: uData } = await client.auth.getUser(token);
+        userMeta = uData?.user?.user_metadata;
+      } catch {}
+    }
+
     try {
-      const { data, error } = await client
+      let data: any = null;
+      let error: any = null;
+
+      // 1. Try querying by user_id
+      const byUserId = await client
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
+      if (byUserId.data) {
+        data = byUserId.data;
+      } else if (!byUserId.error) {
+        // 2. Fallback to querying by id
+        const byId = await client
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        if (byId.data) {
+          data = byId.data;
+        }
+      } else {
+        error = byUserId.error;
+      }
+
       if (!error && data) {
+        const metaAvatar = userMeta?.avatar_url || userMeta?.picture || userMeta?.avatar || userMeta?.photo_url;
+        const resolvedAvatar = metaAvatar || data.avatar_url || '/favicon.png';
+        const resolvedName = data.full_name || userMeta?.full_name || userMeta?.name || defaultName || email.split('@')[0] || 'Researcher';
         return {
           id: String(data.id || userId),
           user_id: data.user_id || userId,
           email: email,
-          full_name: data.full_name || defaultName || email.split('@')[0] || 'Researcher',
-          avatar_url: data.avatar_url || '/favicon.png',
+          full_name: resolvedName,
+          avatar_url: resolvedAvatar,
           rank: data.rank_title || 'Novice Alchemist',
           created_at: data.created_at || new Date().toISOString(),
           updated_at: data.updated_at || new Date().toISOString(),
@@ -410,12 +427,13 @@ export async function backendGetProfile(
     };
   }
 
+  const metaAvatar = userMeta?.avatar_url || userMeta?.picture || userMeta?.avatar;
   return {
     id: userId,
     user_id: userId,
     email,
-    full_name: defaultName || email.split('@')[0] || 'Researcher',
-    avatar_url: '/favicon.png',
+    full_name: userMeta?.full_name || userMeta?.name || defaultName || email.split('@')[0] || 'Researcher',
+    avatar_url: metaAvatar || '/favicon.png',
     rank: 'Novice Alchemist',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -437,6 +455,7 @@ export async function backendUpdateProfile(
     const payload: Record<string, any> = {};
     if (updates.full_name !== undefined) payload.full_name = updates.full_name.trim();
     if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url.trim();
+    if (updates.rank !== undefined) payload.rank_title = updates.rank.trim();
 
     // 1. Update user metadata in Supabase Auth if token available
     if (token) {
@@ -452,13 +471,18 @@ export async function backendUpdateProfile(
       }
     }
 
-    // 2. Update existing row in public.profiles table by user_id
+    // 2. Update existing row in public.profiles table by user_id and id
     if (Object.keys(payload).length > 0) {
       try {
         await client
           .from('profiles')
           .update(payload)
           .eq('user_id', userId);
+
+        await client
+          .from('profiles')
+          .update(payload)
+          .eq('id', userId);
       } catch (err) {
         console.warn('Backend profile update note:', err);
       }
@@ -611,18 +635,18 @@ export async function backendSyncProgress(
         { onConflict: 'user_id' }
       );
 
-      // Also update rank or XP on profiles table if present
-      if (!dbError) {
-        await client
-          .from('profiles')
-          .update({
-            rank: merged.rankTitle,
-            updated_at: merged.updatedAt,
-          })
-          .eq('user_id', userId);
+      // Also update rank and progress on profiles table matching schema
+      await client
+        .from('profiles')
+        .update({
+          rank_title: merged.rankTitle,
+          levels_cleared: merged.challengesCompleted,
+          xp_earned: merged.totalXp,
+          daily_streak: merged.streakDays,
+        })
+        .eq('user_id', userId);
 
-        return { success: true, progress: merged, source: 'supabase' };
-      }
+      return { success: true, progress: merged, source: 'supabase' };
     } catch (err) {
       console.warn('Supabase researcher_progress database sync note:', err);
     }
@@ -639,6 +663,30 @@ export async function backendGetProgress(
 
   if (client) {
     try {
+      // 1. Try public.profiles first as it directly stores levels_cleared, xp_earned, daily_streak, rank_title
+      const { data: profileRow } = await client
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (profileRow && (profileRow.levels_cleared !== undefined || profileRow.xp_earned !== undefined)) {
+        const prog: ResearcherProgressData = {
+          userId,
+          experimentsCompleted: 0,
+          challengesCompleted: Number(profileRow.levels_cleared || 0),
+          streakDays: Number(profileRow.daily_streak || 0),
+          totalXp: Number(profileRow.xp_earned || 0),
+          rankTitle: profileRow.rank_title || 'Novice Alchemist',
+          completedExperimentIds: [],
+          lastActiveAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        fallbackProgress.set(userId, prog);
+        return { progress: prog, source: 'supabase' };
+      }
+
+      // 2. Fallback to researcher_progress if present
       const { data, error } = await client
         .from('researcher_progress')
         .select('*')
@@ -661,7 +709,7 @@ export async function backendGetProgress(
         return { progress: prog, source: 'supabase' };
       }
     } catch (err) {
-      console.warn('Supabase researcher_progress lookup note:', err);
+      console.warn('Supabase progress lookup note:', err);
     }
   }
 

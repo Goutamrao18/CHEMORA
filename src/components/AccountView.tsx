@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { UserProfile, getStoredProfile, GUEST_PROFILE, saveStoredUiPreferences } from '../data/userProfile';
 import { getInitialChallengeState } from '../data/challengeData';
 import { getDailyStreak, DailyStreakState } from '../data/streakManager';
@@ -14,10 +14,13 @@ import {
   fetchDatabaseDiagnostics,
   syncResearcherProgressToDatabase,
   fetchResearcherProgressFromDatabase,
+  setAuthToken,
   AccountProfile,
   SupabaseDatabaseDiagnostics,
   ResearcherProgressData,
 } from '../services/accountApi';
+import { supabase } from '../services/supabaseClient';
+import type { User as SupabaseUser, AuthChangeEvent, Session } from '@supabase/supabase-js';
 import {
   User,
   Shield,
@@ -133,6 +136,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   })();
 
   // Load session from backend API (Zero-localStorage: profile comes exclusively from server)
+  // Load session with Supabase client prioritization
   const refreshAccount = useCallback(async () => {
     setIsLoadingAuth(true);
     try {
@@ -143,6 +147,14 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       setIsBackendOnline(status.status === 'online');
       if (dbInfo) setDbDiagnostics(dbInfo);
 
+      // 1. Check if Supabase Auth client has an active session in browser
+      const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+      if (session?.user) {
+        await syncSupabaseSession(session.user, session.access_token);
+        return;
+      }
+
+      // 2. Otherwise verify backend session
       const data = await fetchCurrentAccount();
       if (data.authenticated && data.profile) {
         setIsAuthenticated(true);
@@ -189,12 +201,318 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   }, [profile]);
 
+  // Synchronize a Supabase user session directly with UI state matching table schema
+  const syncSupabaseSession = useCallback(async (sessionUser: SupabaseUser, token?: string) => {
+    if (token) {
+      setAuthToken(token);
+    }
+    setIsAuthenticated(true);
+
+    try {
+      const metaAvatar =
+        sessionUser.user_metadata?.avatar_url ||
+        sessionUser.user_metadata?.picture ||
+        sessionUser.user_metadata?.avatar ||
+        sessionUser.user_metadata?.photo_url ||
+        sessionUser.user_metadata?.image;
+
+      const metaName =
+        sessionUser.user_metadata?.full_name ||
+        sessionUser.user_metadata?.name ||
+        sessionUser.user_metadata?.user_name;
+
+      // 1. Query public.profiles row directly from Supabase (check both user_id and id)
+      let profileData: any = null;
+      let dbErrorOccurred = false;
+
+      try {
+        const { data: byUserId, error: errUserId } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', sessionUser.id)
+          .limit(1);
+
+        if (byUserId && byUserId.length > 0) {
+          profileData = byUserId[0];
+        } else if (!errUserId) {
+          // Fallback to primary key id (matches standard Supabase starter schema where id = auth.users.id)
+          const { data: byId } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionUser.id)
+            .limit(1);
+
+          if (byId && byId.length > 0) {
+            profileData = byId[0];
+          }
+        } else {
+          dbErrorOccurred = true;
+        }
+      } catch (err) {
+        console.warn('Direct profile user_id query exception:', err);
+      }
+
+      // 2. If no profile found by user_id/id, check for existing profile by full_name or email prefix
+      // (Handles existing accounts created before auth binding, or manual database entries)
+      if (!profileData) {
+        const candidateNames = [
+          metaName,
+          sessionUser.user_metadata?.full_name,
+          sessionUser.user_metadata?.name,
+          sessionUser.email?.split('@')[0],
+        ].filter((n): n is string => Boolean(n && n.trim().length > 0));
+
+        for (const cand of candidateNames) {
+          try {
+            const { data: nameMatches } = await supabase
+              .from('profiles')
+              .select('*')
+              .ilike('full_name', cand.trim())
+              .limit(1);
+
+            if (nameMatches && nameMatches.length > 0) {
+              profileData = nameMatches[0];
+              // Link this existing profile to the authenticated user's user_id if not yet set
+              if (!profileData.user_id) {
+                try {
+                  await supabase
+                    .from('profiles')
+                    .update({ user_id: sessionUser.id })
+                    .eq('id', profileData.id);
+                  profileData.user_id = sessionUser.id;
+                } catch (linkErr) {
+                  console.warn('Linking user_id to existing profile note:', linkErr);
+                }
+              }
+              break;
+            }
+          } catch (nameErr) {
+            console.warn('Name search note:', nameErr);
+          }
+        }
+      }
+
+      // 3. Fallback: check backend proxy if client-side database query was blocked by RLS
+      if (!profileData) {
+        try {
+          const backendCurrent = await fetchCurrentAccount();
+          if (backendCurrent?.authenticated && backendCurrent?.profile) {
+            profileData = {
+              id: backendCurrent.profile.id,
+              user_id: backendCurrent.profile.user_id || sessionUser.id,
+              full_name: backendCurrent.profile.full_name,
+              avatar_url: backendCurrent.profile.avatar_url,
+              rank_title: backendCurrent.profile.rank,
+            };
+          }
+        } catch {}
+      }
+
+      // 4. Auto-provision ONLY if profile really does not exist anywhere
+      // Preserves existing local challenge achievements instead of overwriting with zeroes
+      if (!profileData && !dbErrorOccurred) {
+        const defaultName = metaName || sessionUser.email?.split('@')[0] || 'Researcher';
+        const initialLevels = challengeState?.levels?.length || 0;
+        const initialXp = challengeState?.xp || 0;
+        const initialStreak = streakState?.currentStreak || 0;
+        const initialRank = profile.rank && profile.rank !== 'Guest Chemist' ? profile.rank : 'Novice Alchemist';
+
+        try {
+          const { data: created, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: sessionUser.id,
+              full_name: defaultName,
+              avatar_url: metaAvatar || null,
+              rank_title: initialRank,
+              levels_cleared: initialLevels,
+              xp_earned: initialXp,
+              daily_streak: initialStreak,
+            })
+            .select()
+            .maybeSingle();
+
+          if (insertError) {
+            console.warn('Supabase profile auto-provision note:', insertError.message);
+          } else if (created) {
+            profileData = created;
+          }
+        } catch (insErr) {
+          console.warn('Auto-provision insert error:', insErr);
+        }
+      }
+
+      // 5. Ensure avatar reflects user's actual photo
+      // Priority: user's Google/OAuth photo (metaAvatar) > profileData avatar > storage avatar > default
+      let resolvedAvatar = metaAvatar || profileData?.avatar_url;
+      if (!resolvedAvatar) {
+        try {
+          const { data: storageData } = supabase.storage.from('avatars').getPublicUrl(`${sessionUser.id}/avatar`);
+          if (storageData?.publicUrl) {
+            resolvedAvatar = storageData.publicUrl;
+          }
+        } catch {}
+      }
+      if (!resolvedAvatar) {
+        resolvedAvatar = '/favicon.png';
+      }
+
+      // If user has a real avatar in metadata (like Google photo) but profiles.avatar_url is empty, persist it
+      if (profileData && (!profileData.avatar_url || profileData.avatar_url === '/favicon.png') && metaAvatar) {
+        Promise.resolve(
+          supabase
+            .from('profiles')
+            .update({ avatar_url: metaAvatar })
+            .eq('user_id', sessionUser.id)
+        ).catch(() => {});
+        profileData.avatar_url = metaAvatar;
+      }
+
+      const fullName = profileData?.full_name || metaName || sessionUser.email?.split('@')[0] || 'Researcher';
+      const rankTitle = profileData?.rank_title || profile.rank || 'Novice Alchemist';
+
+      const accProfile: AccountProfile = {
+        id: profileData?.id ? String(profileData.id) : sessionUser.id,
+        user_id: sessionUser.id,
+        email: sessionUser.email || '',
+        full_name: fullName,
+        avatar_url: resolvedAvatar,
+        rank: rankTitle,
+        created_at: sessionUser.created_at,
+        updated_at: new Date().toISOString(),
+      };
+      setAccountProfile(accProfile);
+
+      setProfile((prev) => ({
+        ...prev,
+        id: accProfile.id,
+        name: accProfile.full_name,
+        email: accProfile.email,
+        avatar: accProfile.avatar_url || '/favicon.png',
+        rank: accProfile.rank || 'Novice Alchemist',
+        isLoggedIn: true,
+      }));
+
+      // 6. Load synced progress from profiles table or database
+      if (profileData && (profileData.levels_cleared !== undefined || profileData.xp_earned !== undefined)) {
+        const dbLevels = Number(profileData.levels_cleared || 0);
+        const dbXp = Number(profileData.xp_earned || 0);
+        const dbStreak = Number(profileData.daily_streak || 0);
+
+        setSyncedProgress({
+          userId: sessionUser.id,
+          experimentsCompleted: completedExperimentsCount,
+          challengesCompleted: dbLevels,
+          streakDays: dbStreak,
+          totalXp: dbXp,
+          rankTitle: rankTitle,
+          completedExperimentIds: [],
+          lastActiveAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        setLastDbSyncTime(new Date().toLocaleTimeString());
+
+        // If local user has earned achievements that are higher than database, update database
+        const localLevels = challengeState.levels.length;
+        const localXp = challengeState.xp;
+        const localStreak = streakState.currentStreak;
+        if (localLevels > dbLevels || localXp > dbXp || localStreak > dbStreak) {
+          Promise.resolve(
+            supabase
+              .from('profiles')
+              .update({
+                levels_cleared: Math.max(dbLevels, localLevels),
+                xp_earned: Math.max(dbXp, localXp),
+                daily_streak: Math.max(dbStreak, localStreak),
+              })
+              .eq('user_id', sessionUser.id)
+          ).catch(() => {});
+        }
+      } else {
+        try {
+          const cloudProg = await fetchResearcherProgressFromDatabase();
+          if (cloudProg?.progress) {
+            setSyncedProgress(cloudProg.progress);
+            setLastDbSyncTime(
+              cloudProg.progress.updatedAt
+                ? new Date(cloudProg.progress.updatedAt).toLocaleTimeString()
+                : new Date().toLocaleTimeString()
+            );
+          }
+        } catch (progErr) {
+          console.warn('Progress lookup from database note:', progErr);
+        }
+      }
+    } catch (err) {
+      console.warn('Error syncing Supabase user profile:', err);
+    }
+  }, [challengeState, streakState, completedExperimentsCount, profile.rank]);
+
+  // Keep references to current callbacks and session cache to prevent infinite auth listener cycles
+  const syncSupabaseSessionRef = useRef(syncSupabaseSession);
+  syncSupabaseSessionRef.current = syncSupabaseSession;
+  const refreshAccountRef = useRef(refreshAccount);
+  refreshAccountRef.current = refreshAccount;
+  const lastSyncedSessionRef = useRef<{ userId?: string; token?: string }>({});
+
+  // Supabase Auth state listener: runs once on mount and cleanly handles session transitions
   useEffect(() => {
-    refreshAccount();
+    // Initial status checks
+    Promise.all([
+      checkBackendStatus().catch(() => ({ status: 'unknown', databaseConnected: false })),
+      fetchDatabaseDiagnostics().catch(() => null),
+    ]).then(([status, dbInfo]) => {
+      setIsBackendOnline(status.status === 'online');
+      if (dbInfo) setDbDiagnostics(dbInfo);
+    });
+
+    // Check existing Supabase session immediately on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        lastSyncedSessionRef.current = { userId: session.user.id, token: session.access_token };
+        syncSupabaseSessionRef.current(session.user, session.access_token);
+        setIsLoadingAuth(false);
+      }
+    }).catch(() => {});
+
+    // Subscribe to Supabase Auth state transitions
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        if (session?.user) {
+          // Guard against redundant INITIAL_SESSION event loops with the exact same user/token
+          if (
+            event === 'INITIAL_SESSION' &&
+            lastSyncedSessionRef.current.userId === session.user.id &&
+            lastSyncedSessionRef.current.token === session.access_token
+          ) {
+            return;
+          }
+          console.log(`[Supabase Auth] State changed: ${event}`, session.user.email);
+          lastSyncedSessionRef.current = { userId: session.user.id, token: session.access_token };
+          await syncSupabaseSessionRef.current(session.user, session.access_token);
+          setIsLoadingAuth(false);
+        } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
+          console.log(`[Supabase Auth] State changed: ${event}`);
+          lastSyncedSessionRef.current = {};
+          setAuthToken(null);
+          setIsAuthenticated(false);
+          setAccountProfile(null);
+          setSyncedProgress(null);
+          setProfile((prev) => ({ ...GUEST_PROFILE, preferences: prev.preferences }));
+          setIsLoadingAuth(false);
+        } else {
+          refreshAccountRef.current();
+        }
+      }
+    );
 
     const handleStreakChange = () => setStreakState(getDailyStreak());
     window.addEventListener('chemora:streak_update', handleStreakChange);
-    return () => window.removeEventListener('chemora:streak_update', handleStreakChange);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('chemora:streak_update', handleStreakChange);
+    };
   }, []);
 
   // Sync Progress to Supabase Database System
@@ -205,6 +523,21 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
     setIsSyncingDb(true);
     try {
+      // 1. Update in public.profiles table directly if session is active
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase
+          .from('profiles')
+          .update({
+            levels_cleared: challengeState.levels.length,
+            xp_earned: challengeState.xp,
+            daily_streak: streakState.currentStreak,
+            rank_title: profile.rank,
+          })
+          .eq('user_id', session.user.id);
+      }
+
+      // 2. Also sync through backend proxy
       const res = await syncResearcherProgressToDatabase({
         experimentsCompleted: completedExperimentsCount,
         challengesCompleted: challengeState.levels.length,
@@ -224,7 +557,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Sign In via backend
+  // Handle Sign In with Supabase Auth
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword) {
@@ -237,25 +570,32 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setAuthSuccess(null);
 
     try {
-      const result = await signInResearcher(authEmail.trim(), authPassword);
-      setAuthSuccess('Successfully authenticated! Loading researcher workspace...');
-      triggerToast('Welcome back! Laboratory workspace authenticated.', 'success');
-      setAuthPassword('');
+      // Sign in directly via Supabase client (onAuthStateChange will automatically sync session)
+      const { data: sbData, error: sbError } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
 
-      if (result.profile) {
-        setAccountProfile(result.profile);
-        const updated: UserProfile = {
-          ...profile,
-          id: result.profile.id,
-          name: result.profile.full_name || 'Researcher',
-          email: result.profile.email,
-          avatar: result.profile.avatar_url || '/favicon.png',
-          rank: result.profile.rank || 'Novice Alchemist',
-          isLoggedIn: true,
-        };
-        setProfile(updated);
+      if (sbError) {
+        // Direct Supabase error: Surface the exact issue to the user
+        let msg = sbError.message;
+        if (msg.toLowerCase().includes('invalid login credentials')) {
+          msg = 'Invalid email or password. Please verify your credentials, or click "Continue with Google" if you registered with Google.';
+        } else if (msg.toLowerCase().includes('email not confirmed')) {
+          msg = 'Email address not yet confirmed. Please verify your email via the confirmation link sent by Supabase.';
+        }
+        setAuthError(msg);
+        triggerToast(msg, 'error');
+        return;
       }
-      setIsAuthenticated(true);
+
+      if (sbData?.session) {
+        setAuthToken(sbData.session.access_token);
+        setIsAuthenticated(true);
+        setAuthSuccess('Welcome back! Loading your researcher profile...');
+        triggerToast('Laboratory workspace authenticated.', 'success');
+        setAuthPassword('');
+      }
     } catch (err: any) {
       const msg = cleanErrorMessage(err.message || 'Authentication failed. Please verify your credentials.');
       setAuthError(msg);
@@ -265,7 +605,29 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Registration via backend
+  // Handle Google OAuth Sign In
+  const handleGoogleSignIn = async () => {
+    setIsSubmittingAuth(true);
+    setAuthError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + window.location.pathname + '#account',
+        },
+      });
+      if (error) {
+        throw error;
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Google sign-in encountered an error.';
+      setAuthError(msg);
+      triggerToast(msg, 'error');
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  // Handle Registration via Supabase Auth & backend fallback
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword) {
@@ -282,15 +644,35 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setAuthSuccess(null);
 
     try {
-      const result = await signUpResearcher(authEmail.trim(), authPassword, authFullName.trim());
+      const { data: sbData, error: sbError } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+        options: {
+          data: {
+            full_name: authFullName.trim() || 'Researcher',
+          },
+        },
+      });
 
-      if (result.requiresEmailConfirmation) {
-        setAuthSuccess(result.message || 'Registration successful! Please check your email to confirm your account.');
-        triggerToast('Registration email sent! Please check your inbox.', 'info');
+      if (sbError) {
+        console.warn('Direct Supabase sign-up note:', sbError.message, '- attempting backend proxy');
+        const result = await signUpResearcher(authEmail.trim(), authPassword, authFullName.trim());
+        if (result.requiresEmailConfirmation) {
+          setAuthSuccess(result.message || 'Registration successful! Please check your email to confirm your account.');
+          triggerToast('Registration email sent! Please check your inbox.', 'info');
+        } else {
+          setAuthSuccess('Welcome to CHEMORA! Your researcher account has been created.');
+          triggerToast('Researcher account registered successfully!', 'success');
+          await refreshAccount();
+        }
       } else {
-        setAuthSuccess('Welcome to CHEMORA! Your researcher account has been created.');
-        triggerToast('Researcher account registered successfully!', 'success');
-        await refreshAccount();
+        if (!sbData.session) {
+          setAuthSuccess('Account created! Please check your email to confirm your address, then sign in.');
+          triggerToast('Confirmation email sent! Please check your inbox.', 'info');
+        } else {
+          setAuthSuccess('Welcome to CHEMORA! Your researcher account has been created.');
+          triggerToast('Researcher account registered successfully!', 'success');
+        }
       }
       setAuthPassword('');
     } catch (err: any) {
@@ -302,7 +684,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Password Reset Request via backend
+  // Handle Password Reset Request
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim()) {
@@ -315,6 +697,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setAuthSuccess(null);
 
     try {
+      await supabase.auth.resetPasswordForEmail(authEmail.trim()).catch(() => {});
       const msg = await requestPasswordReset(authEmail.trim());
       setAuthSuccess(msg);
       triggerToast(msg, 'info');
@@ -327,19 +710,22 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Sign Out via backend
+  // Handle Sign Out: triggers Supabase Auth listener to sync logged-out state
   const handleSignOut = async () => {
     setIsLoadingAuth(true);
     setAuthError(null);
     setAuthSuccess(null);
 
     try {
-      await signOutResearcher();
+      // 1. Sign out from Supabase client (triggers onAuthStateChange 'SIGNED_OUT')
+      await supabase.auth.signOut().catch((err: any) => console.warn('Supabase signout note:', err));
+      // 2. Sign out from backend
+      await signOutResearcher().catch(() => {});
+
       setIsAuthenticated(false);
       setAccountProfile(null);
       setSyncedProgress(null);
-      const guest: UserProfile = { ...GUEST_PROFILE, preferences: profile.preferences };
-      setProfile(guest);
+      setProfile((prev) => ({ ...GUEST_PROFILE, preferences: prev.preferences }));
       setAuthSuccess('Signed out of researcher session.');
       triggerToast('Signed out of laboratory session.', 'info');
     } catch (err: any) {
@@ -351,7 +737,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Save Profile Edits via backend (updates database via API, zero localStorage account)
+  // Save Profile Edits via backend & direct Supabase
   const handleSaveProfile = async () => {
     if (!nameInput.trim()) return;
 
@@ -359,17 +745,60 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setAuthError(null);
 
     try {
-      const updatedBackendProfile = await updateResearcherProfile({
-        full_name: nameInput.trim(),
-        avatar_url: avatarInput || profile.avatar,
-      });
+      const chosenAvatar = avatarInput || profile.avatar;
+      let directSuccess = false;
 
-      setAccountProfile(updatedBackendProfile);
+      // 1. Direct update to public.profiles table in Supabase
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { error: sbErr } = await supabase
+            .from('profiles')
+            .update({
+              full_name: nameInput.trim(),
+              avatar_url: chosenAvatar,
+            })
+            .eq('user_id', session.user.id);
+
+          if (!sbErr) {
+            directSuccess = true;
+          } else {
+            console.warn('Direct Supabase profile update error:', sbErr.message);
+          }
+        }
+      } catch (sbErr) {
+        console.warn('Direct Supabase profile update note:', sbErr);
+      }
+
+      // 2. Also update via backend proxy (non-blocking if direct update already succeeded)
+      let updatedBackendProfile: AccountProfile | null = null;
+      try {
+        updatedBackendProfile = await updateResearcherProfile({
+          full_name: nameInput.trim(),
+          avatar_url: chosenAvatar,
+        });
+      } catch (proxyErr) {
+        console.warn('Backend proxy update note:', proxyErr);
+        if (!directSuccess) {
+          throw proxyErr;
+        }
+      }
+
+      const updatedName = updatedBackendProfile?.full_name || nameInput.trim();
+      const updatedAvatar = updatedBackendProfile?.avatar_url || chosenAvatar;
+
+      if (accountProfile) {
+        setAccountProfile({
+          ...accountProfile,
+          full_name: updatedName,
+          avatar_url: updatedAvatar,
+        });
+      }
 
       const updated: UserProfile = {
         ...profile,
-        name: updatedBackendProfile.full_name || nameInput.trim(),
-        avatar: updatedBackendProfile.avatar_url || avatarInput || profile.avatar,
+        name: updatedName,
+        avatar: updatedAvatar,
       };
 
       setProfile(updated);
@@ -385,7 +814,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Change Password via backend
+  // Change Password
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword.length < 6) {
@@ -401,6 +830,17 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setPasswordStatus(null);
 
     try {
+      // 1. Direct Supabase auth update
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.auth.updateUser({ password: newPassword });
+        }
+      } catch (sbErr) {
+        console.warn('Direct Supabase password update note:', sbErr);
+      }
+
+      // 2. Backend update
       await updateResearcherPassword(newPassword);
       setPasswordStatus({ success: 'Laboratory password successfully updated.' });
       triggerToast('Laboratory password updated successfully.', 'success');
@@ -1078,71 +1518,95 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
             {/* Form */}
             {authMode === 'signin' && (
-              <form key="signin" onSubmit={handleSignIn} className="space-y-4 anim-slide-up anim-popup">
+              <div className="space-y-4 anim-slide-up anim-popup">
                 <div className="text-center mb-4">
                   <h3 className="text-lg font-bold text-white">Researcher Sign In</h3>
-                  <p className="text-xs text-slate-400 mt-1">Access your verified research progress &amp; bench records.</p>
+                  <p className="text-xs text-slate-400 mt-1">Access your Supabase cloud profile, photo, &amp; achievements.</p>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1.5">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      placeholder="curie@chemora.edu"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-mono text-slate-400">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode('forgot')}
-                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
+                {/* Google Sign In option */}
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleGoogleSignIn}
                   disabled={isSubmittingAuth}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-sm font-bold text-white shadow-lg shadow-cyan-600/20 flex items-center justify-center gap-2 transition disabled:opacity-50 mt-2"
+                  className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md transition hover:scale-102 active:scale-98 disabled:opacity-50"
                 >
-                  {isSubmittingAuth ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <LogIn className="w-4 h-4" />
-                  )}
-                  <span>Sign In</span>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Continue with Google</span>
                 </button>
-              </form>
+
+                <div className="relative flex items-center justify-center my-3">
+                  <div className="border-t border-cyan-950/80 w-full" />
+                  <span className="bg-[#0b1320] px-3 text-[10px] font-mono uppercase tracking-wider text-slate-500 shrink-0">or sign in with password</span>
+                  <div className="border-t border-cyan-950/80 w-full" />
+                </div>
+
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-mono text-slate-400 mb-1.5">Email Address</label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
+                      <input
+                        type="email"
+                        required
+                        value={authEmail}
+                        onChange={(e) => setAuthEmail(e.target.value)}
+                        placeholder="curie@chemora.edu"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-mono text-slate-400">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode('forgot')}
+                        className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingAuth}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-sm font-bold text-white shadow-lg shadow-cyan-600/20 flex items-center justify-center gap-2 transition disabled:opacity-50 mt-2"
+                  >
+                    {isSubmittingAuth ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <LogIn className="w-4 h-4" />
+                    )}
+                    <span>Sign In to Existing Account</span>
+                  </button>
+                </form>
+              </div>
             )}
 
             {authMode === 'signup' && (

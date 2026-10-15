@@ -94,7 +94,7 @@ export default function App() {
       />
 
       {/* Main Content Area - Shifted 172px for Desktop Sidebar */}
-      <main className="relative z-10 lg:ml-[172px] pt-20 px-4 sm:px-8 pb-12 max-w-[1300px] mx-auto min-h-screen">
+      <main className={`relative z-10 lg:ml-[172px] ${activeTab === 'lab' ? 'pt-16 p-0 max-w-none w-full min-h-[calc(100vh-4rem)]' : 'pt-20 px-4 sm:px-8 pb-12 max-w-[1300px] mx-auto min-h-screen'}`}>
         {activeTab === 'home' && <HomeView onSelectTab={handleSelectTab} />}
         {activeTab === 'know' && (
           <KnowView
