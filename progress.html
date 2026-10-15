@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learner Progress Dashboard | CHEMORA</title>
+  <meta name="description" content="Track your chemistry learning journey, challenge completions, accuracy rates, and laboratory masteries on CHEMORA." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="stylesheet" href="progress.css" />
+</head>
+<body class="progress-page">
+  <header class="progress-hero">
+    <p class="progress-eyebrow">CHEMORA MASTERY TRACKER</p>
+    <h1>Chemistry Learning <span>Progress</span></h1>
+    <p>Real-time analytics on your quiz accuracy, challenge milestones, experiment logs, and active learning streaks.</p>
+    
+    <div class="progress-hero-actions">
+      <a href="/#challenge" class="progress-primary">Continue Challenges</a>
+      <a href="play/" class="progress-secondary">Enter 3D Lab</a>
+      <a href="account.html" class="progress-secondary">Account Profile</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="progress-stats" aria-label="Learning Metrics">
+      <div class="progress-stat">
+        <span>Challenges Completed</span>
+        <strong id="statCompleted">0 / 100</strong>
+        <small id="statCompletedSub">Start level 1 to begin</small>
+        <div class="mini-track"><i id="barCompleted" style="width: 0%"></i></div>
+      </div>
+      <div class="progress-stat">
+        <span>Accuracy Rate</span>
+        <strong id="statAccuracy">0%</strong>
+        <small id="statAccuracySub">Across all submitted answers</small>
+        <div class="mini-track"><i id="barAccuracy" style="width: 0%"></i></div>
+      </div>
+      <div class="progress-stat">
+        <span>Experiments Done</span>
+        <strong id="statExperiments">0 / 20</strong>
+        <small>Interactive practicals</small>
+        <div class="mini-track"><i id="barExperiments" style="width: 0%"></i></div>
+      </div>
+      <div class="progress-stat">
+        <span>Current Streak</span>
+        <strong id="statStreak">0 Days</strong>
+        <small>Daily chemistry habit</small>
+        <div class="mini-track"><i id="barStreak" style="width: 0%"></i></div>
+      </div>
+    </section>
+
+    <div class="progress-columns">
+      <section class="progress-panel">
+        <div class="panel-heading">
+          <h2>Topic Breakdown</h2>
+          <div class="panel-symbol">🧪</div>
+        </div>
+        <p class="panel-intro">Mastery distribution across core chemistry domains.</p>
+        <div class="topic-list" id="topicList">
+          <div class="topic-row">
+            <div class="topic-row-top">
+              <strong>Atomic Structure &amp; Periodic Trends</strong>
+              <span id="topicPct1">0%</span>
+            </div>
+            <div class="topic-track"><i id="topicBar1" style="width: 0%"></i></div>
+          </div>
+          <div class="topic-row">
+            <div class="topic-row-top">
+              <strong>Bonding &amp; Stoichiometry</strong>
+              <span id="topicPct2">0%</span>
+            </div>
+            <div class="topic-track"><i id="topicBar2" style="width: 0%"></i></div>
+          </div>
+          <div class="topic-row">
+            <div class="topic-row-top">
+              <strong>Acids, Bases &amp; Equilibrium</strong>
+              <span id="topicPct3">0%</span>
+            </div>
+            <div class="topic-track"><i id="topicBar3" style="width: 0%"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="progress-panel">
+        <div class="panel-heading">
+          <h2>Recommendations</h2>
+          <div class="panel-symbol">💡</div>
+        </div>
+        <p class="panel-intro">Suggested exercises based on your performance.</p>
+        <div class="recommendation-list">
+          <div class="recommendation">
+            <div class="recommendation-icon">⚡</div>
+            <div>
+              <h3>Titration Practice</h3>
+              <p>Reinforce neutralization stoichiometry in the virtual laboratory.</p>
+            </div>
+          </div>
+          <div class="recommendation">
+            <div class="recommendation-icon">🔥</div>
+            <div>
+              <h3>Spectroscopy Analysis</h3>
+              <p>Explore emission wavelengths and electron orbital transitions.</p>
+            </div>
+          </div>
+        </div>
+        <a href="index.html" class="panel-link">Back to Chemistry Workspace &rarr;</a>
+      </section>
+    </div>
+  </main>
+
+  <script src="progress.js"></script>
+</body>
+</html>

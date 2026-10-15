@@ -68,7 +68,7 @@ export default async function handler(req, res) {
   if (geminiKey) {
     try {
       const geminiResp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
       if (geminiResp.ok) {
         const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (typeof text === "string" && text.trim()) {
-          return res.status(200).json({ answer: text.trim().slice(0, 12000), model: "gemini-2.5-flash" });
+          return res.status(200).json({ answer: text.trim().slice(0, 12000), model: "gemini-3.8-flash" });
         }
       } else {
         console.warn("Gemini API error status:", geminiResp.status, geminiData);

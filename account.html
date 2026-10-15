@@ -503,11 +503,21 @@
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) { btn.textContent = 'Save changes'; showAuth(); return; }
 
-      const { data, error } = await supabaseClient
+      let { data, error } = await supabaseClient
         .from('profiles')
         .update({ full_name: newName })
         .eq('user_id', session.user.id)
         .select();
+
+      if (error || !data || data.length === 0) {
+        const fallback = await supabaseClient
+          .from('profiles')
+          .update({ full_name: newName })
+          .eq('id', session.user.id)
+          .select();
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error || !data || data.length === 0) {
         alert('Error updating profile: ' + (error ? error.message : 'no profile row found for this account'));
@@ -573,11 +583,21 @@
       const { data: { publicUrl } } = supabaseClient.storage.from('avatars').getPublicUrl(filePath);
       const versionedUrl = publicUrl + '?v=' + Date.now(); // bust the cache after overwrite
 
-      const { data: rows, error: updateError } = await supabaseClient
+      let { data: rows, error: updateError } = await supabaseClient
         .from('profiles')
         .update({ avatar_url: versionedUrl })
         .eq('user_id', session.user.id)
         .select();
+
+      if (updateError || !rows || rows.length === 0) {
+        const fallback = await supabaseClient
+          .from('profiles')
+          .update({ avatar_url: versionedUrl })
+          .eq('id', session.user.id)
+          .select();
+        rows = fallback.data;
+        updateError = fallback.error;
+      }
 
       if (updateError || !rows || rows.length === 0) {
         alert('Failed to save avatar: ' + (updateError ? updateError.message : 'no profile row found for this account'));

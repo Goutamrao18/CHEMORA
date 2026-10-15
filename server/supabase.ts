@@ -367,19 +367,9 @@ export async function backendGetProfile(
 
     try {
       let data: any = null;
-      let error: any = null;
 
-      // 1. Try querying by user_id
-      const byUserId = await client
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (byUserId.data) {
-        data = byUserId.data;
-      } else if (!byUserId.error) {
-        // 2. Fallback to querying by id
+      // 1. Try querying by primary key id (standard Supabase schema where id = auth.users.id)
+      try {
         const byId = await client
           .from('profiles')
           .select('*')
@@ -388,11 +378,43 @@ export async function backendGetProfile(
         if (byId.data) {
           data = byId.data;
         }
-      } else {
-        error = byUserId.error;
+      } catch (err) {
+        // id query error ignored
       }
 
-      if (!error && data) {
+      // 2. Try querying by user_id column
+      if (!data) {
+        try {
+          const byUserId = await client
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (byUserId.data) {
+            data = byUserId.data;
+          }
+        } catch (err) {
+          // user_id query error ignored
+        }
+      }
+
+      // 3. Try querying by email
+      if (!data && email) {
+        try {
+          const byEmail = await client
+            .from('profiles')
+            .select('*')
+            .eq('email', email.toLowerCase().trim())
+            .maybeSingle();
+          if (byEmail.data) {
+            data = byEmail.data;
+          }
+        } catch (err) {
+          // email query error ignored
+        }
+      }
+
+      if (data) {
         const metaAvatar = userMeta?.avatar_url || userMeta?.picture || userMeta?.avatar || userMeta?.photo_url;
         const resolvedAvatar = metaAvatar || data.avatar_url || '/favicon.png';
         const resolvedName = data.full_name || userMeta?.full_name || userMeta?.name || defaultName || email.split('@')[0] || 'Researcher';
@@ -635,16 +657,17 @@ export async function backendSyncProgress(
         { onConflict: 'user_id' }
       );
 
-      // Also update rank and progress on profiles table matching schema
-      await client
-        .from('profiles')
-        .update({
-          rank_title: merged.rankTitle,
-          levels_cleared: merged.challengesCompleted,
-          xp_earned: merged.totalXp,
-          daily_streak: merged.streakDays,
-        })
-        .eq('user_id', userId);
+      // Also update rank and progress on profiles table matching schema (supporting id and user_id)
+      const progPayload = {
+        rank_title: merged.rankTitle,
+        levels_cleared: merged.challengesCompleted,
+        xp_earned: merged.totalXp,
+        daily_streak: merged.streakDays,
+      };
+      await Promise.allSettled([
+        client.from('profiles').update(progPayload).eq('id', userId),
+        client.from('profiles').update(progPayload).eq('user_id', userId),
+      ]);
 
       return { success: true, progress: merged, source: 'supabase' };
     } catch (err) {
@@ -664,11 +687,26 @@ export async function backendGetProgress(
   if (client) {
     try {
       // 1. Try public.profiles first as it directly stores levels_cleared, xp_earned, daily_streak, rank_title
-      const { data: profileRow } = await client
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      let profileRow: any = null;
+      try {
+        const byId = await client
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        if (byId.data) profileRow = byId.data;
+      } catch {}
+
+      if (!profileRow) {
+        try {
+          const byUserId = await client
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (byUserId.data) profileRow = byUserId.data;
+        } catch {}
+      }
 
       if (profileRow && (profileRow.levels_cleared !== undefined || profileRow.xp_earned !== undefined)) {
         const prog: ResearcherProgressData = {

@@ -69,6 +69,9 @@ function cleanErrorMessage(rawMsg: string | undefined): string {
   return rawMsg;
 }
 
+// Module-level deduplication cache to prevent re-logging and re-fetching on tab switches
+let moduleActiveSession: { userId?: string; token?: string } = {};
+
 export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   // Session & Profile state from Backend (Zero localStorage policy)
   const [profile, setProfile] = useState<UserProfile>(getStoredProfile);
@@ -221,39 +224,68 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         sessionUser.user_metadata?.name ||
         sessionUser.user_metadata?.user_name;
 
-      // 1. Query public.profiles row directly from Supabase (check both user_id and id)
+      // 1. Resiliently query public.profiles row directly from Supabase (checking id, user_id, email)
       let profileData: any = null;
-      let dbErrorOccurred = false;
 
+      // Priority 1: Query by primary key id (standard Supabase pattern where id = auth.users.id)
       try {
-        const { data: byUserId, error: errUserId } = await supabase
+        const { data: byId } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', sessionUser.id)
-          .limit(1);
+          .eq('id', sessionUser.id)
+          .maybeSingle();
 
-        if (byUserId && byUserId.length > 0) {
-          profileData = byUserId[0];
-        } else if (!errUserId) {
-          // Fallback to primary key id (matches standard Supabase starter schema where id = auth.users.id)
-          const { data: byId } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', sessionUser.id)
-            .limit(1);
-
-          if (byId && byId.length > 0) {
-            profileData = byId[0];
-          }
-        } else {
-          dbErrorOccurred = true;
+        if (byId) {
+          profileData = byId;
         }
       } catch (err) {
-        console.warn('Direct profile user_id query exception:', err);
+        console.warn('Profile lookup by id note:', err);
       }
 
-      // 2. If no profile found by user_id/id, check for existing profile by full_name or email prefix
-      // (Handles existing accounts created before auth binding, or manual database entries)
+      // Priority 2: Query by user_id column if not found by id
+      if (!profileData) {
+        try {
+          const { data: byUserId } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', sessionUser.id)
+            .maybeSingle();
+
+          if (byUserId) {
+            profileData = byUserId;
+          }
+        } catch (err) {
+          console.warn('Profile lookup by user_id note:', err);
+        }
+      }
+
+      // Priority 3: Query by email if available on profile row
+      if (!profileData && sessionUser.email) {
+        try {
+          const { data: byEmail } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', sessionUser.email.toLowerCase().trim())
+            .maybeSingle();
+
+          if (byEmail) {
+            profileData = byEmail;
+            // Link existing row with user_id or id if not set
+            if (!profileData.user_id && !profileData.id) {
+              try {
+                await supabase
+                  .from('profiles')
+                  .update({ user_id: sessionUser.id })
+                  .eq('id', profileData.id);
+              } catch {}
+            }
+          }
+        } catch (err) {
+          // email column may not exist in some schemas
+        }
+      }
+
+      // Priority 4: Check candidate full_name matching for existing accounts created prior to auth binding
       if (!profileData) {
         const candidateNames = [
           metaName,
@@ -272,7 +304,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
             if (nameMatches && nameMatches.length > 0) {
               profileData = nameMatches[0];
-              // Link this existing profile to the authenticated user's user_id if not yet set
+              // Link this existing profile to the authenticated user's user_id or id
               if (!profileData.user_id) {
                 try {
                   await supabase
@@ -292,7 +324,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         }
       }
 
-      // 3. Fallback: check backend proxy if client-side database query was blocked by RLS
+      // Priority 5: Fallback: check backend proxy if client-side database query was blocked by RLS
       if (!profileData) {
         try {
           const backendCurrent = await fetchCurrentAccount();
@@ -308,9 +340,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         } catch {}
       }
 
-      // 4. Auto-provision ONLY if profile really does not exist anywhere
+      // Priority 6: Auto-provision ONLY if profile really does not exist anywhere
       // Preserves existing local challenge achievements instead of overwriting with zeroes
-      if (!profileData && !dbErrorOccurred) {
+      if (!profileData) {
         const defaultName = metaName || sessionUser.email?.split('@')[0] || 'Researcher';
         const initialLevels = challengeState?.levels?.length || 0;
         const initialXp = challengeState?.xp || 0;
@@ -318,10 +350,13 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         const initialRank = profile.rank && profile.rank !== 'Guest Chemist' ? profile.rank : 'Novice Alchemist';
 
         try {
+          // Attempt insert with both id and user_id to satisfy whichever schema exists
           const { data: created, error: insertError } = await supabase
             .from('profiles')
             .insert({
+              id: sessionUser.id,
               user_id: sessionUser.id,
+              email: sessionUser.email,
               full_name: defaultName,
               avatar_url: metaAvatar || null,
               rank_title: initialRank,
@@ -333,16 +368,26 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             .maybeSingle();
 
           if (insertError) {
-            console.warn('Supabase profile auto-provision note:', insertError.message);
+            // Fallback for minimalist Supabase schemas: only id, full_name, avatar_url
+            const { data: createdMin } = await supabase
+              .from('profiles')
+              .insert({
+                id: sessionUser.id,
+                full_name: defaultName,
+                avatar_url: metaAvatar || null,
+              })
+              .select()
+              .maybeSingle();
+            if (createdMin) profileData = createdMin;
           } else if (created) {
             profileData = created;
           }
         } catch (insErr) {
-          console.warn('Auto-provision insert error:', insErr);
+          console.warn('Auto-provision insert note:', insErr);
         }
       }
 
-      // 5. Ensure avatar reflects user's actual photo
+      // Ensure avatar reflects user's actual photo
       // Priority: user's Google/OAuth photo (metaAvatar) > profileData avatar > storage avatar > default
       let resolvedAvatar = metaAvatar || profileData?.avatar_url;
       if (!resolvedAvatar) {
@@ -359,12 +404,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
       // If user has a real avatar in metadata (like Google photo) but profiles.avatar_url is empty, persist it
       if (profileData && (!profileData.avatar_url || profileData.avatar_url === '/favicon.png') && metaAvatar) {
-        Promise.resolve(
-          supabase
-            .from('profiles')
-            .update({ avatar_url: metaAvatar })
-            .eq('user_id', sessionUser.id)
-        ).catch(() => {});
+        Promise.allSettled([
+          supabase.from('profiles').update({ avatar_url: metaAvatar }).eq('id', profileData.id || sessionUser.id),
+          supabase.from('profiles').update({ avatar_url: metaAvatar }).eq('user_id', sessionUser.id),
+        ]).catch(() => {});
         profileData.avatar_url = metaAvatar;
       }
 
@@ -457,7 +500,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
   // Supabase Auth state listener: runs once on mount and cleanly handles session transitions
   useEffect(() => {
-    // Initial status checks
+    // Initial backend status checks
     Promise.all([
       checkBackendStatus().catch(() => ({ status: 'unknown', databaseConnected: false })),
       fetchDatabaseDiagnostics().catch(() => null),
@@ -466,34 +509,27 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       if (dbInfo) setDbDiagnostics(dbInfo);
     });
 
-    // Check existing Supabase session immediately on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        lastSyncedSessionRef.current = { userId: session.user.id, token: session.access_token };
-        syncSupabaseSessionRef.current(session.user, session.access_token);
-        setIsLoadingAuth(false);
-      }
-    }).catch(() => {});
-
     // Subscribe to Supabase Auth state transitions
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          // Guard against redundant INITIAL_SESSION event loops with the exact same user/token
+          // If session is already actively synchronized with this user and token, do not re-run or spam logs
           if (
-            event === 'INITIAL_SESSION' &&
-            lastSyncedSessionRef.current.userId === session.user.id &&
-            lastSyncedSessionRef.current.token === session.access_token
+            moduleActiveSession.userId === session.user.id &&
+            moduleActiveSession.token === session.access_token
           ) {
+            setIsLoadingAuth(false);
             return;
           }
-          console.log(`[Supabase Auth] State changed: ${event}`, session.user.email);
-          lastSyncedSessionRef.current = { userId: session.user.id, token: session.access_token };
+          if (event !== 'INITIAL_SESSION') {
+            console.log(`[Supabase Auth] State changed: ${event}`, session.user.email);
+          }
+          moduleActiveSession = { userId: session.user.id, token: session.access_token };
           await syncSupabaseSessionRef.current(session.user, session.access_token);
           setIsLoadingAuth(false);
         } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
           console.log(`[Supabase Auth] State changed: ${event}`);
-          lastSyncedSessionRef.current = {};
+          moduleActiveSession = {};
           setAuthToken(null);
           setIsAuthenticated(false);
           setAccountProfile(null);
@@ -501,7 +537,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           setProfile((prev) => ({ ...GUEST_PROFILE, preferences: prev.preferences }));
           setIsLoadingAuth(false);
         } else {
-          refreshAccountRef.current();
+          setIsLoadingAuth(false);
         }
       }
     );
@@ -526,15 +562,16 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       // 1. Update in public.profiles table directly if session is active
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        await supabase
-          .from('profiles')
-          .update({
-            levels_cleared: challengeState.levels.length,
-            xp_earned: challengeState.xp,
-            daily_streak: streakState.currentStreak,
-            rank_title: profile.rank,
-          })
-          .eq('user_id', session.user.id);
+        const payload = {
+          levels_cleared: challengeState.levels.length,
+          xp_earned: challengeState.xp,
+          daily_streak: streakState.currentStreak,
+          rank_title: profile.rank,
+        };
+        await Promise.allSettled([
+          supabase.from('profiles').update(payload).eq('id', session.user.id),
+          supabase.from('profiles').update(payload).eq('user_id', session.user.id),
+        ]);
       }
 
       // 2. Also sync through backend proxy
@@ -752,18 +789,19 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          const { error: sbErr } = await supabase
-            .from('profiles')
-            .update({
-              full_name: nameInput.trim(),
-              avatar_url: chosenAvatar,
-            })
-            .eq('user_id', session.user.id);
-
-          if (!sbErr) {
+          const updatePayload = {
+            full_name: nameInput.trim(),
+            avatar_url: chosenAvatar,
+          };
+          const [resId, resUserId] = await Promise.allSettled([
+            supabase.from('profiles').update(updatePayload).eq('id', session.user.id),
+            supabase.from('profiles').update(updatePayload).eq('user_id', session.user.id),
+          ]);
+          if (
+            (resId.status === 'fulfilled' && !(resId.value as any)?.error) ||
+            (resUserId.status === 'fulfilled' && !(resUserId.value as any)?.error)
+          ) {
             directSuccess = true;
-          } else {
-            console.warn('Direct Supabase profile update error:', sbErr.message);
           }
         }
       } catch (sbErr) {

@@ -16,24 +16,28 @@ async function invoke(req) {
   await handler(req,res);
   return res;
 }
-const originalKey=process.env.OPENROUTER_API_KEY;
+const originalKey = process.env.OPENROUTER_API_KEY;
+const originalGeminiKey = process.env.GEMINI_API_KEY;
 delete process.env.OPENROUTER_API_KEY;
+delete process.env.GEMINI_API_KEY;
 try {
-  const get=await invoke({method:"GET",headers:{}});
-  assert.equal(get.statusCode,405,"non-POST requests should be rejected");
-  assert.equal(get.headers["X-Content-Type-Options"],"nosniff");
+  const get = await invoke({ method: "GET", headers: {} });
+  assert.equal(get.statusCode, 405, "non-POST requests should be rejected");
+  assert.equal(get.headers["X-Content-Type-Options"], "nosniff");
 
-  const empty=await invoke({method:"POST",headers:{},body:{}});
-  assert.equal(empty.statusCode,400,"empty prompt should be rejected");
+  const empty = await invoke({ method: "POST", headers: {}, body: {} });
+  assert.equal(empty.statusCode, 400, "empty prompt should be rejected");
 
-  const long=await invoke({method:"POST",headers:{},body:{prompt:"x".repeat(4001)}});
-  assert.equal(long.statusCode,413,"oversized prompt should be rejected");
+  const long = await invoke({ method: "POST", headers: {}, body: { prompt: "x".repeat(4001) } });
+  assert.equal(long.statusCode, 413, "oversized prompt should be rejected");
 
-  const missingKey=await invoke({method:"POST",headers:{},body:{prompt:"Explain atoms"}});
-  assert.equal(missingKey.statusCode,503,"missing provider key should fail safely");
-  assert.equal(missingKey.payload.error,"CHEMORA AI is temporarily unavailable.");
+  const missingKey = await invoke({ method: "POST", headers: {}, body: { prompt: "Explain atoms" } });
+  assert.equal(missingKey.statusCode, 503, "missing provider key should fail safely");
+  assert.equal(missingKey.payload.error, "CHEMORA AI is temporarily unavailable.");
   console.log("CHEMORA API smoke tests passed: method, empty input, size limit, missing-key handling.");
 } finally {
   if (originalKey === undefined) delete process.env.OPENROUTER_API_KEY;
-  else process.env.OPENROUTER_API_KEY=originalKey;
+  else process.env.OPENROUTER_API_KEY = originalKey;
+  if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+  else process.env.GEMINI_API_KEY = originalGeminiKey;
 }

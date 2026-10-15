@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chemistry Knowledge Library | CHEMORA</title>
+  <meta name="description" content="Explore 130+ chemistry topics, elements, reactions, laboratory apparatus, and molecular properties on CHEMORA." />
+  <link rel="icon" type="image/png" href="../favicon.png" />
+  <link rel="stylesheet" href="know.css" />
+</head>
+<body>
+  <header class="navbar">
+    <a href="../index.html" class="brand">
+      <span class="brand-icon">🧪</span>
+      <span>CHEM<span>ORA</span></span>
+    </a>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="know.html" class="active">Knowledge</a>
+      <a href="../challenge/challenge.html">Challenges</a>
+      <a href="../experiments/experiments.html">Experiments</a>
+      <a href="../progress.html">Progress</a>
+      <a href="../play/">Play Lab</a>
+      <a href="../account.html">Account</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <p class="eyebrow">COMPREHENSIVE CHEMISTRY ATLAS</p>
+    <h1>Chemistry Knowledge <span>Library</span></h1>
+    <p>A reference database covering periodic trends, stoichiometry, chemical equilibrium, organic mechanisms, and laboratory procedures.</p>
+    
+    <div class="search-wrap">
+      <span>🔍</span>
+      <input type="search" id="searchInput" placeholder="Search by name, symbol, formula, or topic (e.g. Copper, Titration, Redox)..." />
+    </div>
+  </main>
+
+  <div class="content">
+    <aside class="sidebar">
+      <h3>Categories</h3>
+      <button type="button" class="filter active" data-category="all">All Topics (130+)</button>
+      <button type="button" class="filter" data-category="elements">Elements &amp; Trends</button>
+      <button type="button" class="filter" data-category="bonding">Structure &amp; Bonding</button>
+      <button type="button" class="filter" data-category="reactions">Chemical Reactions</button>
+      <button type="button" class="filter" data-category="organic">Organic Chemistry</button>
+      <button type="button" class="filter" data-category="lab">Lab Techniques</button>
+
+      <div class="tip">
+        <strong>Study Tip</strong>
+        <p>Click any card to read in-depth reaction equations, safety warnings, and experimental properties.</p>
+      </div>
+    </aside>
+
+    <section>
+      <div class="section-heading">
+        <h2>Curated Chemistry Articles</h2>
+        <span id="articleCount">130+ Reference Entries</span>
+      </div>
+
+      <div class="cards" id="cardGrid">
+        <article class="knowledge-card">
+          <div class="chemical-visual acid">
+            <span class="chemical-number">TOPIC 01</span>
+            <strong>HCl</strong>
+            <small>Hydrochloric Acid &bull; Strong Monoprotic Acid</small>
+          </div>
+          <div class="card-body">
+            <span class="tag acid">ACID</span>
+            <h3>Hydrochloric Acid</h3>
+            <p>Clear, pungent solution of hydrogen chloride in water. Widely used in titrations and metal pickling.</p>
+            <a href="../#know" class="learn">Explore Interactive Entry &rarr;</a>
+          </div>
+        </article>
+
+        <article class="knowledge-card">
+          <div class="chemical-visual base">
+            <span class="chemical-number">TOPIC 02</span>
+            <strong>NaOH</strong>
+            <small>Sodium Hydroxide &bull; Caustic Soda</small>
+          </div>
+          <div class="card-body">
+            <span class="tag base">BASE</span>
+            <h3>Sodium Hydroxide</h3>
+            <p>White deliquescent solid forming strong alkaline solutions. Essential for saponification and acid neutralization.</p>
+            <a href="../#know" class="learn">Explore Interactive Entry &rarr;</a>
+          </div>
+        </article>
+
+        <article class="knowledge-card">
+          <div class="chemical-visual salt">
+            <span class="chemical-number">TOPIC 03</span>
+            <strong>CuSO₄</strong>
+            <small>Copper(II) Sulfate Pentahydrate</small>
+          </div>
+          <div class="card-body">
+            <span class="tag salt">SALT</span>
+            <h3>Copper(II) Sulfate</h3>
+            <p>Brilliant blue crystalline salt used in flame tests, displacement reactions, and Fehling's reagent.</p>
+            <a href="../#know" class="learn">Explore Interactive Entry &rarr;</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="footer-brand">CHEMORA KNOWLEDGE REPOSITORY</div>
+    Verified Chemistry Data &bull; IUPAC Standard Nomenclature
+  </footer>
+</body>
+</html>

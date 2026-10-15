@@ -56,13 +56,16 @@ test-game: ## Unit-test the game (chemistry engine)
 
 test: test-site test-game ## Run every test
 
+build-site: ## Production build of the React application
+	$(NPM) run build
+
 build-game: ## Production build of the game (base path /play/)
 	cd $(GAME) && $(NPM) run build
 
 assemble: ## Combine site + built game into dist/
 	$(NODE) scripts/assemble-dist.mjs $(DIST) $(GAME)/dist
 
-build: install build-game assemble ## Full production build -> dist/ (used by Vercel)
+build: install build-site build-game assemble ## Full production build -> dist/ (used by Vercel)
 	$(NODE) scripts/verify-dist.mjs $(DIST)
 
 verify: validate test-site typecheck lint test-game build ## Everything CI runs, in order

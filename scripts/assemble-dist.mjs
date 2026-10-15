@@ -20,14 +20,39 @@ if (!fs.existsSync(path.join(gameDist, "index.html"))) {
 }
 if (dist === root || dist.startsWith(gameDist)) { console.error("Refusing unsafe dist path."); process.exit(1); }
 
+// If dist already contains compiled assets from root Vite build, preserve them
+const tempAssets = path.join(root, ".temp-dist-assets");
+const tempIndex = path.join(root, ".temp-dist-index.html");
+const hadAssets = fs.existsSync(path.join(dist, "assets"));
+const hadCompiledIndex = fs.existsSync(path.join(dist, "index.html")) &&
+  fs.readFileSync(path.join(dist, "index.html"), "utf8").includes("/assets/index-");
+
+if (hadAssets) {
+  fs.cpSync(path.join(dist, "assets"), tempAssets, { recursive: true });
+}
+if (hadCompiledIndex) {
+  fs.copyFileSync(path.join(dist, "index.html"), tempIndex);
+}
+
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
 let siteFiles = 0;
 for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-  if (EXCLUDE_TOP.has(entry.name) || isDoc(entry.name) || entry.name.startsWith(".env")) continue;
+  if (EXCLUDE_TOP.has(entry.name) || isDoc(entry.name) || entry.name.startsWith(".env") || entry.name.startsWith(".temp")) continue;
   fs.cpSync(path.join(root, entry.name), path.join(dist, entry.name), { recursive: true });
   siteFiles++;
 }
+
+// Restore compiled assets and compiled SPA entry point
+if (hadAssets && fs.existsSync(tempAssets)) {
+  fs.cpSync(tempAssets, path.join(dist, "assets"), { recursive: true });
+  fs.rmSync(tempAssets, { recursive: true, force: true });
+}
+if (hadCompiledIndex && fs.existsSync(tempIndex)) {
+  fs.copyFileSync(tempIndex, path.join(dist, "index.html"));
+  fs.rmSync(tempIndex, { force: true });
+}
+
 fs.cpSync(gameDist, path.join(dist, "play"), { recursive: true });
 console.log(`Assembled ${path.relative(root, dist)}/: ${siteFiles} site entries + game at /play/`);

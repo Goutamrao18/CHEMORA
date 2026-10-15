@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "start": "node server.ts",
     "lint": "tsc -b",
-    "preview": "node server.ts"
+    "preview": "node server.ts",
+    "validate:project": "node scripts/validate-project.mjs",
+    "test:smoke": "node scripts/smoke-api.mjs",
+    "test:experiments": "node scripts/test-experiments.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

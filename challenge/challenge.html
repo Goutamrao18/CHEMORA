@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>100 Progressive Chemistry Challenges | CHEMORA</title>
+  <meta name="description" content="Test your chemistry knowledge across 100 progressive levels with 1,000 curated questions, instant feedback, and XP scoring." />
+  <link rel="icon" type="image/png" href="../favicon.png" />
+  <link rel="stylesheet" href="challenge.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="../index.html" class="brand">
+      <img src="../favicon.png" alt="CHEMORA Logo" class="brand-logo" />
+      <span>CHEM<span>ORA</span></span>
+    </a>
+    <nav class="main-nav">
+      <a href="../index.html">Home</a>
+      <a href="../know/know.html">Knowledge</a>
+      <a href="challenge.html" class="active">Challenges</a>
+      <a href="../experiments/experiments.html">Experiments</a>
+      <a href="../progress.html">Progress</a>
+      <a href="../play/">Play Lab</a>
+      <a href="../account.html">Account</a>
+    </nav>
+  </header>
+
+  <main class="screen">
+    <div class="hero-row">
+      <div>
+        <span class="eyebrow">PROGRESSIVE MASTERY ARENA</span>
+        <h1>100 Chemistry <span>Challenges</span></h1>
+        <p class="tagline">1,000 verified chemistry questions spanning fundamentals, stoichiometric calculation, organic syntheses, and thermodynamics.</p>
+      </div>
+      <div class="hero-badge">
+        <span>🏆</span> 100 Levels &bull; 1,000 Questions
+      </div>
+    </div>
+
+    <section class="player-summary" aria-label="Player Stats">
+      <div class="stat-card">
+        <div class="stat-icon">⚡</div>
+        <div>
+          <b id="summaryXp">0</b>
+          <small>TOTAL XP</small>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div>
+          <b id="summaryAccuracy">0%</b>
+          <small>ACCURACY</small>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔥</div>
+        <div>
+          <b id="summaryStreak">0 d</b>
+          <small>STREAK</small>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🧪</div>
+        <div>
+          <b id="summaryCompleted">0 / 100</b>
+          <small>CLEARED</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="arena-card">
+      <div class="section-heading">
+        <div>
+          <span class="small-label">LEVEL SELECTOR</span>
+          <h2>Challenge Matrix</h2>
+        </div>
+        <span class="level-count" id="levelCount">100 Levels Available</span>
+      </div>
+
+      <div class="journey-track"><i id="journeyBar" style="width: 0%"></i></div>
+
+      <div id="levelGrid" class="level-grid" aria-label="Level Select"></div>
+    </section>
+  </main>
+
+  <footer>
+    CHEMORA <span>&bull;</span> 100-Level Chemistry Challenge Arena <span>&bull;</span> Verified Curriculum
+  </footer>
+
+  <script>
+    (function () {
+      const grid = document.getElementById('levelGrid');
+      let saved = {};
+      try {
+        saved = JSON.parse(localStorage.getItem('chemoraChallengeState') || '{}');
+      } catch {}
+      const clearedLevels = new Set(Array.isArray(saved.levels) ? saved.levels : []);
+
+      for (let i = 1; i <= 100; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isDone = clearedLevels.has(i);
+        const isUnlocked = i === 1 || clearedLevels.has(i - 1) || isDone;
+
+        btn.className = `level-card ${isDone ? 'done' : isUnlocked ? 'unlocked' : 'locked'}`;
+        btn.disabled = !isUnlocked;
+        btn.innerHTML = `
+          <span class="level-no">${i}</span>
+          <span class="level-state">${isDone ? 'CLEARED' : isUnlocked ? 'UNLOCKED' : 'LOCKED'}</span>
+          <em>${isDone ? '✓' : isUnlocked ? '▶' : '🔒'}</em>
+        `;
+        btn.onclick = () => {
+          window.location.href = `../#challenge`;
+        };
+        grid.appendChild(btn);
+      }
+
+      const totalCleared = clearedLevels.size;
+      const pct = Math.round((totalCleared / 100) * 100);
+      document.getElementById('summaryCompleted').textContent = `${totalCleared} / 100`;
+      document.getElementById('journeyBar').style.width = `${pct}%`;
+    })();
+  </script>
+</body>
+</html>
