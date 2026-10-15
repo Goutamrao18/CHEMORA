@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { KNOWLEDGE_ITEMS, KnowledgeItem } from '../data/knowledgeData';
-import { Search, Info, X, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
+import { Glossary } from './Glossary';
+import { Search, Info, X, Sparkles, Filter, CheckCircle2, BookOpen, Layers } from 'lucide-react';
 
 interface KnowViewProps {
   initialSearch?: string;
@@ -8,6 +9,7 @@ interface KnowViewProps {
 }
 
 export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI }) => {
+  const [activeTab, setActiveTab] = useState<'catalog' | 'glossary'>('catalog');
   const [search, setSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeModalItem, setActiveModalItem] = useState<KnowledgeItem | null>(null);
@@ -43,37 +45,68 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
   }, [search, selectedCategory]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header */}
-      <div className="text-center max-w-3xl mx-auto mb-10">
+      <div className="text-center max-w-3xl mx-auto">
         <span className="text-xs font-mono font-bold text-cyan-400 tracking-widest uppercase">CHEMISTRY KNOWLEDGE HUB</span>
         <h1 className="text-4xl font-black text-white mt-2 mb-3">
           Know Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Chemistry</span>
         </h1>
         <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-          Explore laboratory apparatus, glassware, chemical reagents, safety precautions, and properties across 134 verified items.
+          Explore laboratory apparatus, glassware, chemical reagents, safety precautions, and a searchable dictionary of chemistry terms.
         </p>
 
-        {/* Search bar */}
-        <div className="relative mt-8 max-w-xl mx-auto">
-          <Search className="w-5 h-5 text-cyan-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tools, chemicals, formulas (e.g. Beaker, HCl, Burette)..."
-            className="w-full bg-[#101726] border border-cyan-900/80 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 shadow-lg shadow-cyan-950/40 transition"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-            >
-              ✕
-            </button>
-          )}
+        {/* View Mode Switcher: Apparatus Catalog vs Glossary */}
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 hover:scale-102 active:scale-98 ${
+              activeTab === 'catalog'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
+                : 'bg-[#0f172a] text-slate-300 hover:text-white border border-cyan-950 hover:border-cyan-800'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Apparatus &amp; Chemicals ({KNOWLEDGE_ITEMS.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('glossary')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 hover:scale-102 active:scale-98 ${
+              activeTab === 'glossary'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
+                : 'bg-[#0f172a] text-slate-300 hover:text-white border border-cyan-950 hover:border-cyan-800'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Chemistry Glossary &amp; Dictionary</span>
+          </button>
         </div>
       </div>
+
+      {activeTab === 'glossary' ? (
+        <Glossary onAskAI={onAskAI} initialSearch={search} />
+      ) : (
+        <>
+          {/* Search bar for Catalog */}
+          <div className="relative max-w-xl mx-auto">
+            <Search className="w-5 h-5 text-cyan-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tools, chemicals, formulas (e.g. Beaker, HCl, Burette)..."
+              className="w-full bg-[#101726] border border-cyan-900/80 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 shadow-lg shadow-cyan-950/40 transition"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
       {/* Main Grid with Sidebar Category Navigation */}
       <div className="flex flex-col lg:flex-row gap-8">
@@ -199,11 +232,13 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* Detail Modal */}
       {activeModalItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-[#0e1626] border border-cyan-500/40 rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-lg bg-[#0e1626] border border-cyan-500/40 rounded-3xl overflow-hidden shadow-2xl anim-popup">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-cyan-950 bg-[#0a101b]">
               <div>

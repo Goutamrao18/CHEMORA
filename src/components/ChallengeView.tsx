@@ -6,6 +6,7 @@ import {
   saveChallengeState,
   fetchLevelQuestions
 } from '../data/challengeData';
+import { recordStreakActivity } from '../data/streakManager';
 import { Trophy, CheckCircle2, XCircle, ArrowLeft, Flame, Clock, Award, ChevronRight, RotateCcw, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -151,6 +152,7 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
     const passed = finalCorrect >= Math.ceil(totalQ * 0.6); // 60% passing requirement
 
     try { confetti({ particleCount: passed ? 80 : 30, spread: 80, origin: { y: 0.6 } }); } catch {}
+    recordStreakActivity();
 
     updateState((prev) => {
       const alreadyCleared = prev.levels.includes(levelNum);

@@ -40,3 +40,126 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Animations: Popups, Slides, Drawers, Toasts */
+@keyframes chemoraPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.02) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes chemoraSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chemoraSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chemoraSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes chemoraSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes chemoraDrawerSlide {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes chemoraGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(6, 182, 212, 0.6);
+  }
+}
+
+@keyframes chemoraShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.anim-popup {
+  animation: chemoraPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-slide-up {
+  animation: chemoraSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-slide-down {
+  animation: chemoraSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-slide-left {
+  animation: chemoraSlideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-slide-right {
+  animation: chemoraSlideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-drawer {
+  animation: chemoraDrawerSlide 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-glow-pulse {
+  animation: chemoraGlowPulse 2.4s infinite ease-in-out;
+}
+
+.anim-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: chemoraShimmer 2.5s infinite linear;
+}

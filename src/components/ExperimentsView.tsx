@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { EXPERIMENTS, Experiment } from '../data/experimentsData';
+import { recordStreakActivity } from '../data/streakManager';
 import { Play, CheckCircle2, AlertTriangle, X, Shield, Sparkles, Filter, Beaker } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -35,6 +36,7 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
       const next = exists ? prev.filter((x) => x !== id) : [...prev, id];
       if (!exists) {
         try { confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } }); } catch {}
+        recordStreakActivity();
       }
       return next;
     });

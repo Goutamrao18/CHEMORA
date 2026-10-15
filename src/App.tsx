@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar, ActiveTab } from './components/Navbar';
+import { ActiveTab } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
+import { TopBar } from './components/TopBar';
 import { HomeView } from './components/HomeView';
 import { KnowView } from './components/KnowView';
 import { ChallengeView } from './components/ChallengeView';
@@ -38,7 +40,7 @@ export default function App() {
     } catch {}
   }, [isLightMode]);
 
-  // URL Hash synchronization for bookmarks / direct links (#know, #challenge, #experiments, #progress, #lab, #account)
+  // URL Hash synchronization for direct bookmarks
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
@@ -68,19 +70,31 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080d17] text-slate-100 selection:bg-cyan-500 selection:text-slate-950 font-sans antialiased">
-      {/* Top Application Bar */}
-      <Navbar
+    <div className="min-h-screen bg-[#020816] text-slate-100 selection:bg-cyan-500 selection:text-slate-950 font-sans antialiased relative">
+      {/* Background radial ambiance */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[10%] left-[25%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-[28%] right-[15%] w-[450px] h-[450px] bg-purple-600/10 rounded-full blur-[140px]" />
+      </div>
+
+      {/* Left Sidebar App Rail */}
+      <Sidebar
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
         onOpenAssistant={() => setIsAssistantOpen(true)}
-        isLightMode={isLightMode}
-        onToggleTheme={() => setIsLightMode(!isLightMode)}
-        onSearch={handleSearch}
       />
 
-      {/* Main Screen Views */}
-      <main className="flex-1">
+      {/* Top Utility Header */}
+      <TopBar
+        onSearch={handleSearch}
+        onOpenAssistant={() => setIsAssistantOpen(true)}
+        isLightMode={isLightMode}
+        onToggleTheme={() => setIsLightMode(!isLightMode)}
+        onGoToProgress={() => handleSelectTab('progress')}
+      />
+
+      {/* Main Content Area - Shifted 172px for Desktop Sidebar */}
+      <main className="relative z-10 lg:ml-[172px] pt-20 px-4 sm:px-8 pb-12 max-w-[1300px] mx-auto min-h-screen">
         {activeTab === 'home' && <HomeView onSelectTab={handleSelectTab} />}
         {activeTab === 'know' && (
           <KnowView
@@ -106,7 +120,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating AI Chemistry Tutor */}
+      {/* CHEMORA AI Chemistry Assistant Modal & Launcher */}
       <AIAssistant
         isOpen={isAssistantOpen}
         onOpen={() => setIsAssistantOpen(true)}

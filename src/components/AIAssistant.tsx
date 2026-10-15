@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Send, Bot, User, BookOpen, AlertTriangle } from 'lucide-react';
+import { Sparkles, X, Send, Bot, User } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -15,7 +15,6 @@ const QUICK_PROMPTS = [
   "What safety precautions are needed for concentrated HCl?"
 ];
 
-// Built-in intelligent chemistry tutor responses for immediate, reliable offline assistance
 function getOfflineChemistryAnswer(prompt: string): string {
   const q = prompt.toLowerCase();
   
@@ -81,7 +80,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
     setIsTyping(true);
 
     try {
-      // First attempt server endpoint if configured
       let answer = '';
       try {
         const res = await fetch('/api/assistant', {
@@ -98,7 +96,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
       }
 
       if (!answer) {
-        // Simulate thoughtful tutor pause
         await new Promise(r => setTimeout(r, 600));
         answer = getOfflineChemistryAnswer(query);
       }
@@ -125,51 +122,48 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
 
   return (
     <>
-      {/* Floating Launcher Button */}
+      {/* Floating Launcher Button - Bottom Right */}
       {!isOpen && (
         <button
           onClick={onOpen}
-          aria-label="Open CHEMORA AI Assistant"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-105 active:scale-95 transition-all duration-200 border border-cyan-400/30"
+          aria-label="Open CHEMORA AI"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-[#216d9b] via-[#39d7ff] to-[#6d5dfc] text-white font-bold text-xs uppercase tracking-wider shadow-[0_12px_34px_rgba(0,0,0,0.4)] hover:shadow-[0_16px_40px_rgba(57,215,255,0.4)] hover:scale-105 active:scale-95 transition-all duration-200 border border-cyan-300/40"
         >
-          <Sparkles className="w-5 h-5 animate-pulse text-cyan-200" />
-          <span className="text-sm font-bold tracking-wide">CHEMORA AI</span>
+          <Sparkles className="w-4 h-4 text-cyan-100" />
+          <span>CHEMORA AI</span>
         </button>
       )}
 
-      {/* Assistant Modal Drawer */}
+      {/* Assistant Modal Window - Anchored Cleanly Below TopBar without Overlap */}
       {isOpen && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] bg-[#0c121e] border-l border-cyan-900/50 shadow-2xl flex flex-col backdrop-blur-xl animate-in slide-in-from-right duration-200">
+        <div className="fixed top-20 right-4 sm:right-6 bottom-6 z-50 w-[min(400px,calc(100vw-32px))] bg-[#0a121f]/95 border border-cyan-500/40 rounded-[24px] shadow-[0_24px_70px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden backdrop-blur-2xl anim-popup">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-cyan-900/40 bg-gradient-to-r from-[#0d1728] to-[#0c121e]">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-cyan-900/40 bg-gradient-to-r from-[#0c182d] to-[#0a121f]">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                <Sparkles className="w-5 h-5 text-cyan-400" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-white shadow-[0_0_15px_rgba(57,215,255,0.4)] font-bold text-sm">
+                ✦
               </div>
               <div>
-                <h3 className="font-bold text-white text-base leading-tight">CHEMORA AI</h3>
-                <span className="text-xs text-cyan-400 font-mono flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  Active Chemistry Tutor
-                </span>
+                <strong className="block text-sm text-white font-bold">CHEMORA AI</strong>
+                <small className="block text-[10px] text-cyan-400 font-mono">Text chemistry tutor</small>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition"
-              aria-label="Close Assistant"
+              className="w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center justify-center transition hover:scale-105 active:scale-95"
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Quick Prompts */}
-          <div className="p-3 bg-[#0a0f18] border-b border-cyan-950/60 overflow-x-auto flex gap-2 no-scrollbar">
+          <div className="p-2.5 bg-[#070d17] border-b border-cyan-950/60 overflow-x-auto flex gap-1.5 no-scrollbar">
             {QUICK_PROMPTS.map((prompt, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSend(prompt)}
-                className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-cyan-200 hover:bg-cyan-900/50 transition-colors"
+                className="whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full bg-[#0c1a2e] border border-cyan-800/40 text-cyan-200 hover:bg-cyan-900/50 hover:border-cyan-500/50 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 {prompt}
               </button>
@@ -177,47 +171,42 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
           </div>
 
           {/* Messages Container */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-2.5 anim-slide-up ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.sender === 'ai' && (
-                  <div className="w-7 h-7 rounded-lg bg-cyan-900/40 border border-cyan-700/50 flex items-center justify-center text-cyan-300 flex-shrink-0 mt-0.5">
-                    <Bot className="w-4 h-4" />
+                  <div className="w-6 h-6 rounded-md bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 flex-shrink-0 mt-0.5 text-xs font-bold">
+                    ✦
                   </div>
                 )}
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3.5 text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-2xl p-3 text-xs sm:text-sm leading-relaxed ${
                     msg.sender === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-none'
-                      : 'bg-[#131d2e] border border-cyan-900/40 text-slate-200 rounded-tl-none shadow-md'
+                      ? 'bg-gradient-to-r from-[#216d9b] to-[#4b3eb5] text-white rounded-tr-none shadow-md'
+                      : 'bg-white/[0.08] border border-cyan-900/30 text-slate-200 rounded-tl-none'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.text}</p>
-                  <span className={`block text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-blue-200 text-right' : 'text-slate-500'}`}>
+                  <span className={`block text-[9px] mt-1 ${msg.sender === 'user' ? 'text-blue-200 text-right' : 'text-slate-500'}`}>
                     {msg.time}
                   </span>
                 </div>
-                {msg.sender === 'user' && (
-                  <div className="w-7 h-7 rounded-lg bg-blue-700 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
               </div>
             ))}
 
             {isTyping && (
-              <div className="flex gap-3 items-center">
-                <div className="w-7 h-7 rounded-lg bg-cyan-900/40 border border-cyan-700/50 flex items-center justify-center text-cyan-300">
-                  <Bot className="w-4 h-4" />
+              <div className="flex gap-2.5 items-center">
+                <div className="w-6 h-6 rounded-md bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 text-xs">
+                  ✦
                 </div>
-                <div className="bg-[#131d2e] border border-cyan-900/40 rounded-2xl rounded-tl-none px-4 py-2.5 text-cyan-400 text-xs flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.2s]"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.4s]"></span>
-                  <span className="ml-1 text-slate-400">Synthesizing chemistry response...</span>
+                <div className="bg-white/[0.08] border border-cyan-900/30 rounded-2xl rounded-tl-none px-3.5 py-2 text-cyan-300 text-xs flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.4s]" />
+                  <span className="ml-1 text-slate-400 text-[11px]">Thinking...</span>
                 </div>
               </div>
             )}
@@ -229,22 +218,22 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
               e.preventDefault();
               handleSend();
             }}
-            className="p-3 bg-[#0a0f18] border-t border-cyan-900/40 flex items-center gap-2"
+            className="p-3 bg-[#070d17] border-t border-cyan-900/40 flex items-center gap-2"
           >
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask any chemistry question..."
-              className="flex-1 bg-[#131c2c] border border-cyan-900/60 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition"
+              placeholder="Ask a chemistry question..."
+              className="flex-1 bg-white/[0.06] border border-cyan-900/50 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
             />
             <button
               type="submit"
               disabled={!input.trim() || isTyping}
-              className="p-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 disabled:opacity-40 disabled:hover:bg-cyan-500 transition"
-              aria-label="Send query"
+              className="w-9 h-9 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-bold flex items-center justify-center disabled:opacity-40 transition shadow-sm"
+              aria-label="Send"
             >
-              <Send className="w-4 h-4" />
+              ➤
             </button>
           </form>
         </div>
