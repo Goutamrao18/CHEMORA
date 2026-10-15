@@ -56,8 +56,8 @@ test-game: ## Unit-test the game (chemistry engine)
 
 test: test-site test-game ## Run every test
 
-build-site: ## Production build of the React application
-	$(NPM) run build
+build-site: ## Static site needs no build step
+	@echo "Static site: nothing to build"
 
 build-game: ## Production build of the game (base path /play/)
 	cd $(GAME) && $(NPM) run build
