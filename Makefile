@@ -27,7 +27,8 @@ check-tools: ## Verify required tools are installed
 	@command -v $(NPM) >/dev/null || { echo "npm is required"; exit 1; }
 	@$(NODE) -e 'const m=+process.versions.node.split(".")[0]; if(m<22){console.error("Node >=22 required, found "+process.version);process.exit(1)}'
 
-install: check-tools ## Install game dependencies
+install: check-tools ## Install all dependencies (root and game)
+	npm install --no-audit --no-fund --legacy-peer-deps
 	cd $(GAME) && npm install --no-audit --no-fund --legacy-peer-deps
 
 dev: dev-game ## Alias for dev-game
@@ -56,8 +57,8 @@ test-game: ## Unit-test the game (chemistry engine)
 
 test: test-site test-game ## Run every test
 
-build-site: ## Static site needs no build step
-	@echo "Static site: nothing to build"
+build-site: ## Production build of the React application
+	$(NPM) run build
 
 build-game: ## Production build of the game (base path /play/)
 	cd $(GAME) && $(NPM) run build

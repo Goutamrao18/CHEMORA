@@ -1,6 +1,7 @@
 // Assemble the deployable tree: static site at dist/, built game at dist/play/.
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -20,12 +21,26 @@ if (!fs.existsSync(path.join(gameDist, "index.html"))) {
 }
 if (dist === root || dist.startsWith(gameDist)) { console.error("Refusing unsafe dist path."); process.exit(1); }
 
-// If dist already contains compiled assets from root Vite build, preserve them
+// Check if root Vite app needs compilation
+let hadAssets = fs.existsSync(path.join(dist, "assets"));
+let hadCompiledIndex = fs.existsSync(path.join(dist, "index.html")) &&
+  fs.readFileSync(path.join(dist, "index.html"), "utf8").includes("/assets/index-");
+
+if (!hadAssets || !hadCompiledIndex) {
+  try {
+    console.log("Building root React/Vite application for production...");
+    execSync("npm run build", { cwd: root, stdio: "inherit" });
+    hadAssets = fs.existsSync(path.join(dist, "assets"));
+    hadCompiledIndex = fs.existsSync(path.join(dist, "index.html")) &&
+      fs.readFileSync(path.join(dist, "index.html"), "utf8").includes("/assets/index-");
+  } catch (buildErr) {
+    console.warn("Vite production build warning:", buildErr?.message);
+  }
+}
+
+// Preserve compiled Vite output before clearing dist
 const tempAssets = path.join(root, ".temp-dist-assets");
 const tempIndex = path.join(root, ".temp-dist-index.html");
-const hadAssets = fs.existsSync(path.join(dist, "assets"));
-const hadCompiledIndex = fs.existsSync(path.join(dist, "index.html")) &&
-  fs.readFileSync(path.join(dist, "index.html"), "utf8").includes("/assets/index-");
 
 if (hadAssets) {
   fs.cpSync(path.join(dist, "assets"), tempAssets, { recursive: true });
