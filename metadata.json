@@ -1,0 +1,8 @@
+{
+  "name": "CHEMORA — Chemistry Learning Platform",
+  "description": "Interactive chemistry learning platform featuring a 130+ item knowledge library, 100 progressive challenge levels, guided practical experiments, learner progress tracking, AI chemistry assistant, and laboratory simulation.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
