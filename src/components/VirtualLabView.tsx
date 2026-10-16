@@ -40,8 +40,28 @@ import {
   LogOut,
   Keyboard,
   Move,
+  Atom,
+  Radiation,
+  Dna,
+  Microscope,
+  Search,
+  Sliders,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  NUCLEAR_REACTIONS,
+  NUCLEAR_ISOTOPES,
+  NuclearReaction,
+  calculateReactorCriticality,
+  calculateTokamakPlasma,
+} from '../data/nuclearSimData';
+import {
+  CURATED_SCIENCE_COMPOUNDS,
+  NOTABLE_PDB_STRUCTURES,
+  PubChemCompoundData,
+  PdbStructureData,
+  queryPubChemCompound,
+} from '../services/scienceService';
 
 interface AddedReagentEntry {
   reagentId: string;
@@ -49,7 +69,7 @@ interface AddedReagentEntry {
   addedAt: number;
 }
 
-export type LabStationType = 'synthesis' | 'spectroscopy' | 'cryovault' | 'mainframe' | 'decon';
+export type LabStationType = 'synthesis' | 'spectroscopy' | 'cryovault' | 'mainframe' | 'decon' | 'nuclear';
 export type GraphicsQuality = 'smooth' | 'balanced' | 'cinematic';
 export type BurnerFlameType = 'safety' | 'roaring';
 
@@ -133,6 +153,19 @@ const LAB_STATIONS: Record<LabStationType, LabStationDef> = {
     accentColor: '#3b82f6',
     description: 'Emergency decontamination station, airlock portal, and panoramic cosmic courtyard view.',
   },
+  nuclear: {
+    id: 'nuclear',
+    key: '6',
+    name: 'Atomic & Nuclear Reactor Core',
+    sector: 'SECTOR 6 · NUCLEAR REACTION BAY',
+    position: new THREE.Vector3(6.5, 0, -6.5),
+    cameraPos: new THREE.Vector3(5.2, 1.8, -5.2),
+    lookAt: new THREE.Vector3(6.5, 1.3, -6.5),
+    teleportPos: new THREE.Vector3(4.8, 1.65, -4.8),
+    teleportYaw: -Math.PI * 0.75,
+    accentColor: '#d946ef',
+    description: 'Sub-atomic tokamak magnetic fusion, Uranium fission core, and Cherenkov radiation tank.',
+  },
 };
 
 // Reusable math vectors pre-allocated at module scope for ZERO garbage collection in the 60fps render loop
@@ -190,9 +223,25 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
   const [showRadar, setShowRadar] = useState(true);
 
   // Active dock tab & drawer collapse
-  const [dockTab, setDockTab] = useState<'reagents' | 'thermal' | 'flame' | 'protocols'>('reagents');
+  const [dockTab, setDockTab] = useState<'reagents' | 'thermal' | 'flame' | 'nuclear' | 'science' | 'protocols'>('reagents');
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
   const [dispenseAmount, setDispenseAmount] = useState<number>(20);
+
+  // Nuclear Station State
+  const [nuclearMode, setNuclearMode] = useState<'fission' | 'fusion' | 'decay'>('fission');
+  const [selectedNuclearReaction, setSelectedNuclearReaction] = useState<NuclearReaction>(NUCLEAR_REACTIONS[0]);
+  const [controlRodDepth, setControlRodDepth] = useState<number>(30); // 30% inserted (k_eff ~ 1.0)
+  const [magneticFieldTesla, setMagneticFieldTesla] = useState<number>(12.0);
+  const [auxHeatingPowerMW, setAuxHeatingPowerMW] = useState<number>(40);
+  const [isNuclearPulsing, setIsNuclearPulsing] = useState<boolean>(false);
+  const [isGeigerAudioActive, setIsGeigerAudioActive] = useState<boolean>(false);
+
+  // BioScience & Chemical Intelligence Explorer State (Powered by Science Skill)
+  const [scienceSearchQuery, setScienceSearchQuery] = useState<string>('');
+  const [scienceCompound, setScienceCompound] = useState<PubChemCompoundData>(CURATED_SCIENCE_COMPOUNDS.aspirin);
+  const [isScienceSearching, setIsScienceSearching] = useState<boolean>(false);
+  const [scienceSubTab, setScienceSubTab] = useState<'pubchem' | 'ideas' | 'pdb'>('pubchem');
+  const [selectedPdb, setSelectedPdb] = useState<PdbStructureData>(NOTABLE_PDB_STRUCTURES[0]);
 
   // Sprint state
   const [isSprinting, setIsSprinting] = useState(false);
@@ -216,6 +265,8 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
   const [actionToast, setActionToast] = useState<{ id: string; text: string; sub?: string; color?: string } | null>(null);
   const [inspectingProtocol, setInspectingProtocol] = useState<ReactionProtocol | null>(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isNuclearInfoOpen, setIsNuclearInfoOpen] = useState(false);
+  const [nuclearInfoTab, setNuclearInfoTab] = useState<'fission' | 'fusion' | 'decay' | 'bioscience'>('fission');
 
   // Pour stream trickling animation timer
   const [isPouringStream, setIsPouringStream] = useState(false);
@@ -248,6 +299,9 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       ph: number;
     };
     graphicsQuality: GraphicsQuality;
+    nuclearControlRodDepth: number;
+    nuclearMode: 'fission' | 'fusion' | 'decay';
+    isNuclearPulsing: boolean;
   }>({
     activeStation: null,
     cameraMode: 'first',
@@ -268,6 +322,9 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       ph: 7.0,
     },
     graphicsQuality: 'smooth',
+    nuclearControlRodDepth: 30,
+    nuclearMode: 'fission',
+    isNuclearPulsing: false,
   });
 
   // Three.js mutable scene graph handles
@@ -317,6 +374,11 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
     specBurnerFlame: THREE.Mesh;
     specFlameSparks: THREE.Points;
     specFlameLight: THREE.PointLight;
+    // Nuclear apparatus
+    nucTokamakPlasma: THREE.Mesh;
+    nucCherenkovLight: THREE.PointLight;
+    nucControlRods: THREE.Group;
+    nucParticleSparks: THREE.Points;
     beacons: Record<LabStationType, THREE.Mesh>;
     animId: number;
     stepSoundTimer: number;
@@ -372,6 +434,100 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       threeRef.current.keyLight.castShadow = graphicsQuality !== 'smooth';
     }
   }, [graphicsQuality]);
+
+  useEffect(() => {
+    simStateRef.current.nuclearControlRodDepth = controlRodDepth;
+  }, [controlRodDepth]);
+
+  useEffect(() => {
+    simStateRef.current.nuclearMode = nuclearMode;
+  }, [nuclearMode]);
+
+  useEffect(() => {
+    simStateRef.current.isNuclearPulsing = isNuclearPulsing;
+  }, [isNuclearPulsing]);
+
+  // Nuclear Fission and Fusion calculations
+  const fissionMetrics = useMemo(() => {
+    return calculateReactorCriticality(controlRodDepth);
+  }, [controlRodDepth]);
+
+  const fusionMetrics = useMemo(() => {
+    return calculateTokamakPlasma(magneticFieldTesla, auxHeatingPowerMW);
+  }, [magneticFieldTesla, auxHeatingPowerMW]);
+
+  // Current Radiation Level in MicroSieverts/hour (μSv/h)
+  const radiationLevelUsv = useMemo(() => {
+    if (nuclearMode === 'fission') {
+      const base = selectedNuclearReaction.radiationDoseUsv;
+      return +(base * (fissionMetrics.powerMW / 1200)).toFixed(1);
+    } else if (nuclearMode === 'fusion') {
+      return +(selectedNuclearReaction.radiationDoseUsv * (fusionMetrics.plasmaTempMillionK / 100)).toFixed(1);
+    } else {
+      return +selectedNuclearReaction.radiationDoseUsv.toFixed(1);
+    }
+  }, [nuclearMode, selectedNuclearReaction, fissionMetrics.powerMW, fusionMetrics.plasmaTempMillionK]);
+
+  // Geiger Counter Procedural Audio Clicking Interval
+  useEffect(() => {
+    if (!isGeigerAudioActive && radiationLevelUsv < 15) return;
+    const intervalMs = Math.max(65, Math.min(1200, Math.round(1800 / Math.max(1, radiationLevelUsv))));
+    const timer = setInterval(() => {
+      if (Math.random() < 0.88) {
+        labAudio.playGeigerClick();
+      }
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [isGeigerAudioActive, radiationLevelUsv]);
+
+  const handlePulseNuclearReaction = (reaction: NuclearReaction) => {
+    setSelectedNuclearReaction(reaction);
+    setIsNuclearPulsing(true);
+    if (reaction.category === 'fission') {
+      labAudio.playNuclearPulse();
+    } else if (reaction.category === 'fusion') {
+      labAudio.playTokamakHum();
+    } else {
+      labAudio.playGeigerClick();
+      labAudio.playScannerBeep();
+    }
+
+    try {
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+    } catch {}
+
+    setActionToast({
+      id: String(Date.now()),
+      text: `${reaction.title}`,
+      sub: `${reaction.equation} · +${reaction.energyMev} MeV`,
+      color: reaction.visualColor,
+    });
+
+    setTimeout(() => {
+      setIsNuclearPulsing(false);
+    }, 2500);
+  };
+
+  const handleSearchScienceCompound = async (query?: string) => {
+    const q = query || scienceSearchQuery;
+    if (!q.trim()) return;
+    setIsScienceSearching(true);
+    try {
+      const result = await queryPubChemCompound(q);
+      setScienceCompound(result);
+      labAudio.playScannerBeep();
+      setActionToast({
+        id: String(Date.now()),
+        text: `PubChem: ${result.name}`,
+        sub: `Formula: ${result.molecularFormula} · ${result.molecularWeight} g/mol`,
+        color: '#00f0ff',
+      });
+    } catch {
+      // Fallback handled in service
+    } finally {
+      setIsScienceSearching(false);
+    }
+  };
 
   // Determine current chemical reaction status
   const reactionStatus = useMemo(() => {
@@ -609,7 +765,8 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       setActiveStation(target);
       labAudio.playStationInteract();
       if (target === 'spectroscopy') setDockTab('flame');
-      else if (target === 'mainframe') setDockTab('protocols');
+      else if (target === 'mainframe') setDockTab('science');
+      else if (target === 'nuclear') setDockTab('nuclear');
       else setDockTab('reagents');
     }
   }, [activeStation, nearestStation]);
@@ -1377,6 +1534,105 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
     );
     scene.add(starField);
 
+    // --- SECTOR 6: ATOMIC & NUCLEAR REACTOR CORE (6.5, 0, -6.5) ---
+    addStationBeacon('nuclear', LAB_STATIONS.nuclear.position, 0xd946ef);
+
+    const nucPlatform = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.8, 3.0, 0.25, 6),
+      new THREE.MeshStandardMaterial({ color: 0x150d24, metalness: 0.8, roughness: 0.25 })
+    );
+    nucPlatform.position.set(6.5, 0.125, -6.5);
+    facilityGroup.add(nucPlatform);
+
+    // Hazard radiation yellow-black stripe border ring
+    const hazardRing = new THREE.Mesh(
+      new THREE.RingGeometry(2.6, 2.9, 6),
+      new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
+    );
+    hazardRing.rotation.x = -Math.PI / 2;
+    hazardRing.position.set(6.5, 0.26, -6.5);
+    facilityGroup.add(hazardRing);
+
+    // Fission Cherenkov Water Tank (Cylinder)
+    const tankGlass = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 0.9, 1.3, 24),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x00f0ff,
+        transmission: 0.9,
+        transparent: true,
+        opacity: 0.6,
+        roughness: 0.05,
+      })
+    );
+    tankGlass.position.set(5.7, 0.75, -6.5);
+    facilityGroup.add(tankGlass);
+
+    // Internal Fuel Assemblies
+    for (let fx = -0.3; fx <= 0.3; fx += 0.3) {
+      for (let fz = -0.3; fz <= 0.3; fz += 0.3) {
+        const fuelRod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 0.9, 12),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9, roughness: 0.1 })
+        );
+        fuelRod.position.set(5.7 + fx, 0.6, -6.5 + fz);
+        facilityGroup.add(fuelRod);
+      }
+    }
+
+    // Movable Cadmium Control Rods
+    const nucControlRods = new THREE.Group();
+    nucControlRods.position.set(5.7, 1.1, -6.5);
+    for (let fx = -0.2; fx <= 0.2; fx += 0.4) {
+      for (let fz = -0.2; fz <= 0.2; fz += 0.4) {
+        const rod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.03, 0.8, 12),
+          new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.2 })
+        );
+        rod.position.set(fx, 0, fz);
+        nucControlRods.add(rod);
+      }
+    }
+    facilityGroup.add(nucControlRods);
+
+    // Cherenkov Radiation Blue Light
+    const nucCherenkovLight = new THREE.PointLight(0x00f0ff, 2.0, 4.5);
+    nucCherenkovLight.position.set(5.7, 0.7, -6.5);
+    facilityGroup.add(nucCherenkovLight);
+
+    // Tokamak Torus Magnetic Confinement Ring
+    const tokamakFrame = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.18, 16, 32),
+      new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 })
+    );
+    tokamakFrame.rotation.x = Math.PI / 4;
+    tokamakFrame.position.set(7.5, 1.2, -6.5);
+    facilityGroup.add(tokamakFrame);
+
+    // Glowing Tokamak Plasma Core Ring
+    const nucTokamakPlasma = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.07, 16, 32),
+      new THREE.MeshBasicMaterial({ color: 0xd946ef, transparent: true, opacity: 0.95 })
+    );
+    nucTokamakPlasma.rotation.x = Math.PI / 4;
+    nucTokamakPlasma.position.set(7.5, 1.2, -6.5);
+    facilityGroup.add(nucTokamakPlasma);
+
+    // Particle Sparks around nuclear core
+    const nucSparksGeo = new THREE.BufferGeometry();
+    const nucSparksCount = 50;
+    const nucSparksPos = new Float32Array(nucSparksCount * 3);
+    for (let i = 0; i < nucSparksCount; i++) {
+      nucSparksPos[i * 3] = 6.5 + (Math.random() - 0.5) * 2.2;
+      nucSparksPos[i * 3 + 1] = 0.5 + Math.random() * 1.5;
+      nucSparksPos[i * 3 + 2] = -6.5 + (Math.random() - 0.5) * 2.2;
+    }
+    nucSparksGeo.setAttribute('position', new THREE.BufferAttribute(nucSparksPos, 3));
+    const nucParticleSparks = new THREE.Points(
+      nucSparksGeo,
+      new THREE.PointsMaterial({ color: 0xd946ef, size: 0.05, transparent: true, opacity: 0.85 })
+    );
+    facilityGroup.add(nucParticleSparks);
+
     // 8. FPS View: Handheld Flask
     const fpsHandGroup = new THREE.Group();
     camera.add(fpsHandGroup);
@@ -1493,6 +1749,7 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       if (e.code === 'Digit3') handleFastTravel('cryovault');
       if (e.code === 'Digit4') handleFastTravel('mainframe');
       if (e.code === 'Digit5') handleFastTravel('decon');
+      if (e.code === 'Digit6') handleFastTravel('nuclear');
       if (e.code === 'Space') {
         e.preventDefault();
         handleJump();
@@ -1631,6 +1888,10 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       specBurnerFlame,
       specFlameSparks,
       specFlameLight,
+      nucTokamakPlasma,
+      nucCherenkovLight,
+      nucControlRods,
+      nucParticleSparks,
       beacons,
       animId: 0,
       stepSoundTimer: 0,
@@ -1782,8 +2043,27 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
         state.specFlameSparks.visible = false;
         state.specBurnerFlame.visible = true;
         (state.specBurnerFlame.material as THREE.MeshBasicMaterial).color.set(0x10b981);
-        state.specFlameLight.intensity = 1.0;
-        state.specFlameLight.color.set(0x10b981);
+      }
+
+      // Nuclear & Atomic Bay 3D dynamics
+      if (state.nucTokamakPlasma) {
+        state.nucTokamakPlasma.rotation.z += delta * (sim.isNuclearPulsing ? 8.0 : 2.5);
+      }
+      if (state.nucControlRods) {
+        const depth = sim.nuclearControlRodDepth;
+        state.nucControlRods.position.y = 1.3 - (depth / 100) * 0.45;
+      }
+      if (state.nucCherenkovLight) {
+        const pulseMult = sim.isNuclearPulsing ? 3.5 : 1.0;
+        state.nucCherenkovLight.intensity = (1.5 + Math.sin(time * 8) * 0.5) * pulseMult;
+      }
+      if (state.nucParticleSparks) {
+        const sparkPos = state.nucParticleSparks.geometry.attributes.position.array as Float32Array;
+        for (let i = 1; i < sparkPos.length; i += 3) {
+          sparkPos[i] += delta * 0.8;
+          if (sparkPos[i] > 2.2) sparkPos[i] = 0.5;
+        }
+        state.nucParticleSparks.geometry.attributes.position.needsUpdate = true;
       }
 
       // 4. ZERO-GC PLAYER MOVEMENT & KINEMATICS
@@ -2009,6 +2289,17 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
             ))}
           </div>
 
+          {/* Dedicated Atomic & Nuclear Reactions Information & Idea Launcher */}
+          <button
+            onClick={() => setIsNuclearInfoOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-950/90 via-[#180424]/90 to-purple-950/90 hover:from-fuchsia-900 hover:to-purple-900 border border-fuchsia-500/70 hover:border-fuchsia-400 text-fuchsia-200 hover:text-white text-xs font-mono font-bold shadow-[0_0_15px_rgba(217,70,239,0.3)] transition active:scale-95 group cursor-pointer"
+            title="Atomic & Nuclear Reaction System: Information & Research Ideas"
+          >
+            <Atom className="w-3.5 h-3.5 text-fuchsia-400 group-hover:rotate-180 transition-transform duration-500" />
+            <span className="hidden sm:inline">Atomic &amp; Nuclear</span>
+            <span>Ideas</span>
+          </button>
+
           {/* Real-time Vessel Specs */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#040e24]/90 border border-slate-700/60 text-slate-300 text-xs font-mono shadow-lg">
             <span>Temp: <strong className={temperature > 70 ? 'text-rose-400' : 'text-cyan-300'}>{temperature}°C</strong></span>
@@ -2139,7 +2430,7 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
         <div className="absolute top-16 right-3 z-30 pointer-events-auto p-2.5 rounded-2xl bg-[#020b1c]/95 border border-cyan-500/30 shadow-2xl">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">LAB FACILITY RADAR</span>
-            <span className="text-[9px] font-mono text-slate-400">SECTORS 1-5</span>
+            <span className="text-[9px] font-mono text-slate-400">SECTORS 1-6</span>
           </div>
           <div className="relative w-28 h-28 rounded-xl bg-[#030814] border border-cyan-900/60 overflow-hidden flex items-center justify-center">
             <div className="absolute inset-0 rounded-full border border-cyan-500/20 scale-75" />
@@ -2153,6 +2444,7 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
             <span className="absolute bottom-2.5 w-2 h-2 rounded-full bg-purple-400" title="Cryo Vault" />
             <span className="absolute right-2.5 w-2 h-2 rounded-full bg-amber-400" title="Mainframe" />
             <span className="absolute top-2.5 w-2 h-2 rounded-full bg-blue-400" title="Observation Deck" />
+            <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-fuchsia-400 shadow-[0_0_6px_#d946ef]" title="Nuclear Core" />
 
             {/* Player indicator */}
             <div
@@ -2460,20 +2752,20 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
           {/* Header Bar with Tabs & Collapse Toggle */}
           <div className="px-4 py-2 border-b border-cyan-950 flex items-center justify-between bg-[#030916]">
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-[calc(100%-120px)] sm:max-w-none">
               <button
                 onClick={() => {
                   setDockTab('reagents');
                   setIsDockCollapsed(false);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                   dockTab === 'reagents'
                     ? 'bg-cyan-500 text-slate-950 shadow-md'
                     : 'text-slate-300 hover:text-white hover:bg-cyan-500/10'
                 }`}
               >
                 <Droplet className="w-3.5 h-3.5" />
-                <span>Reagents Catalog</span>
+                <span>Reagents</span>
               </button>
 
               <button
@@ -2481,14 +2773,14 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
                   setDockTab('thermal');
                   setIsDockCollapsed(false);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                   dockTab === 'thermal'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
                     : 'text-slate-300 hover:text-white hover:bg-amber-500/10'
                 }`}
               >
                 <Thermometer className="w-3.5 h-3.5" />
-                <span>Thermal &amp; Stirrer</span>
+                <span>Thermal</span>
               </button>
 
               <button
@@ -2496,14 +2788,44 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
                   setDockTab('flame');
                   setIsDockCollapsed(false);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                   dockTab === 'flame'
                     ? 'bg-emerald-500 text-slate-950 shadow-md'
                     : 'text-slate-300 hover:text-white hover:bg-emerald-500/10'
                 }`}
               >
                 <Flame className="w-3.5 h-3.5" />
-                <span>Flame Spectroscopy</span>
+                <span>Spectroscopy</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setDockTab('nuclear');
+                  setIsDockCollapsed(false);
+                }}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                  dockTab === 'nuclear'
+                    ? 'bg-fuchsia-500 text-slate-950 shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-fuchsia-500/10'
+                }`}
+              >
+                <Atom className="w-3.5 h-3.5" />
+                <span>Nuclear Core</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setDockTab('science');
+                  setIsDockCollapsed(false);
+                }}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                  dockTab === 'science'
+                    ? 'bg-cyan-400 text-slate-950 shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-cyan-400/10'
+                }`}
+              >
+                <Dna className="w-3.5 h-3.5" />
+                <span>BioScience Intel</span>
               </button>
 
               <button
@@ -2511,7 +2833,7 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
                   setDockTab('protocols');
                   setIsDockCollapsed(false);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                   dockTab === 'protocols'
                     ? 'bg-purple-500 text-white shadow-md'
                     : 'text-slate-300 hover:text-white hover:bg-purple-500/10'
@@ -2712,7 +3034,577 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
               </div>
             )}
 
-            {/* TAB 4: SYNTHESIS PROTOCOLS */}
+            {/* TAB 4: ATOMIC & NUCLEAR REACTION BAY */}
+            {dockTab === 'nuclear' && (
+              <div className="space-y-3">
+                {/* Nuclear Mode Switcher & Radiation Meter */}
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#020716] p-2 rounded-2xl border border-cyan-950">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setNuclearMode('fission');
+                        setSelectedNuclearReaction(NUCLEAR_REACTIONS[0]);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                        nuclearMode === 'fission'
+                          ? 'bg-cyan-500 text-slate-950 shadow-md'
+                          : 'bg-[#061226] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <Atom className="w-3.5 h-3.5" />
+                      <span>Fission Core</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setNuclearMode('fusion');
+                        setSelectedNuclearReaction(NUCLEAR_REACTIONS[2]);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                        nuclearMode === 'fusion'
+                          ? 'bg-fuchsia-500 text-white shadow-md'
+                          : 'bg-[#061226] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>Tokamak Fusion</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setNuclearMode('decay');
+                        setSelectedNuclearReaction(NUCLEAR_REACTIONS[5]);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                        nuclearMode === 'decay'
+                          ? 'bg-amber-500 text-slate-950 shadow-md'
+                          : 'bg-[#061226] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      <Radiation className="w-3.5 h-3.5" />
+                      <span>Decay &amp; Isotopes</span>
+                    </button>
+                  </div>
+
+                  {/* Geiger radiation rate readout & sound toggle */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-[#030916] border border-cyan-900/60 font-mono text-xs">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                      <span className="text-slate-400">Radiation:</span>
+                      <strong className={radiationLevelUsv > 50 ? 'text-rose-400' : 'text-emerald-400'}>
+                        {radiationLevelUsv} μSv/h
+                      </strong>
+                    </div>
+
+                    <button
+                      onClick={() => setIsGeigerAudioActive((g) => !g)}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold border transition ${
+                        isGeigerAudioActive
+                          ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                          : 'bg-[#030916] border-slate-700 text-slate-400 hover:text-white'
+                      }`}
+                      title="Toggle Geiger audio clicks"
+                    >
+                      Geiger SFX: {isGeigerAudioActive ? 'ON' : 'OFF'}
+                    </button>
+
+                    <button
+                      onClick={() => setIsNuclearInfoOpen(true)}
+                      className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-fuchsia-500/20 border border-fuchsia-400/60 text-fuchsia-300 hover:text-white transition flex items-center gap-1"
+                      title="Open Atomic & Nuclear Information & Ideas Compendium"
+                    >
+                      <Sparkles className="w-3 h-3 text-fuchsia-400" />
+                      <span>Info &amp; Ideas</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* MODE 1: NUCLEAR FISSION CORE */}
+                {nuclearMode === 'fission' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    {/* Reaction Selection & Trigger */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2.5">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block mb-1">
+                          Select Fission Isotope
+                        </span>
+                        <div className="space-y-1.5">
+                          {NUCLEAR_REACTIONS.filter((r) => r.category === 'fission').map((r) => (
+                            <button
+                              key={r.id}
+                              onClick={() => setSelectedNuclearReaction(r)}
+                              className={`w-full p-2 rounded-xl text-left transition border ${
+                                selectedNuclearReaction.id === r.id
+                                  ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-md'
+                                  : 'bg-[#030a18] border-cyan-950/70 text-slate-300 hover:border-cyan-800'
+                              }`}
+                            >
+                              <strong className="block text-xs font-bold">{r.title}</strong>
+                              <span className="text-[10px] font-mono text-cyan-300 block">{r.equation}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handlePulseNuclearReaction(selectedNuclearReaction)}
+                        className={`w-full py-2.5 rounded-xl font-mono text-xs font-bold transition flex items-center justify-center gap-2 ${
+                          isNuclearPulsing
+                            ? 'bg-cyan-400 text-slate-950 shadow-[0_0_20px_#00f0ff]'
+                            : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-lg active:scale-95'
+                        }`}
+                      >
+                        <Atom className="w-4 h-4" />
+                        <span>{isNuclearPulsing ? 'CHERENKOV SURGE ACTIVE...' : 'INITIATE FISSION PULSE'}</span>
+                      </button>
+                    </div>
+
+                    {/* Reactor Criticality & Control Rods */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-bold text-white">Cadmium Control Rods</span>
+                          <span className="text-xs font-mono font-bold text-cyan-300">{controlRodDepth}% Inserted</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={controlRodDepth}
+                          onChange={(e) => setControlRodDepth(parseInt(e.target.value, 10))}
+                          className="w-full accent-cyan-400 cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[9px] font-mono text-slate-400 mt-1">
+                          <span>0% (Full Reactivity)</span>
+                          <span>100% (SCRAM Shutdown)</span>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-[#030a18] border border-cyan-950 space-y-1 font-mono text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Multiplication Factor k_eff:</span>
+                          <strong
+                            className={
+                              fissionMetrics.state === 'critical'
+                                ? 'text-emerald-400'
+                                : fissionMetrics.state === 'supercritical'
+                                ? 'text-rose-400'
+                                : 'text-amber-400'
+                            }
+                          >
+                            {fissionMetrics.kEff} ({fissionMetrics.state.toUpperCase()})
+                          </strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Thermal Output:</span>
+                          <span className="text-white font-bold">{fissionMetrics.powerMW} MW_th</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Thermal Neutron Flux:</span>
+                          <span className="text-cyan-300">{fissionMetrics.neutronFlux.toExponential(2)} n/cm²·s</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mass Defect & Energy E=mc² */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2">
+                      <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block">
+                        Mass Defect &amp; Binding Energy (E=mc²)
+                      </span>
+                      <div className="space-y-1 text-xs">
+                        <div className="p-2 rounded-xl bg-[#030a18] border border-cyan-950 font-mono text-[11px] space-y-1">
+                          <div className="text-slate-300">
+                            Reactants Mass: <strong className="text-white">236.052595 u</strong>
+                          </div>
+                          <div className="text-slate-300">
+                            Products Mass: <strong className="text-white">235.835227 u</strong>
+                          </div>
+                          <div className="text-rose-300 font-bold">
+                            Mass Defect Δm: +{selectedNuclearReaction.massDefectU} u
+                          </div>
+                          <div className="text-emerald-300 font-bold">
+                            Energy Output Q: +{selectedNuclearReaction.energyMev} MeV ({selectedNuclearReaction.energyJoules.toExponential(3)} J)
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-tight">
+                          {selectedNuclearReaction.realWorldApplication}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* MODE 2: TOKAMAK FUSION CORE */}
+                {nuclearMode === 'fusion' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    {/* Reaction Selection & Trigger */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2.5">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-fuchsia-400 uppercase tracking-wider block mb-1">
+                          Fusion Reactions (Plasma Confinement)
+                        </span>
+                        <div className="space-y-1.5">
+                          {NUCLEAR_REACTIONS.filter((r) => r.category === 'fusion').map((r) => (
+                            <button
+                              key={r.id}
+                              onClick={() => setSelectedNuclearReaction(r)}
+                              className={`w-full p-2 rounded-xl text-left transition border ${
+                                selectedNuclearReaction.id === r.id
+                                  ? 'bg-fuchsia-500/20 border-fuchsia-400 text-white shadow-md'
+                                  : 'bg-[#030a18] border-cyan-950/70 text-slate-300 hover:border-cyan-800'
+                              }`}
+                            >
+                              <strong className="block text-xs font-bold">{r.title}</strong>
+                              <span className="text-[10px] font-mono text-fuchsia-300 block">{r.equation}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handlePulseNuclearReaction(selectedNuclearReaction)}
+                        className={`w-full py-2.5 rounded-xl font-mono text-xs font-bold transition flex items-center justify-center gap-2 ${
+                          isNuclearPulsing
+                            ? 'bg-fuchsia-400 text-slate-950 shadow-[0_0_20px_#d946ef]'
+                            : 'bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-400 hover:to-purple-500 text-white shadow-lg active:scale-95'
+                        }`}
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>{isNuclearPulsing ? 'MAGNETIC CONFINEMENT BURST...' : 'IGNITE FUSION PLASMA'}</span>
+                      </button>
+                    </div>
+
+                    {/* Magnetic Confinement & Heating Controls */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2.5">
+                      <div className="space-y-2">
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-white font-bold">Toroidal B-Field:</span>
+                            <span className="font-mono text-fuchsia-300 font-bold">{magneticFieldTesla.toFixed(1)} Tesla</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="2"
+                            max="16"
+                            step="0.5"
+                            value={magneticFieldTesla}
+                            onChange={(e) => setMagneticFieldTesla(parseFloat(e.target.value))}
+                            className="w-full accent-fuchsia-500 cursor-pointer"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-white font-bold">RF &amp; Neutral Beam Power:</span>
+                            <span className="font-mono text-fuchsia-300 font-bold">{auxHeatingPowerMW} MW</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="10"
+                            max="100"
+                            step="5"
+                            value={auxHeatingPowerMW}
+                            onChange={(e) => setAuxHeatingPowerMW(parseInt(e.target.value, 10))}
+                            className="w-full accent-fuchsia-500 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-[#030a18] border border-cyan-950 space-y-1 font-mono text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Plasma Temperature:</span>
+                          <strong className="text-fuchsia-400">{fusionMetrics.plasmaTempMillionK} Million K</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Fusion Energy Gain Q:</span>
+                          <strong className={fusionMetrics.ignitionAchieved ? 'text-emerald-400' : 'text-amber-300'}>
+                            Q = {fusionMetrics.qFactor} ({fusionMetrics.ignitionAchieved ? 'IGNITION' : 'BREAKEVEN PROGRESS'})
+                          </strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Lawson Triple Product:</span>
+                          <span className="text-cyan-300">{fusionMetrics.lawsonTripleProduct} × 10²⁰ keV·s/m³</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scientific Mechanism */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2 text-xs">
+                      <span className="text-[10px] font-mono font-bold text-fuchsia-400 uppercase tracking-wider block">
+                        Quantum Tunneling &amp; Coulomb Barrier
+                      </span>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        {selectedNuclearReaction.scientificMechanism}
+                      </p>
+                      <div className="p-2 rounded-xl bg-[#030a18] border border-cyan-950 font-mono text-[10px] text-slate-400">
+                        {selectedNuclearReaction.operatingCondition}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* MODE 3: RADIOACTIVE DECAY & ISOTOPES */}
+                {nuclearMode === 'decay' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {NUCLEAR_REACTIONS.filter((r) => r.category === 'decay').map((r) => {
+                      const isSelected = selectedNuclearReaction.id === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => handlePulseNuclearReaction(r)}
+                          className={`p-3 rounded-2xl border text-left transition ${
+                            isSelected
+                              ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg'
+                              : 'bg-[#061226] border-cyan-950 text-slate-300 hover:border-cyan-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-mono font-bold text-amber-400 uppercase">
+                              {r.radiationType.replace('_', ' ')}
+                            </span>
+                            <span className="text-[10px] font-mono text-emerald-400 font-bold">+{r.energyMev} MeV</span>
+                          </div>
+                          <strong className="block text-xs font-bold text-white mb-1">{r.title}</strong>
+                          <span className="text-[10px] font-mono text-cyan-300 block mb-1.5">{r.equation}</span>
+                          <p className="text-[10px] text-slate-400 line-clamp-2 leading-tight">
+                            {r.realWorldApplication}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: BIOSCIENCE & CHEMICAL INTELLIGENCE (POWERED BY SCIENCE SKILLS) */}
+            {dockTab === 'science' && (
+              <div className="space-y-3">
+                {/* Search Header Bar with PubChem / RCSB live query */}
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#020716] p-2 rounded-2xl border border-cyan-950">
+                  <div className="flex-1 min-w-[260px] flex items-center gap-1.5 bg-[#030916] px-3 py-1.5 rounded-xl border border-cyan-900/60">
+                    <Search className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={scienceSearchQuery}
+                      onChange={(e) => setScienceSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchScienceCompound()}
+                      placeholder="Query PubChem / RCSB PDB (e.g. Aspirin, Dopamine, Penicillin, FDG, Caffeine, ATP)..."
+                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+                    />
+                    <button
+                      onClick={() => handleSearchScienceCompound()}
+                      disabled={isScienceSearching}
+                      className="px-3 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono text-[11px] font-bold transition flex-shrink-0"
+                    >
+                      {isScienceSearching ? 'Querying...' : 'Search'}
+                    </button>
+                  </div>
+
+                  {/* Sub-tab pills */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setScienceSubTab('pubchem')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition ${
+                        scienceSubTab === 'pubchem'
+                          ? 'bg-cyan-500 text-slate-950'
+                          : 'bg-[#061226] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      PubChem Structure
+                    </button>
+                    <button
+                      onClick={() => setScienceSubTab('ideas')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition ${
+                        scienceSubTab === 'ideas'
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-[#061226] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      Synthesis Ideas
+                    </button>
+                    <button
+                      onClick={() => setScienceSubTab('pdb')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition ${
+                        scienceSubTab === 'pdb'
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-[#061226] text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      PDB Macromolecules
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Selection Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  <span className="text-[10px] font-mono text-slate-400 flex-shrink-0">Quick Analytes:</span>
+                  {Object.values(CURATED_SCIENCE_COMPOUNDS).map((item) => (
+                    <button
+                      key={item.cid}
+                      onClick={() => {
+                        setScienceCompound(item);
+                        setScienceSearchQuery(item.name.split(' ')[0]);
+                      }}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition whitespace-nowrap flex-shrink-0 border ${
+                        scienceCompound.cid === item.cid
+                          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                          : 'bg-[#040e24] border-cyan-950 text-slate-300 hover:border-cyan-800'
+                      }`}
+                    >
+                      {item.name.split(' ')[0]} ({item.molecularFormula})
+                    </button>
+                  ))}
+                </div>
+
+                {/* SUBTAB 1: PUBCHEM STRUCTURE & PROPERTIES */}
+                {scienceSubTab === 'pubchem' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Structure 2D depiction from PubChem PUG REST API */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col items-center justify-center text-center">
+                      <div className="w-40 h-40 rounded-xl bg-white/95 p-2 flex items-center justify-center overflow-hidden shadow-inner mb-2">
+                        <img
+                          src={scienceCompound.structureImageUrl}
+                          alt={scienceCompound.name}
+                          className="max-w-full max-h-full object-contain filter contrast-125"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Fallback if network blocked
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <strong className="text-xs font-bold text-white block">{scienceCompound.name}</strong>
+                      <span className="text-[10px] font-mono text-cyan-400 block">PubChem CID: {scienceCompound.cid}</span>
+                    </div>
+
+                    {/* Physicochemical Parameters */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2 text-xs">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block mb-1">
+                          Physicochemical Parameters
+                        </span>
+                        <div className="space-y-1 font-mono text-[11px] p-2.5 rounded-xl bg-[#030a18] border border-cyan-950">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Formula:</span>
+                            <span className="text-white font-bold">{scienceCompound.molecularFormula}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Molar Mass:</span>
+                            <span className="text-white font-bold">{scienceCompound.molecularWeight} g/mol</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">XLogP (Lipophilicity):</span>
+                            <span className="text-cyan-300">{scienceCompound.xLogP ?? 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">TPSA (Polar Surface Area):</span>
+                            <span className="text-cyan-300">{scienceCompound.tpsa ?? 'N/A'} Å²</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">H-Bond Donors / Acceptors:</span>
+                            <span className="text-white">{scienceCompound.hBondDonorCount ?? 0} / {scienceCompound.hBondAcceptorCount ?? 0}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-[#030a18] border border-cyan-950 font-mono text-[10px] truncate text-slate-300" title={scienceCompound.canonicalSmiles}>
+                        <span className="text-cyan-400 font-bold">SMILES: </span>
+                        {scienceCompound.canonicalSmiles}
+                      </div>
+                    </div>
+
+                    {/* Biological Action & Safety */}
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 flex flex-col justify-between gap-2 text-xs">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                          Mechanism of Action
+                        </span>
+                        <p className="text-slate-300 text-[11px] leading-relaxed mb-2">
+                          {scienceCompound.biologicalAction}
+                        </p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-[#030a18] border border-cyan-950 text-[10px]">
+                        <span className="text-amber-400 font-bold block mb-0.5">GHS Classification:</span>
+                        <p className="text-slate-400">{scienceCompound.ghsClassification}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUBTAB 2: SYNTHESIS & REACTION IDEAS GENERATOR */}
+                {scienceSubTab === 'ideas' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 space-y-2">
+                      <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider block">
+                        Target Synthesis Protocol for {scienceCompound.name}
+                      </span>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        {scienceCompound.synthesisIdea}
+                      </p>
+                      <div className="p-2.5 rounded-xl bg-[#030a18] border border-cyan-950 font-mono text-[10px] text-slate-400 space-y-1">
+                        <span className="text-cyan-400 font-bold block">Experiment Recommendation:</span>
+                        <p>1. Transfer stoichiometric equivalents to Sector 1 Wet Synthesis Flask.</p>
+                        <p>2. Set magnetic stirrer to 600 RPM to optimize mass transport kinetics.</p>
+                        <p>3. Apply gentle Bunsen heating up to activation barrier temperature.</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-[#061226] border border-cyan-950 space-y-2">
+                      <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block">
+                        Molecular Idea Generator
+                      </span>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Combine this compound with acid/base reagents or transition metal catalysts to observe colorimetric shifts, precipitate crystallization, and exothermic kinetics.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[10px]">
+                        <div className="p-2 rounded-xl bg-[#030a18] border border-cyan-950">
+                          <strong className="text-cyan-300 block mb-0.5">Aqueous Esterification</strong>
+                          <span className="text-slate-400">Alcohol + Carboxylic Acid ⟹ Sweet aroma esters</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-[#030a18] border border-cyan-950">
+                          <strong className="text-purple-300 block mb-0.5">Heavy Water Exchange</strong>
+                          <span className="text-slate-400">D₂O isotopic substitution in nuclear coolant</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUBTAB 3: RCSB PDB MACROMOLECULAR STRUCTURES */}
+                {scienceSubTab === 'pdb' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {NOTABLE_PDB_STRUCTURES.map((pdb) => {
+                      const isSelected = selectedPdb.pdbId === pdb.pdbId;
+                      return (
+                        <button
+                          key={pdb.pdbId}
+                          onClick={() => setSelectedPdb(pdb)}
+                          className={`p-3 rounded-2xl border text-left transition ${
+                            isSelected
+                              ? 'bg-purple-500/20 border-purple-400 text-white shadow-lg'
+                              : 'bg-[#061226] border-cyan-950 text-slate-300 hover:border-cyan-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-mono font-bold text-purple-400">PDB: {pdb.pdbId}</span>
+                            <span className="text-[9px] font-mono text-cyan-300">{pdb.resolution ? `${pdb.resolution} Å` : 'NMR'}</span>
+                          </div>
+                          <strong className="block text-xs font-bold text-white mb-1 line-clamp-1">{pdb.title}</strong>
+                          <span className="text-[10px] font-mono text-slate-400 block mb-1">{pdb.organism}</span>
+                          <p className="text-[10px] text-slate-400 line-clamp-2 leading-tight">
+                            {pdb.biologicalSignificance}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 6: SYNTHESIS PROTOCOLS */}
             {dockTab === 'protocols' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {PROTOCOLS.map((p) => {
@@ -2797,6 +3689,338 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
       )}
 
       {/* -------------------------------------------------------------------- */}
+      {/* ATOMIC & NUCLEAR REACTIONS INFORMATION & IDEAS COMPENDIUM MODAL */}
+      {/* -------------------------------------------------------------------- */}
+      {isNuclearInfoOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md pointer-events-auto anim-fade-in">
+          <div className="w-full max-w-3xl rounded-3xl bg-[#050f24] border border-fuchsia-500/50 p-6 sm:p-8 shadow-[0_0_80px_rgba(217,70,239,0.35)] relative max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-fuchsia-950/80 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-fuchsia-500/20 border border-fuchsia-400/50 flex items-center justify-center text-fuchsia-300">
+                  <Atom className="w-6 h-6 animate-spin" style={{ animationDuration: '8s' }} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-fuchsia-400 uppercase">
+                    CHEMORA SCIENTIFIC COMPENDIUM
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-white">
+                    Atomic &amp; Nuclear Reactions: Information &amp; Ideas
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsNuclearInfoOpen(false)}
+                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition hover:bg-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-1.5 py-3 border-b border-cyan-950 overflow-x-auto no-scrollbar flex-shrink-0">
+              <button
+                onClick={() => setNuclearInfoTab('fission')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  nuclearInfoTab === 'fission'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md'
+                    : 'bg-[#030916] text-slate-300 hover:text-white hover:bg-cyan-950/40'
+                }`}
+              >
+                <Atom className="w-3.5 h-3.5" />
+                <span>Nuclear Fission &amp; Criticality</span>
+              </button>
+
+              <button
+                onClick={() => setNuclearInfoTab('fusion')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  nuclearInfoTab === 'fusion'
+                    ? 'bg-fuchsia-500 text-white shadow-md'
+                    : 'bg-[#030916] text-slate-300 hover:text-white hover:bg-fuchsia-950/40'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Tokamak Fusion &amp; Plasma</span>
+              </button>
+
+              <button
+                onClick={() => setNuclearInfoTab('decay')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  nuclearInfoTab === 'decay'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'bg-[#030916] text-slate-300 hover:text-white hover:bg-amber-950/40'
+                }`}
+              >
+                <Radiation className="w-3.5 h-3.5" />
+                <span>Decay, Half-Life &amp; PET</span>
+              </button>
+
+              <button
+                onClick={() => setNuclearInfoTab('bioscience')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  nuclearInfoTab === 'bioscience'
+                    ? 'bg-purple-500 text-white shadow-md'
+                    : 'bg-[#030916] text-slate-300 hover:text-white hover:bg-purple-950/40'
+                }`}
+              >
+                <Dna className="w-3.5 h-3.5" />
+                <span>BioScience &amp; Synthesis Ideas</span>
+              </button>
+            </div>
+
+            {/* Modal Body Content */}
+            <div className="overflow-y-auto py-4 pr-1 space-y-4 text-xs text-slate-300 leading-relaxed">
+              {/* TAB 1: FISSION */}
+              {nuclearInfoTab === 'fission' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-[#020716] border border-cyan-900/60 space-y-2">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider uppercase block">
+                      Core Nuclear Fission Principle
+                    </span>
+                    <div className="p-3 rounded-xl bg-[#051126] border border-cyan-500/30 font-mono text-cyan-200 text-xs sm:text-sm">
+                      n + ²³⁵₉₂U → ²³⁶₉₂U* → ¹⁴¹₅₆Ba + ⁹²₃₆Kr + 3n + 202.5 MeV
+                    </div>
+                    <p>
+                      When a thermal neutron is absorbed by Uranium-235, the resulting compound nucleus oscillates violently like an unstable liquid drop. The electrostatic Coulomb repulsion between protons overcomes the strong nuclear force, splitting the nucleus into Ba-141 and Kr-92, releasing an average of 2.43 fast neutrons.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#020716] border border-cyan-950 space-y-1.5">
+                      <strong className="text-white text-xs block font-mono">Mass Defect &amp; E=mc²</strong>
+                      <p className="text-[11px] text-slate-400">
+                        Reactants mass (236.0526 u) exceeds product fragments mass (235.8352 u). The missing mass defect (Δm = 0.217368 u) is converted instantaneously into 202.5 MeV kinetic energy and Cherenkov gamma radiation.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#020716] border border-cyan-950 space-y-1.5">
+                      <strong className="text-white text-xs block font-mono">Reactor Criticality (k_eff)</strong>
+                      <p className="text-[11px] text-slate-400">
+                        • <strong>k_eff &lt; 1.0:</strong> Subcritical (reaction dies out).<br />
+                        • <strong>k_eff = 1.000:</strong> Critical (stable steady-state power).<br />
+                        • <strong>k_eff &gt; 1.0:</strong> Supercritical (exponential surge). Cadmium rods absorb thermal neutrons to maintain exact criticality.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#08152a] border border-cyan-500/25">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block mb-1">
+                      Ideas &amp; Research Directions
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-300">
+                      <li><strong>Thorium-232 Fuel Cycle:</strong> Fertile ²³²Th breeds fissile ²³³U, producing minimal transuranic waste with passive walk-away safety.</li>
+                      <li><strong>Delayed Neutron Control:</strong> The 0.65% fraction of delayed neutrons from fission precursors provides seconds of mechanical latency for control rod insertion.</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsNuclearInfoOpen(false);
+                      setNuclearMode('fission');
+                      setDockTab('nuclear');
+                      setIsDockCollapsed(false);
+                      handleFastTravel('nuclear');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono transition flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Atom className="w-4 h-4" />
+                    <span>Launch Fission Simulator in 3D Sector 6 →</span>
+                  </button>
+                </div>
+              )}
+
+              {/* TAB 2: FUSION */}
+              {nuclearInfoTab === 'fusion' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-[#020716] border border-fuchsia-900/60 space-y-2">
+                    <span className="text-[10px] font-mono font-bold text-fuchsia-400 tracking-wider uppercase block">
+                      Thermonuclear Tokamak Fusion
+                    </span>
+                    <div className="p-3 rounded-xl bg-[#140520] border border-fuchsia-500/30 font-mono text-fuchsia-200 text-xs sm:text-sm">
+                      ²₁H (Deuterium) + ³₁H (Tritium) → ⁴₂He (3.5 MeV) + n (14.1 MeV) + 17.6 MeV
+                    </div>
+                    <p>
+                      Light hydrogen isotopes fuse under extreme temperature and pressure by penetrating the positive electrostatic Coulomb repulsion barrier through quantum mechanical tunneling. D-T fusion offers the highest cross-section at achievable temperatures (~150 Million K).
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#020716] border border-fuchsia-950 space-y-1.5">
+                      <strong className="text-white text-xs block font-mono">Toroidal Magnetic Confinement</strong>
+                      <p className="text-[11px] text-slate-400">
+                        High-temperature plasma consists of free deuterons and electrons. High magnetic fields (8–16 Tesla) force charged particles onto helical paths around the doughnut-shaped torus, preventing wall collisions.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#020716] border border-fuchsia-950 space-y-1.5">
+                      <strong className="text-white text-xs block font-mono">Lawson Triple Product &amp; Q Gain</strong>
+                      <p className="text-[11px] text-slate-400">
+                        Ignition requires density × temperature × energy confinement time &gt; 3×10²¹ keV·s/m³. Energy gain Q = P_fusion / P_heating. Q &gt; 1 achieves scientific breakeven; Q &gt; 10 achieves self-sustaining alpha heating.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#140520] border border-fuchsia-500/25">
+                    <span className="text-[10px] font-mono font-bold text-fuchsia-400 uppercase tracking-wider block mb-1">
+                      Ideas &amp; Research Directions
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-300">
+                      <li><strong>Aneutronic Fusion (p-¹¹B):</strong> Proton-Boron-11 produces three alpha particles with zero fast neutrons, avoiding material activation.</li>
+                      <li><strong>High-Temperature Superconductors (REBCO):</strong> Rare-earth barium copper oxide tapes enable compact, high-field (20T) magnetic fusion reactors.</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsNuclearInfoOpen(false);
+                      setNuclearMode('fusion');
+                      setDockTab('nuclear');
+                      setIsDockCollapsed(false);
+                      handleFastTravel('nuclear');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-400 hover:to-purple-500 text-white font-bold text-xs font-mono transition flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>Ignite Tokamak Fusion Core in 3D Sector 6 →</span>
+                  </button>
+                </div>
+              )}
+
+              {/* TAB 3: DECAY */}
+              {nuclearInfoTab === 'decay' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-[#020716] border border-amber-900/60 space-y-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400 tracking-wider uppercase block">
+                      Radioactive Decay Modes &amp; Applications
+                    </span>
+                    <p>
+                      Unstable radionuclides decay toward nuclear stability via distinct particle emissions governed by the weak force and quantum barrier tunneling. Half-life equation: N(t) = N₀ · (1/2)^(t / t₁/₂).
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-[#040e24] border border-amber-500/30">
+                      <span className="text-amber-400 font-mono font-bold text-[11px] block">Alpha (α) Decay</span>
+                      <strong className="text-white text-xs block font-mono">²⁴¹₉₅Am → ²³⁷₉₃Np + ⁴₂He + 5.64 MeV</strong>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        High ionizing power, low penetration. Used in residential ionization smoke detectors; ionizes chamber air to detect combustion soot.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#040e24] border border-amber-500/30">
+                      <span className="text-cyan-400 font-mono font-bold text-[11px] block">Beta-Minus (β⁻) Decay</span>
+                      <strong className="text-white text-xs block font-mono">¹⁴₆C → ¹⁴₇N + e⁻ + ν̄_e + 0.156 MeV</strong>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Quark transformation d → u. Half-life of 5,730 years enables accurate carbon-14 radiometric dating of biological organic artifacts.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#040e24] border border-fuchsia-500/30">
+                      <span className="text-fuchsia-400 font-mono font-bold text-[11px] block">Positron (β⁺) Emission</span>
+                      <strong className="text-white text-xs block font-mono">¹⁸₉F → ¹⁸₈O + e⁺ + ν_e + 0.634 MeV</strong>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Emits positron that annihilates with tissue electron, creating two 511 keV collinear photons. Cornerstone of oncological PET imaging with [¹⁸F]-FDG.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#040e24] border border-emerald-500/30">
+                      <span className="text-emerald-400 font-mono font-bold text-[11px] block">Gamma (γ) Isomeric Transition</span>
+                      <strong className="text-white text-xs block font-mono">⁹⁹ᵐ₄₃Tc → ⁹⁹₄₃Tc + γ (140.5 keV)</strong>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Metastable nuclear excited state de-excites without particle emission. Ideal 6-hour half-life used in 80% of all hospital diagnostic scans.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsNuclearInfoOpen(false);
+                      setNuclearMode('decay');
+                      setDockTab('nuclear');
+                      setIsDockCollapsed(false);
+                      handleFastTravel('nuclear');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs font-mono transition flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Radiation className="w-4 h-4" />
+                    <span>Run Radioactive Decay Simulations in 3D Sector 6 →</span>
+                  </button>
+                </div>
+              )}
+
+              {/* TAB 4: BIOSCIENCE */}
+              {nuclearInfoTab === 'bioscience' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-[#020716] border border-purple-900/60 space-y-2">
+                    <span className="text-[10px] font-mono font-bold text-purple-400 tracking-wider uppercase block">
+                      BioScience Intel &amp; Live PubChem Query
+                    </span>
+                    <p>
+                      CHEMORA integrates directly with the official NIH PubChem PUG REST database and RCSB Protein Data Bank. Search or inspect any molecule to view authentic 2D skeletal structures, molecular formulas, SMILES notations, and biochemical mechanisms of action.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#040e24] border border-cyan-950 space-y-1">
+                      <strong className="text-cyan-300 text-xs block font-mono">Kinetic Isotope Effect in Pharmacology</strong>
+                      <p className="text-[11px] text-slate-400">
+                        Replacing hydrogen with deuterium (²H) forms a stronger C-D bond, slowing down cytochrome P450 CYP2D6 metabolic cleavage and extending drug half-life (e.g. Deutetrabenazine).
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#040e24] border border-cyan-950 space-y-1">
+                      <strong className="text-cyan-300 text-xs block font-mono">Targeted Alpha Radiopharmaceuticals</strong>
+                      <p className="text-[11px] text-slate-400">
+                        Actinium-225 (²²⁵Ac) and Radium-223 (²²³Ra) conjugated to PSMA monoclonal antibodies deliver high-LET alpha particles directly to cancer cells while sparing healthy tissue.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-[#030916] border border-purple-900/40">
+                    <span className="text-[10px] font-mono font-bold text-purple-400 uppercase tracking-wider block mb-1.5">
+                      Quick Compound Lookups Available in Dock
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Aspirin', 'Caffeine', 'Dopamine', 'Penicillin G', 'FDG PET Tracer', 'ATP Adenosine Triphosphate'].map((c) => (
+                        <span key={c} className="px-2.5 py-1 rounded-lg bg-[#08152a] border border-cyan-900/60 text-cyan-300 text-[10px] font-mono">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsNuclearInfoOpen(false);
+                      setDockTab('science');
+                      setIsDockCollapsed(false);
+                      handleFastTravel('mainframe');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs font-mono transition flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Dna className="w-4 h-4" />
+                    <span>Open BioScience Intel Station in Mainframe →</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-cyan-950 flex items-center justify-between text-xs font-mono text-slate-400 flex-shrink-0">
+              <span>CHEMORA Science Engine · Grounded in PubChem &amp; RCSB PDB</span>
+              <button
+                onClick={() => setIsNuclearInfoOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------------- */}
       {/* CONTROLS GUIDE MODAL */}
       {/* -------------------------------------------------------------------- */}
       {isHelpOpen && (
@@ -2826,7 +4050,7 @@ export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = f
                   <li>• <strong className="text-white">Mouse Click &amp; Drag:</strong> 360° first-person/third-person camera look</li>
                   <li>• <strong className="text-white">E:</strong> Interact with nearest workstation / Free roam toggle</li>
                   <li>• <strong className="text-white">K:</strong> Show / hide PC Keyboard tactical on-screen HUD</li>
-                  <li>• <strong className="text-white">1 - 5:</strong> Instant teleport to any of the 5 lab sectors</li>
+                  <li>• <strong className="text-white">1 - 6:</strong> Instant teleport to any of the 6 lab sectors (1: Synthesis, 2: Spectroscopy, 3: Cryo, 4: Mainframe, 5: Observation, 6: Nuclear Core)</li>
                   <li>• <strong className="text-white">P:</strong> Toggle Performance mode (Smooth 60FPS / Balanced / Cinematic)</li>
                   <li>• <strong className="text-white">H:</strong> Collapse / Expand bottom experiment dock</li>
                   <li>• <strong className="text-white">F:</strong> Toggle Flashlight / UV lamp</li>

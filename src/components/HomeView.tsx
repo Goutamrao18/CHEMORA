@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActiveTab } from './Navbar';
-import { Play, Sparkles, BookOpen, Trophy, Compass, Beaker, ChevronRight, Mail } from 'lucide-react';
+import { Play, Sparkles, BookOpen, Trophy, Compass, Beaker, ChevronRight } from 'lucide-react';
+import { ReviewsSection } from './ReviewsSection';
 
 interface HomeViewProps {
   onSelectTab: (tab: ActiveTab) => void;
@@ -272,72 +273,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
         </div>
       </section>
 
-      {/* Learner Feedback & Reviews */}
-      <section className="bg-gradient-to-br from-[#0c192e]/80 to-[#061122]/80 border border-cyan-500/20 rounded-[28px] p-6 sm:p-10">
-        <div className="mb-8">
-          <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-[0.18em] uppercase">
-            LEARNER FEEDBACK
-          </span>
-          <h2 className="text-2xl font-extrabold text-white mt-1 mb-1.5">Help CHEMORA get better</h2>
-          <p className="text-slate-400 text-xs sm:text-sm">
-            Your honest feedback helps shape a better chemistry learning experience for students worldwide.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <article className="bg-[#08152a] border border-cyan-500/20 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
-            <div>
-              <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold mb-3 text-sm">
-                ✦
-              </div>
-              <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">YOUR VOICE MATTERS</span>
-              <h3 className="text-base sm:text-lg font-bold text-white mt-1 mb-2">Share your CHEMORA experience</h3>
-              <p className="text-slate-300 text-xs leading-relaxed mb-6">
-                Tell us what you learned, which features helped most, and what you would like to see added next.
-              </p>
-            </div>
-            <div>
-              <a
-                href="mailto:support@chemora.work.gd?subject=CHEMORA%20Learner%20Review%20%26%20Feedback"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs tracking-wider uppercase transition shadow-md"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                Write a review ↗
-              </a>
-              <small className="block text-slate-500 text-[10px] mt-2">
-                Opens your email client with a structured feedback template.
-              </small>
-            </div>
-          </article>
-
-          <div className="bg-[#08152a] border border-cyan-950 rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-white mb-3">What to include</h3>
-            <div className="space-y-3 text-xs text-slate-300">
-              <div className="flex items-start gap-3">
-                <span className="text-cyan-400 font-mono font-bold">01</span>
-                <div>
-                  <strong className="text-white block">Your experience</strong>
-                  <p className="text-slate-400">Which practicals or challenge levels did you try?</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-cyan-400 font-mono font-bold">02</span>
-                <div>
-                  <strong className="text-white block">Honest critique</strong>
-                  <p className="text-slate-400">What worked well, and what could be clearer?</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-cyan-400 font-mono font-bold">03</span>
-                <div>
-                  <strong className="text-white block">Publishing choice</strong>
-                  <p className="text-slate-400">Confirm whether we may quote your feedback.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Database-Backed Learner Reviews & Feedback System */}
+      <ReviewsSection />
 
       {/* Demo Video Modal */}
       {showDemoModal && (

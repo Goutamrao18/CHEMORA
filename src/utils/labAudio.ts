@@ -392,6 +392,107 @@ class LabAudioEngine {
     } catch {}
   }
 
+  // Realistic Geiger-Müller radiation counter click
+  public playGeigerClick() {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(3200 + Math.random() * 800, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.008);
+
+      gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.012);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.015);
+    } catch {}
+  }
+
+  // Deep resonant nuclear fission pulse with Cherenkov radiation surge
+  public playNuclearPulse() {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+
+      // Sub-bass thump
+      const subOsc = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(140, this.ctx.currentTime);
+      subOsc.frequency.exponentialRampToValueAtTime(45, this.ctx.currentTime + 0.8);
+
+      subGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+      subGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.9);
+
+      subOsc.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      subOsc.start();
+      subOsc.stop(this.ctx.currentTime + 0.9);
+
+      // High-frequency particle ionizing sizzle
+      const bufferSize = this.ctx.sampleRate * 0.35;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.1));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(4500, this.ctx.currentTime);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+      noise.start();
+    } catch {}
+  }
+
+  // Tokamak magnetic toroidal plasma confinement hum
+  public playTokamakHum() {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(240, this.ctx.currentTime + 0.6);
+
+      gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.22, this.ctx.currentTime + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.2);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(480, this.ctx.currentTime);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 1.2);
+    } catch {}
+  }
+
   public dispose() {
     if (this.burnerSource) {
       try {
