@@ -49,6 +49,7 @@ import {
   CheckCheck,
   Cpu,
 } from 'lucide-react';
+import { ReviewsSection } from './ReviewsSection';
 
 interface AccountViewProps {
   onThemeChanged?: () => void;
@@ -1799,6 +1800,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           </div>
         </div>
       )}
+
+      {/* Database-Backed Learner Reviews & Feedback System */}
+      <ReviewsSection className="mt-12" />
     </div>
   );
 };

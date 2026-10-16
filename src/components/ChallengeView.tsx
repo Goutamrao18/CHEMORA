@@ -9,6 +9,7 @@ import {
 import { recordStreakActivity } from '../data/streakManager';
 import { Trophy, CheckCircle2, XCircle, ArrowLeft, Flame, Clock, Award, ChevronRight, RotateCcw, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ReviewsSection } from './ReviewsSection';
 
 interface ChallengeViewProps {
   onAskAI?: (topic: string) => void;
@@ -620,6 +621,9 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
           })}
         </div>
       </div>
+
+      {/* Database-Backed Learner Reviews & Feedback System */}
+      <ReviewsSection defaultCategory="100 Progressive Challenges" className="mt-14" />
     </div>
   );
 };

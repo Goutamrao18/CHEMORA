@@ -24,6 +24,8 @@ import {
   Zap
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { GlassCard, GlassPanel, GlassBadge, GlassButton } from './ui/Glass';
+import { ReviewsSection } from './ReviewsSection';
 
 interface ProgressViewProps {
   onGoToChallenge: () => void;
@@ -119,27 +121,30 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
       </div>
 
       {/* GAMIFIED DAILY STREAK CARD */}
-      <section className="relative rounded-[28px] overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#1b120c]/90 via-[#0e1628]/95 to-[#060c18] p-6 sm:p-8 shadow-[0_20px_60px_rgba(245,158,11,0.12)]">
+      <section className="relative rounded-[28px] overflow-hidden border border-amber-500/40 bg-gradient-to-br from-[#1b120c]/90 via-[#0e1628]/95 to-[#060c18] p-6 sm:p-8 shadow-[0_20px_60px_rgba(245,158,11,0.2)] glass-top-edge">
+        {/* Top Specular Edge Highlight */}
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/60 to-transparent pointer-events-none z-30" />
+
         {/* Ambient Warm Glow */}
         <div className="absolute top-0 right-1/4 w-80 h-80 bg-orange-500/10 rounded-full blur-[90px] pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Streak Flame & Number */}
           <div className="flex items-center gap-5">
-            <div className="relative flex items-center justify-center w-18 h-18 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-amber-500/20 via-orange-500/20 to-red-500/20 border-2 border-amber-500/40 shadow-[0_0_35px_rgba(245,158,11,0.35)] flex-shrink-0">
+            <div className="relative flex items-center justify-center w-18 h-18 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-amber-500/25 via-orange-500/20 to-red-500/20 border-2 border-amber-500/50 shadow-[0_0_35px_rgba(245,158,11,0.4)] flex-shrink-0">
               <span className="text-4xl sm:text-5xl animate-bounce filter drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]">
                 🔥
               </span>
-              <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] uppercase">
+              <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] uppercase shadow-md">
                 {streakState.currentStreak}D
               </div>
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-amber-400 tracking-wider uppercase">
+              <div className="flex items-center gap-2 mb-1">
+                <GlassBadge variant="amber" dot={true}>
                   DAILY PRACTICE STREAK
-                </span>
+                </GlassBadge>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   {streakState.streakLevel}
                 </span>
@@ -165,9 +170,9 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
             ) : (
               <button
                 onClick={handleClaimToday}
-                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:opacity-95 text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(245,158,11,0.35)] transition transform hover:-translate-y-0.5"
+                className="glass-btn-emerald px-6 py-3 text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(16,185,129,0.35)] transition transform hover:-translate-y-0.5"
               >
-                <Zap className="w-4 h-4 fill-slate-950" />
+                <Zap className="w-4 h-4 fill-emerald-950" />
                 <span>Log Today's Chemistry Session (+25 XP)</span>
               </button>
             )}
@@ -206,11 +211,11 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
 
           <div className="grid grid-cols-7 gap-2 sm:gap-3">
             {past7Days.map((day) => {
-              let bg = 'bg-[#091120] border-cyan-950/80 text-slate-500';
+              let bg = 'bg-[#091120]/80 border-cyan-950/80 text-slate-500';
               if (day.isCompleted) {
-                bg = 'bg-gradient-to-t from-amber-500/20 to-orange-500/30 border-amber-500/60 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]';
+                bg = 'bg-gradient-to-t from-amber-500/25 to-orange-500/30 border-amber-500/60 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
               } else if (day.isToday) {
-                bg = 'bg-[#13223d] border-amber-400/40 text-amber-300 animate-pulse';
+                bg = 'bg-[#13223d]/90 border-amber-400/50 text-amber-300 animate-pulse';
               }
 
               return (
@@ -275,10 +280,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
         </div>
       </section>
 
-      {/* Main KPI Stats */}
+      {/* Main KPI Stats with GlassCard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Levels */}
-        <div className="bg-[#0e1626] border border-cyan-950/80 rounded-2xl p-6">
+        <GlassCard variant="cyan" interactive={true} className="p-6">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-mono font-bold text-slate-400 uppercase">Challenge Levels</span>
             <Trophy className="w-5 h-5 text-cyan-400" />
@@ -286,14 +291,14 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           <div className="text-3xl font-black text-white mb-2">{doneCount} / 100</div>
           <div className="w-full bg-[#090d16] h-2 rounded-full overflow-hidden border border-cyan-950">
             <div
-              className="bg-cyan-400 h-full transition-all duration-300"
+              className="bg-cyan-400 h-full transition-all duration-300 shadow-[0_0_10px_#00f0ff]"
               style={{ width: `${Math.min(100, doneCount)}%` }}
             />
           </div>
-        </div>
+        </GlassCard>
 
         {/* XP */}
-        <div className="bg-[#0e1626] border border-cyan-950/80 rounded-2xl p-6">
+        <GlassCard variant="amber" interactive={true} className="p-6">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-mono font-bold text-slate-400 uppercase">Total XP Gained</span>
             <TrendingUp className="w-5 h-5 text-amber-400" />
@@ -302,10 +307,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
             {challengeState.xp.toLocaleString()}
           </div>
           <span className="text-xs text-slate-400 font-medium">Recorded from challenges</span>
-        </div>
+        </GlassCard>
 
         {/* Accuracy */}
-        <div className="bg-[#0e1626] border border-cyan-950/80 rounded-2xl p-6">
+        <GlassCard variant="purple" interactive={true} className="p-6">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-mono font-bold text-slate-400 uppercase">Overall Accuracy</span>
             <Target className="w-5 h-5 text-purple-400" />
@@ -314,10 +319,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           <span className="text-xs text-slate-400 font-medium">
             {challengeState.correct} of {challengeState.answers} answered correctly
           </span>
-        </div>
+        </GlassCard>
 
         {/* Experiments */}
-        <div className="bg-[#0e1626] border border-cyan-950/80 rounded-2xl p-6">
+        <GlassCard variant="emerald" interactive={true} className="p-6">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-mono font-bold text-slate-400 uppercase">Guided Practicals</span>
             <Award className="w-5 h-5 text-emerald-400" />
@@ -327,17 +332,17 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           </div>
           <div className="w-full bg-[#090d16] h-2 rounded-full overflow-hidden border border-cyan-950">
             <div
-              className="bg-emerald-400 h-full transition-all duration-300"
+              className="bg-emerald-400 h-full transition-all duration-300 shadow-[0_0_10px_#10b981]"
               style={{ width: `${(completedExperiments.length / EXPERIMENTS.length) * 100}%` }}
             />
           </div>
-        </div>
+        </GlassCard>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Topic Strengths */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-[#0e1626] border border-cyan-950/80 rounded-3xl p-6 sm:p-8">
+          <div className="glass-panel p-6 sm:p-8">
             <h2 className="text-xl font-bold text-white mb-2">Topic Strengths</h2>
             <p className="text-xs text-slate-400 mb-6">
               Performance breakdown across key chemistry disciplines based on your challenge scores.
@@ -354,7 +359,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
                   </div>
                   <div className="w-full bg-[#090d16] h-2.5 rounded-full overflow-hidden border border-cyan-950">
                     <div
-                      className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-500"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-500 shadow-[0_0_8px_#00f0ff]"
                       style={{ width: `${t.accuracy > 0 ? t.accuracy : 5}%` }}
                     />
                   </div>
@@ -367,21 +372,21 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           </div>
 
           {/* Level History Table */}
-          <div className="bg-[#0e1626] border border-cyan-950/80 rounded-3xl p-6 sm:p-8">
+          <div className="glass-panel p-6 sm:p-8">
             <h2 className="text-xl font-bold text-white mb-2">Recent Level History</h2>
             <p className="text-xs text-slate-400 mb-6">
               Your most recently recorded challenge results and score improvements.
             </p>
 
             {historyList.length === 0 ? (
-              <div className="text-center py-10 bg-[#0a0f19] rounded-2xl border border-cyan-950">
+              <div className="text-center py-10 bg-[#0a0f19]/80 rounded-2xl border border-cyan-950">
                 <Clock className="w-8 h-8 text-slate-500 mx-auto mb-2 opacity-50" />
                 <p className="text-xs text-slate-400">
                   No recorded level results yet. Complete a challenge level to see your history.
                 </p>
                 <button
                   onClick={onGoToChallenge}
-                  className="mt-4 px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs"
+                  className="mt-4 px-5 py-2 rounded-xl glass-btn-cyan text-slate-950 font-bold text-xs"
                 >
                   Start Level 1 →
                 </button>
@@ -424,13 +429,13 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
 
         {/* Right Column: Recommendations & Milestones */}
         <div className="space-y-6">
-          <div className="bg-[#0e1626] border border-cyan-950/80 rounded-3xl p-6">
+          <div className="glass-panel p-6">
             <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
               <Compass className="w-4 h-4 text-cyan-400" />
               Recommendations
             </h3>
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-[#0a0f19] border border-cyan-950">
+              <div className="p-4 rounded-2xl glass-card border border-cyan-950 hover:border-cyan-500/40 transition">
                 <strong className="text-white text-xs block mb-1">
                   Continue your Challenge Journey
                 </strong>
@@ -445,7 +450,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
                 </button>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#0a0f19] border border-cyan-950">
+              <div className="p-4 rounded-2xl glass-card border border-cyan-950 hover:border-emerald-500/40 transition">
                 <strong className="text-white text-xs block mb-1">
                   Explore Guided Practicals
                 </strong>
@@ -460,7 +465,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
                 </button>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#0a0f19] border border-cyan-950">
+              <div className="p-4 rounded-2xl glass-card border border-cyan-950">
                 <strong className="text-white text-xs block mb-1">
                   Daily Consistency Over Cramming
                 </strong>
@@ -472,6 +477,9 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           </div>
         </div>
       </div>
+
+      {/* Database-Backed Learner Reviews & Feedback System */}
+      <ReviewsSection className="mt-14" />
     </div>
   );
 };

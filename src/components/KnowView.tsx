@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { KNOWLEDGE_ITEMS, KnowledgeItem } from '../data/knowledgeData';
 import { Glossary } from './Glossary';
+import { FloatingGlossary } from './FloatingGlossary';
 import { Search, Info, X, Sparkles, Filter, CheckCircle2, BookOpen, Layers } from 'lucide-react';
+import { ReviewsSection } from './ReviewsSection';
 
 interface KnowViewProps {
   initialSearch?: string;
@@ -317,6 +319,12 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
           </div>
         </div>
       )}
+
+      {/* Database-Backed Learner Reviews & Feedback System */}
+      <ReviewsSection defaultCategory="Knowledge Library & Glossary" className="mt-12" />
+
+      {/* Floating Glossary Quick-Lookup with Instant Pop-up Definitions */}
+      <FloatingGlossary onAskAI={onAskAI} />
     </div>
   );
 };

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ActiveTab } from './Navbar';
-import { Play, Sparkles, BookOpen, Trophy, Compass, Beaker, ChevronRight } from 'lucide-react';
+import { Play, Sparkles, BookOpen, Trophy, Compass, Beaker, ChevronRight, ArrowRight } from 'lucide-react';
 import { ReviewsSection } from './ReviewsSection';
+import { GlassCard, GlassPanel, GlassBadge, GlassButton } from './ui/Glass';
 
 interface HomeViewProps {
   onSelectTab: (tab: ActiveTab) => void;
@@ -37,7 +38,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
   return (
     <div className="text-slate-100 pb-16 space-y-12">
       {/* Authentic CHEMORA Hero Card - Rounded 34px with High-Visibility Beaker Video */}
-      <section className="relative rounded-[34px] overflow-hidden border border-cyan-500/25 bg-gradient-to-r from-[#05142b] via-[#051228] to-[#020814] shadow-[0_30px_90px_rgba(0,0,0,0.35)] min-h-[520px] lg:min-h-[560px] flex items-center p-8 sm:p-12 lg:p-16">
+      <section className="relative rounded-[34px] overflow-hidden border border-cyan-500/35 bg-gradient-to-r from-[#05142b]/95 via-[#051228]/90 to-[#020814]/95 shadow-[0_30px_90px_rgba(0,0,0,0.45)] min-h-[520px] lg:min-h-[560px] flex items-center p-8 sm:p-12 lg:p-16 glass-top-edge">
+        {/* Top Specular Edge Highlight */}
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent pointer-events-none z-30" />
+
         {/* Background Beaker Video with High Visibility */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <video
@@ -53,14 +57,15 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
         </div>
 
         {/* Luminous Glass Overlays - Soft Scrim Preserving Video Detail */}
-        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#05142b]/90 via-[#051228]/60 to-[#020814]/20" />
-        <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,rgba(34,146,255,0.12),transparent_60%)]" />
+        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#05142b]/90 via-[#051228]/60 to-[#020814]/20 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,rgba(34,146,255,0.15),transparent_60%)]" />
 
         {/* Hero Content on Left Side */}
         <div className="relative z-20 max-w-xl text-left">
-          <div className="inline-flex items-center gap-2 text-xs font-mono font-bold tracking-[0.18em] text-cyan-300 uppercase mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            LEARN · EXPERIMENT · CREATE
+          <div className="inline-flex items-center gap-2 mb-3">
+            <GlassBadge variant="cyan" dot={true}>
+              LEARN · EXPERIMENT · CREATE
+            </GlassBadge>
           </div>
 
           {/* Heading - FIXED: "CHEMORA" will NEVER break into CHEMOR \n A */}
@@ -72,7 +77,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
                 whiteSpace: 'nowrap',
                 wordBreak: 'keep-all',
               }}
-              className="text-transparent bg-clip-text bg-gradient-to-r from-[#b77bff] to-[#58d6ff] drop-shadow-[0_0_35px_rgba(63,202,255,0.25)]"
+              className="text-transparent bg-clip-text bg-gradient-to-r from-[#b77bff] to-[#58d6ff] drop-shadow-[0_0_35px_rgba(63,202,255,0.35)]"
             >
               CHEMORA
             </span>
@@ -86,17 +91,18 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             Your complete chemistry learning platform with interactive tools, 20 guided practical experiments, 100 progressive challenges, and AI assistance — all in one luminous workspace.
           </p>
 
-          {/* Actions */}
+          {/* Actions with Gloss Buttons */}
           <div className="flex flex-wrap items-center gap-4">
             <button
               onClick={() => onSelectTab('know')}
-              className="px-6 py-3.5 rounded-full bg-gradient-to-r from-[#5bceff] via-[#627dff] to-[#b06bff] hover:opacity-95 text-slate-950 font-bold text-sm tracking-wide shadow-[0_12px_35px_rgba(64,171,255,0.3)] transition transform hover:-translate-y-0.5 active:translate-y-0"
+              className="glass-btn glass-btn-cyan px-7 py-3.5 rounded-full text-sm font-black text-slate-950 shadow-[0_12px_35px_rgba(6,182,212,0.45)] hover:shadow-[0_16px_40px_rgba(6,182,212,0.65)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 group"
             >
-              Start Exploring →
+              <span>Start Exploring</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
             <button
               onClick={() => setShowDemoModal(true)}
-              className="px-6 py-3.5 rounded-full bg-[#08162b]/80 hover:bg-[#0d2242] border border-cyan-400/30 text-cyan-200 font-bold text-sm tracking-wide shadow-md transition flex items-center gap-2 backdrop-blur-md"
+              className="glass-btn px-6 py-3.5 text-sm font-bold flex items-center gap-2"
             >
               <Play className="w-4 h-4 fill-cyan-400 text-cyan-400" />
               Watch Demo
@@ -120,108 +126,118 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Know */}
-          <div
+          {/* Know Card */}
+          <GlassCard
+            variant="cyan"
+            interactive={true}
             onClick={() => onSelectTab('know')}
-            className="group cursor-pointer bg-gradient-to-br from-[#0d1c33]/85 to-[#071324]/85 border border-cyan-500/20 hover:border-cyan-400/60 rounded-[24px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(28,164,255,0.18)] flex flex-col justify-between"
+            className="p-6 flex flex-col justify-between group"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center p-2.5 text-cyan-400 mb-4 group-hover:scale-110 transition">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center p-2.5 text-cyan-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition">
                 <BookOpen className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">KNOW</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-cyan-300 transition">
+              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-cyan-200 transition">
                 Know Library
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
                 Explore 134 chemicals, laboratory tools, apparatus, plus a searchable Chemistry Glossary &amp; Dictionary.
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition">
               Open library <ChevronRight className="w-4 h-4" />
             </span>
-          </div>
+          </GlassCard>
 
-          {/* Challenge */}
-          <div
+          {/* Challenge Card */}
+          <GlassCard
+            variant="purple"
+            interactive={true}
             onClick={() => onSelectTab('challenge')}
-            className="group cursor-pointer bg-gradient-to-br from-[#0d1c33]/85 to-[#071324]/85 border border-cyan-500/20 hover:border-purple-400/60 rounded-[24px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(190,74,255,0.18)] flex flex-col justify-between"
+            className="p-6 flex flex-col justify-between group"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center p-2.5 text-purple-400 mb-4 group-hover:scale-110 transition">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center p-2.5 text-purple-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition">
                 <Trophy className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-mono font-bold text-purple-400 tracking-wider">CHALLENGE</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-purple-300 transition">
+              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-purple-200 transition">
                 Chemistry Challenge
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
                 Test and elevate your knowledge across 100 progressive levels with 1,000 curriculum-aligned questions and instant explanations.
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 group-hover:translate-x-1 transition">
               Start challenge <ChevronRight className="w-4 h-4" />
             </span>
-          </div>
+          </GlassCard>
 
-          {/* Experiments */}
-          <div
+          {/* Experiments Card */}
+          <GlassCard
+            variant="emerald"
+            interactive={true}
             onClick={() => onSelectTab('experiments')}
-            className="group cursor-pointer bg-gradient-to-br from-[#0d1c33]/85 to-[#071324]/85 border border-cyan-500/20 hover:border-emerald-400/60 rounded-[24px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(51,255,206,0.18)] flex flex-col justify-between"
+            className="p-6 flex flex-col justify-between group"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center p-2.5 text-emerald-400 mb-4 group-hover:scale-110 transition">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center p-2.5 text-emerald-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition">
                 <Beaker className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-mono font-bold text-emerald-400 tracking-wider">EXPERIMENTS</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-emerald-300 transition">
+              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-emerald-200 transition">
                 Guided Practicals
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
                 Follow 20 step-by-step practical laboratory protocols complete with video demonstrations, balanced equations, and observations.
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition">
               Open experiments <ChevronRight className="w-4 h-4" />
             </span>
-          </div>
+          </GlassCard>
 
-          {/* Progress */}
-          <div
+          {/* Progress Card */}
+          <GlassCard
+            variant="amber"
+            interactive={true}
             onClick={() => onSelectTab('progress')}
-            className="group cursor-pointer bg-gradient-to-br from-[#0d1c33]/85 to-[#071324]/85 border border-cyan-500/20 hover:border-amber-400/60 rounded-[24px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(255,182,62,0.18)] flex flex-col justify-between"
+            className="p-6 flex flex-col justify-between group"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center p-2.5 text-amber-400 mb-4 group-hover:scale-110 transition">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center p-2.5 text-amber-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition">
                 <Compass className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-mono font-bold text-amber-400 tracking-wider">PROGRESS</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-amber-300 transition">
+              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-amber-200 transition">
                 Learning Dashboard
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
                 Track completed levels, best accuracy scores, XP streaks, and topic strengths across organic, physical, and inorganic chemistry.
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 group-hover:translate-x-1 transition">
               View your progress <ChevronRight className="w-4 h-4" />
             </span>
-          </div>
+          </GlassCard>
 
-          {/* 3D Lab */}
-          <div
+          {/* Dedicated 3D Lab Launcher Card */}
+          <GlassCard
+            variant="cyan"
+            interactive={true}
             onClick={() => { window.location.href = '/play'; }}
-            className="md:col-span-2 group cursor-pointer bg-gradient-to-br from-[#0b1a33]/95 via-[#08152c]/90 to-[#030916]/95 border border-cyan-500/40 hover:border-cyan-400 rounded-[24px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(35,129,255,0.22)] flex flex-col justify-between"
+            className="md:col-span-2 p-6 flex flex-col justify-between group border-cyan-400/50 shadow-[0_20px_60px_rgba(35,129,255,0.25)]"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center p-2.5 text-cyan-300 mb-4 group-hover:scale-110 transition shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center p-2.5 text-cyan-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(0,240,255,0.5)] transition shadow-inner">
                 <span className="text-xl font-black">⚗</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="text-[10px] font-mono font-bold text-cyan-300 tracking-wider">PLAY</span>
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <GlassBadge variant="cyan">
                   DEDICATED 60FPS SIMULATION
-                </span>
+                </GlassBadge>
               </div>
               <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-cyan-200 transition">
                 Virtual Chemistry Laboratory
@@ -233,12 +249,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300 group-hover:translate-x-1 transition">
               Launch dedicated 3D lab →
             </span>
-          </div>
+          </GlassCard>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="bg-gradient-to-br from-[#0c192e]/80 to-[#061122]/80 border border-cyan-500/20 rounded-[28px] p-6 sm:p-10">
+      {/* FAQ Section with GlassPanel */}
+      <GlassPanel glow="cyan" className="p-6 sm:p-10">
         <div className="mb-6">
           <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-[0.18em] uppercase">
             HELP &amp; TRUST
@@ -250,7 +266,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           {faqs.map((faq, idx) => (
             <div
               key={idx}
-              className="bg-[#071324]/80 border border-cyan-900/40 rounded-xl overflow-hidden transition"
+              className="glass-card bg-[#071324]/80 border border-cyan-900/40 rounded-xl overflow-hidden transition hover:border-cyan-500/40"
             >
               <button
                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
@@ -271,7 +287,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             </div>
           ))}
         </div>
-      </section>
+      </GlassPanel>
 
       {/* Database-Backed Learner Reviews & Feedback System */}
       <ReviewsSection />

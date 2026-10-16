@@ -41,12 +41,20 @@ const ROLES = [
   'Science Enthusiast',
 ];
 
-export const ReviewsSection: React.FC = () => {
+export interface ReviewsSectionProps {
+  defaultCategory?: string;
+  className?: string;
+}
+
+export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
+  defaultCategory,
+  className = '',
+}) => {
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [summary, setSummary] = useState<ReviewSummaryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(defaultCategory || 'All');
   const [selectedRatingFilter, setSelectedRatingFilter] = useState<number | 'all'>('all');
   const [sortOption, setSortOption] = useState<'helpful' | 'recent'>('helpful');
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -57,7 +65,9 @@ export const ReviewsSection: React.FC = () => {
   const [formRole, setFormRole] = useState(ROLES[0]);
   const [formRating, setFormRating] = useState(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [formCategory, setFormCategory] = useState(CATEGORIES[1]);
+  const [formCategory, setFormCategory] = useState(
+    defaultCategory && defaultCategory !== 'All' ? defaultCategory : CATEGORIES[1]
+  );
   const [formTitle, setFormTitle] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formRecommend, setFormRecommend] = useState(true);
@@ -164,7 +174,7 @@ export const ReviewsSection: React.FC = () => {
   };
 
   return (
-    <section className="bg-gradient-to-br from-[#0c192e]/90 via-[#071428]/90 to-[#040c1a]/95 border border-cyan-500/25 rounded-[32px] p-6 sm:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.35)] relative overflow-hidden">
+    <section className={`bg-gradient-to-br from-[#0c192e]/90 via-[#071428]/90 to-[#040c1a]/95 border border-cyan-500/25 rounded-[32px] p-6 sm:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.35)] relative overflow-hidden ${className}`}>
       {/* Subtle background ambient glow */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />

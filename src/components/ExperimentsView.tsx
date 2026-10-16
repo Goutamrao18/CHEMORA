@@ -3,6 +3,7 @@ import { EXPERIMENTS, Experiment } from '../data/experimentsData';
 import { recordStreakActivity } from '../data/streakManager';
 import { Play, CheckCircle2, AlertTriangle, X, Shield, Sparkles, Filter, Beaker } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ReviewsSection } from './ReviewsSection';
 
 interface ExperimentsViewProps {
   onAskAI?: (topic: string) => void;
@@ -367,6 +368,9 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
           </div>
         </div>
       )}
+
+      {/* Database-Backed Learner Reviews & Feedback System */}
+      <ReviewsSection defaultCategory="Practical Experiments & Videos" className="mt-14" />
     </div>
   );
 };

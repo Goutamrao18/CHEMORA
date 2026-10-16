@@ -45,8 +45,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         onSubmit={handleSearch}
         className="flex-1 max-w-[540px] mx-auto pointer-events-auto"
       >
-        <div className="relative flex items-center h-[42px] px-4 rounded-full bg-[#07162e]/80 border border-cyan-500/25 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.22)] focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(65,201,255,0.25)] transition">
-          <Search className="w-4 h-4 text-cyan-400 mr-2 flex-shrink-0" />
+        <div className="relative flex items-center h-[42px] px-4 rounded-full bg-[#07162e]/85 border border-cyan-500/30 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] focus-within:border-cyan-400 focus-within:shadow-[0_0_25px_rgba(0,240,255,0.3)] transition overflow-hidden group">
+          {/* Top specular highlight */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+          <Search className="w-4 h-4 text-cyan-400 mr-2 flex-shrink-0 group-focus-within:scale-110 transition-transform" />
           <input
             type="search"
             value={searchValue}
@@ -64,7 +66,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={onGoToProgress}
           aria-label="View daily streak and progress"
           title={`Daily Streak: ${streakState.currentStreak} days (${streakState.streakLevel})`}
-          className="h-10 px-3 rounded-full flex items-center gap-1.5 bg-[#0e1628]/90 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-amber-200 transition-all duration-200 shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:scale-105 active:scale-95 group"
+          className="h-10 px-3.5 rounded-full flex items-center gap-1.5 bg-[#0e1628]/90 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-amber-200 transition-all duration-200 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:scale-105 active:scale-95 group backdrop-blur-md"
         >
           <span className="text-base group-hover:scale-125 transition-transform duration-200">🔥</span>
           <span className="text-xs font-black tracking-tight font-mono">
@@ -76,7 +78,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           onClick={onToggleTheme}
           aria-label="Toggle theme"
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#07162e]/80 border border-cyan-500/25 text-cyan-200 hover:border-cyan-400 hover:text-white transition-all duration-200 shadow-md hover:scale-105 active:scale-95"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#07162e]/85 border border-cyan-500/30 text-cyan-200 hover:border-cyan-400 hover:text-white transition-all duration-200 shadow-md hover:scale-105 active:scale-95 backdrop-blur-md"
         >
           {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-300" />}
         </button>
@@ -85,9 +87,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           onClick={onOpenAssistant}
           aria-label="Open AI Assistant"
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#07162e]/80 border border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(57,215,255,0.4)] hover:text-white transition-all duration-200 shadow-md hover:scale-105 active:scale-95"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-500/20 via-[#07162e]/90 to-purple-500/20 border border-cyan-400/40 text-cyan-300 hover:border-cyan-300 hover:shadow-[0_0_20px_rgba(57,215,255,0.45)] hover:text-white transition-all duration-200 shadow-md hover:scale-105 active:scale-95 backdrop-blur-md"
         >
-          <Sparkles className="w-4 h-4 text-cyan-400" />
+          <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
         </button>
       </div>
     </div>
