@@ -22,6 +22,7 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [hasChecked, setHasChecked] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [levelError, setLevelError] = useState<string | null>(null);
   
   // Quiz run stats
   const [streak, setStreak] = useState(0);
@@ -87,12 +88,13 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
   }, [activeLevel, currentIdx, questions, hasChecked, isLevelFinished]);
 
   const startLevel = async (level: number) => {
+    setLevelError(null);
     setLoadingQuestions(true);
     const qs = await fetchLevelQuestions(level);
     setLoadingQuestions(false);
 
     if (!qs.length) {
-      alert(`Could not load questions for level ${level}. Please try another level.`);
+      setLevelError(`Could not load questions for level ${level}. Please try another level or check your connection.`);
       return;
     }
 
@@ -507,6 +509,23 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
           100 progressive levels · 1,000 curriculum-aligned questions · 10 questions per level
         </p>
       </div>
+
+      {/* Error notification banner */}
+      {levelError && (
+        <div className="mb-8 p-4 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs font-semibold flex items-center justify-between gap-3 shadow-lg anim-slide-down">
+          <div className="flex items-center gap-2.5">
+            <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{levelError}</span>
+          </div>
+          <button
+            onClick={() => setLevelError(null)}
+            className="p-1 hover:text-white transition text-rose-400 font-mono text-sm"
+            aria-label="Dismiss message"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Stats Summary Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">

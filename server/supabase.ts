@@ -79,11 +79,15 @@ export function getSupabaseBackendClient(): SupabaseClient | null {
 }
 
 export function getUserScopedSupabaseClient(token: string): SupabaseClient | null {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  return createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
+  if (!isSupabaseBackendConfigured()) return null;
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+  } catch {
+    return null;
+  }
 }
 
 // Fallback in-memory store for development/preview when Supabase env vars are not set

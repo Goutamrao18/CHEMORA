@@ -1,19 +1,101 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL: string = (
-  import.meta.env.VITE_SUPABASE_URL ||
-  'https://mcwadkgzplurjtstrhdd.supabase.co'
-).trim().replace(/\/$/, '');
+const FALLBACK_URL = 'https://mcwadkgzplurjtstrhdd.supabase.co';
+const FALLBACK_KEY = 'sb_publishable__35lrwlwhFj4SkhofWXJVw__Jca6f5P';
 
-export const SUPABASE_ANON_KEY: string = (
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  'sb_publishable__35lrwlwhFj4SkhofWXJVw__Jca6f5P'
-).trim();
+function resolveValidUrl(candidate?: unknown): string {
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (trimmed && trimmed !== 'undefined' && trimmed !== 'null') {
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          return trimmed.replace(/\/$/, '');
+        }
+      } catch {
+        // invalid URL format, ignore and use fallback
+      }
+    }
+  }
+  return FALLBACK_URL;
+}
 
-export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+function resolveValidKey(candidate?: unknown): string {
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (trimmed && trimmed.length > 20 && trimmed !== 'undefined' && trimmed !== 'null') {
+      return trimmed;
+    }
+  }
+  return FALLBACK_KEY;
+}
+
+export const SUPABASE_URL: string = resolveValidUrl(import.meta.env?.VITE_SUPABASE_URL);
+export const SUPABASE_ANON_KEY: string = resolveValidKey(import.meta.env?.VITE_SUPABASE_ANON_KEY);
+
+function createMockSupabaseClient(): SupabaseClient {
+  const dummyAuth = {
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: async () => ({
+      data: { user: null, session: null },
+      error: new Error('Supabase client unavailable'),
+    }),
+    signInWithOAuth: async () => ({
+      data: { provider: 'google', url: '' },
+      error: new Error('Supabase client unavailable'),
+    }),
+    signUp: async () => ({
+      data: { user: null, session: null },
+      error: new Error('Supabase client unavailable'),
+    }),
+    resetPasswordForEmail: async () => ({ data: {}, error: null }),
+    signOut: async () => ({ error: null }),
+    updateUser: async () => ({ data: { user: null }, error: null }),
+  };
+
+  const createDummyQuery = () => {
+    const q: any = {
+      select: () => q,
+      eq: () => q,
+      ilike: () => q,
+      limit: () => q,
+      maybeSingle: async () => ({ data: null, error: null }),
+      single: async () => ({ data: null, error: null }),
+      insert: () => q,
+      update: () => q,
+      upsert: () => q,
+      delete: () => q,
+    };
+    return q;
+  };
+
+  const dummyStorage = {
+    from: () => ({
+      getPublicUrl: () => ({ data: { publicUrl: '/favicon.png' } }),
+    }),
+  };
+
+  return {
+    auth: dummyAuth,
+    from: () => createDummyQuery(),
+    storage: dummyStorage,
+  } as unknown as SupabaseClient;
+}
+
+function initSupabase(): SupabaseClient {
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
+  } catch (err) {
+    console.warn('Could not initialize Supabase client, using resilient fallback:', err);
+    return createMockSupabaseClient();
+  }
+}
+
+export const supabase: SupabaseClient = initSupabase();

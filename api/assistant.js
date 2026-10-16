@@ -67,37 +67,35 @@ export default async function handler(req, res) {
   // 1. Try Gemini if GEMINI_API_KEY is available
   if (geminiKey) {
     try {
-      const geminiResp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: userMessage }] }],
-            systemInstruction: { parts: [{ text: system }] },
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 700
-            }
-          }),
-          signal: AbortSignal.timeout(TIMEOUT_MS)
-        }
-      );
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({
+        apiKey: geminiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
 
-      const geminiData = await geminiResp.json().catch(() => ({}));
-      if (geminiResp.ok) {
-        const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (typeof text === "string" && text.trim()) {
-          return res.status(200).json({ answer: text.trim().slice(0, 12000), model: "gemini-3.8-flash" });
-        }
-      } else {
-        console.warn("Gemini API error status:", geminiResp.status, geminiData);
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: userMessage,
+        config: {
+          systemInstruction: system,
+          temperature: 0.2,
+          maxOutputTokens: 700,
+        },
+      });
+
+      const text = response.text;
+      if (typeof text === 'string' && text.trim()) {
+        return res.status(200).json({ answer: text.trim().slice(0, 12000), model: 'gemini-3.8-flash' });
       }
     } catch (gErr) {
-      console.warn("Gemini API attempt error:", gErr?.name || gErr);
+      console.warn('Gemini API attempt error:', gErr?.name || gErr);
       if (!openRouterKey) {
-        return res.status(gErr?.name === "TimeoutError" ? 504 : 502).json({
-          error: gErr?.name === "TimeoutError" ? "The AI service took too long. Please try again." : "The AI service is temporarily unavailable."
+        return res.status(gErr?.name === 'TimeoutError' ? 504 : 502).json({
+          error: gErr?.name === 'TimeoutError' ? 'The AI service took too long. Please try again.' : 'The AI service is temporarily unavailable.'
         });
       }
     }
