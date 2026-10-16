@@ -25,6 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const handleNavClick = (tab: ActiveTab) => {
+    if (tab === 'lab') {
+      window.location.href = '/play';
+      return;
+    }
     onSelectTab(tab);
     setMobileOpen(false);
   };

@@ -46,13 +46,33 @@ async function startServer() {
 
   // Frontend routing
   if (!isProd) {
+    const fs = await import('node:fs/promises');
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa',
     });
+
+    // Explicit route for dedicated standalone 3D lab simulation with Vite HMR/Preamble transformation
+    app.get(['/play', '/play/', '/play.html'], async (_req: Request, res: Response, next) => {
+      try {
+        const filePath = path.resolve(__dirname, 'play.html');
+        const raw = await fs.readFile(filePath, 'utf-8');
+        const transformed = await vite.transformIndexHtml('/play.html', raw);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(transformed);
+      } catch (e) {
+        next(e);
+      }
+    });
+
     app.use(vite.middlewares);
   } else {
+    // Explicit route for dedicated standalone 3D lab simulation in production
+    app.get(['/play', '/play/', '/play.html'], (_req: Request, res: Response) => {
+      const filePath = path.resolve(__dirname, 'dist', 'play.html');
+      res.sendFile(filePath);
+    });
+
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
     app.use((_req: Request, res: Response) => {

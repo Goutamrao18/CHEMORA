@@ -209,7 +209,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
 
           {/* 3D Lab */}
           <div
-            onClick={() => onSelectTab('lab')}
+            onClick={() => { window.location.href = '/play'; }}
             className="md:col-span-2 group cursor-pointer bg-gradient-to-br from-[#0b1a33]/95 via-[#08152c]/90 to-[#030916]/95 border border-cyan-500/40 hover:border-cyan-400 rounded-[24px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(35,129,255,0.22)] flex flex-col justify-between"
           >
             <div>
@@ -219,18 +219,18 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold text-cyan-300 tracking-wider">PLAY</span>
                 <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  INTERACTIVE SIMULATION
+                  DEDICATED 60FPS SIMULATION
                 </span>
               </div>
               <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-cyan-200 transition">
                 Virtual Chemistry Laboratory
               </h3>
               <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6 max-w-xl">
-                Enter an interactive virtual laboratory room. Dispense reagents, measure accurate volumes, heat samples on the Bunsen burner, observe chemical reactions, and analyze spectral signatures in real-time.
+                Enter an interactive virtual laboratory room in a dedicated separate screen for max performance. Dispense reagents, measure accurate volumes, heat samples on the Bunsen burner, observe chemical reactions, and analyze spectral signatures in real-time.
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300 group-hover:translate-x-1 transition">
-              Enter the lab <ChevronRight className="w-4 h-4" />
+              Launch dedicated 3D lab →
             </span>
           </div>
         </div>

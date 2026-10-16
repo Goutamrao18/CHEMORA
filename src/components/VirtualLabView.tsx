@@ -21,7 +21,6 @@ import {
   ChevronUp,
   Volume2,
   VolumeX,
-  Eye,
   Maximize2,
   Minimize2,
   BookOpen,
@@ -29,16 +28,18 @@ import {
   Activity,
   CheckCircle2,
   Camera,
-  Layers,
-  Scale,
   Compass,
   Footprints,
   Lightbulb,
-  Radio,
   ArrowUp,
-  Move,
   Info,
-  X
+  X,
+  Gauge,
+  FlameKindling,
+  Gamepad2,
+  LogOut,
+  Keyboard,
+  Move,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -49,14 +50,19 @@ interface AddedReagentEntry {
 }
 
 export type LabStationType = 'synthesis' | 'spectroscopy' | 'cryovault' | 'mainframe' | 'decon';
+export type GraphicsQuality = 'smooth' | 'balanced' | 'cinematic';
+export type BurnerFlameType = 'safety' | 'roaring';
 
 interface LabStationDef {
   id: LabStationType;
+  key: string;
   name: string;
   sector: string;
   position: THREE.Vector3;
   cameraPos: THREE.Vector3;
   lookAt: THREE.Vector3;
+  teleportPos: THREE.Vector3;
+  teleportYaw: number;
   accentColor: string;
   description: string;
 }
@@ -64,65 +70,111 @@ interface LabStationDef {
 const LAB_STATIONS: Record<LabStationType, LabStationDef> = {
   synthesis: {
     id: 'synthesis',
+    key: '1',
     name: 'Wet Synthesis Island',
     sector: 'SECTOR 1 · SYNTHESIS HUB',
     position: new THREE.Vector3(0, 0, 0),
     cameraPos: new THREE.Vector3(0, 1.8, 2.3),
     lookAt: new THREE.Vector3(0, 1.1, 0),
+    teleportPos: new THREE.Vector3(0, 1.65, 2.8),
+    teleportYaw: 0,
     accentColor: '#00f0ff',
     description: 'Stoichiometric reaction mixing, thermal agitation, and volumetric synthesis.',
   },
   spectroscopy: {
     id: 'spectroscopy',
-    name: 'Flame Spectroscopy & Balance Bay',
+    key: '2',
+    name: 'Flame Spectroscopy Bay',
     sector: 'SECTOR 2 · SPECTROSCOPY BAY',
     position: new THREE.Vector3(-8.5, 0, 0),
     cameraPos: new THREE.Vector3(-7.2, 1.8, 0.4),
     lookAt: new THREE.Vector3(-8.5, 1.1, 0),
+    teleportPos: new THREE.Vector3(-6.2, 1.65, 0.2),
+    teleportYaw: Math.PI / 2,
     accentColor: '#10b981',
     description: 'High-precision flame emission tests, spectral lines, and analytical mass measurements.',
   },
   cryovault: {
     id: 'cryovault',
-    name: 'Cryogenic & Hazard Containment',
+    key: '3',
+    name: 'Cryogenic & Hazard Vault',
     sector: 'SECTOR 3 · CRYO VAULT',
     position: new THREE.Vector3(0, 0, 8.5),
     cameraPos: new THREE.Vector3(0.4, 1.8, 7.2),
     lookAt: new THREE.Vector3(0, 1.2, 8.5),
+    teleportPos: new THREE.Vector3(0, 1.65, 6.2),
+    teleportYaw: Math.PI,
     accentColor: '#a855f7',
     description: 'Liquid nitrogen cryo-dewar, pressurized tanks, and reinforced chemical blast locker.',
   },
   mainframe: {
     id: 'mainframe',
-    name: 'Research Mainframe & Archives',
+    key: '4',
+    name: 'Research Mainframe',
     sector: 'SECTOR 4 · MAINFRAME ARCHIVE',
     position: new THREE.Vector3(8.5, 0, 0),
     cameraPos: new THREE.Vector3(7.2, 1.8, -0.3),
     lookAt: new THREE.Vector3(8.5, 1.3, 0),
+    teleportPos: new THREE.Vector3(6.2, 1.65, -0.2),
+    teleportYaw: -Math.PI / 2,
     accentColor: '#f59e0b',
     description: 'Periodic Table analysis, reaction mechanism database, and synthesis protocols.',
   },
   decon: {
     id: 'decon',
-    name: 'Airlock & Observation Deck',
+    key: '5',
+    name: 'Observation Deck',
     sector: 'SECTOR 5 · OBSERVATION DECK',
     position: new THREE.Vector3(0, 0, -8.5),
     cameraPos: new THREE.Vector3(0, 1.9, -7.0),
     lookAt: new THREE.Vector3(0, 1.4, -9.5),
+    teleportPos: new THREE.Vector3(0, 1.65, -6.0),
+    teleportYaw: 0,
     accentColor: '#3b82f6',
     description: 'Emergency decontamination station, airlock portal, and panoramic cosmic courtyard view.',
   },
 };
 
-export const VirtualLabView: React.FC = () => {
+// Reusable math vectors pre-allocated at module scope for ZERO garbage collection in the 60fps render loop
+const _vForward = new THREE.Vector3();
+const _vRight = new THREE.Vector3();
+const _vDesiredVel = new THREE.Vector3();
+const _vCamOffset = new THREE.Vector3();
+const _qTargetQuat = new THREE.Quaternion();
+const _mLookAt = new THREE.Matrix4();
+const _vForwardDir = new THREE.Vector3();
+const _vUp = new THREE.Vector3(0, 1, 0);
+const _vStationLookAt = new THREE.Vector3();
+const _eulerCam = new THREE.Euler(0, 0, 0, 'YXZ');
+
+interface VirtualLabViewProps {
+  isStandalone?: boolean;
+  onExit?: () => void;
+}
+
+export const VirtualLabView: React.FC<VirtualLabViewProps> = ({ isStandalone = false, onExit }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sound toggle
+  // Audio mute
   const [isMuted, setIsMuted] = useState(false);
 
-  // Fullscreen / Cinema mode
+  // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Mobile / Touch controls toggle
+  const [showJoystick, setShowJoystick] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024;
+  });
+  const [showKeyboardGuide, setShowKeyboardGuide] = useState<boolean>(true);
+  const [activeKeys, setActiveKeys] = useState<{ [key: string]: boolean }>({});
+
+  // Graphics Quality Preset: smooth (60FPS high performance), balanced, cinematic
+  const [graphicsQuality, setGraphicsQuality] = useState<GraphicsQuality>('smooth');
+
+  // Real-time FPS measurement for UI
+  const [currentFps, setCurrentFps] = useState<number>(60);
 
   // Active Station Interaction Mode (null = Free 3D Walk)
   const [activeStation, setActiveStation] = useState<LabStationType | null>(null);
@@ -137,14 +189,13 @@ export const VirtualLabView: React.FC = () => {
   // Minimap / Radar open
   const [showRadar, setShowRadar] = useState(true);
 
-  // Active dock tab & drawer collapse for hands-on bench mode
+  // Active dock tab & drawer collapse
   const [dockTab, setDockTab] = useState<'reagents' | 'thermal' | 'flame' | 'protocols'>('reagents');
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
   const [dispenseAmount, setDispenseAmount] = useState<number>(20);
 
-  // Sprint state for HUD
+  // Sprint state
   const [isSprinting, setIsSprinting] = useState(false);
-  const [stamina, setStamina] = useState(100);
 
   // Laboratory reaction state
   const [addedReagents, setAddedReagents] = useState<AddedReagentEntry[]>([]);
@@ -152,6 +203,7 @@ export const VirtualLabView: React.FC = () => {
   const [vesselMass, setVesselMass] = useState<number>(0);
   const [temperature, setTemperature] = useState<number>(22);
   const [isHeating, setIsHeating] = useState(false);
+  const [burnerMode, setBurnerMode] = useState<BurnerFlameType>('roaring');
   const [stirrerRPM, setStirrerRPM] = useState<number>(0);
   const [discoveredProtocols, setDiscoveredProtocols] = useState<string[]>([]);
   const [currentDiscoveredNotice, setCurrentDiscoveredNotice] = useState<ReactionProtocol | null>(null);
@@ -160,17 +212,13 @@ export const VirtualLabView: React.FC = () => {
   const [selectedFlameElement, setSelectedFlameElement] = useState<FlameElement | null>(null);
   const [isFlameRodInBurner, setIsFlameRodInBurner] = useState(false);
 
-  // Action toasts & protocol inspector
+  // Action toasts & modals
   const [actionToast, setActionToast] = useState<{ id: string; text: string; sub?: string; color?: string } | null>(null);
   const [inspectingProtocol, setInspectingProtocol] = useState<ReactionProtocol | null>(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-  // Observation log
-  const [logs, setLogs] = useState<string[]>([
-    'CHEMORA Open World 3D Chemistry Research Lab initialized.',
-    'WASD or Left Joystick to walk. Space to jump. Shift to sprint.',
-    'Approach any of the 5 research stations and press [E] to engage.',
-  ]);
+  // Pour stream trickling animation timer
+  const [isPouringStream, setIsPouringStream] = useState(false);
 
   // Touch controls state (for mobile joystick)
   const [touchStick, setTouchStick] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -179,12 +227,54 @@ export const VirtualLabView: React.FC = () => {
   const touchLookId = useRef<number | null>(null);
   const touchLookPrev = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Three.js mutable state ref
+  // Synchronized Simulation State Ref: Read in 60fps animate() loop WITHOUT re-creating WebGL
+  const simStateRef = useRef<{
+    activeStation: LabStationType | null;
+    cameraMode: 'first' | 'third';
+    isHeating: boolean;
+    burnerMode: BurnerFlameType;
+    stirrerRPM: number;
+    temperature: number;
+    vesselVolume: number;
+    isPouringStream: boolean;
+    isFlameRodInBurner: boolean;
+    selectedFlameElement: FlameElement | null;
+    reactionStatus: {
+      liquidColor: string;
+      liquidOpacity: number;
+      isBubbling: boolean;
+      isGlowing: boolean;
+      glowColor: string;
+      ph: number;
+    };
+    graphicsQuality: GraphicsQuality;
+  }>({
+    activeStation: null,
+    cameraMode: 'first',
+    isHeating: false,
+    burnerMode: 'roaring',
+    stirrerRPM: 0,
+    temperature: 22,
+    vesselVolume: 0,
+    isPouringStream: false,
+    isFlameRodInBurner: false,
+    selectedFlameElement: null,
+    reactionStatus: {
+      liquidColor: '#38bdf8',
+      liquidOpacity: 0.25,
+      isBubbling: false,
+      isGlowing: false,
+      glowColor: '#38bdf8',
+      ph: 7.0,
+    },
+    graphicsQuality: 'smooth',
+  });
+
+  // Three.js mutable scene graph handles
   const threeRef = useRef<{
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     renderer: THREE.WebGLRenderer;
-    // Player exploration controller
     playerPos: THREE.Vector3;
     playerVelocity: THREE.Vector3;
     playerYaw: number;
@@ -192,16 +282,15 @@ export const VirtualLabView: React.FC = () => {
     isGrounded: boolean;
     headBobTimer: number;
     isSprintingRef: boolean;
-    // Keys pressed
     keys: Record<string, boolean>;
-    // Flashlight & lights
     flashlight: THREE.SpotLight;
     flashlightTarget: THREE.Object3D;
-    // Handheld item in FPS view
+    keyLight: THREE.DirectionalLight;
+    // FPS Handheld items
     fpsHandGroup: THREE.Group;
     fpsFlaskLiquid: THREE.Mesh;
     fpsFlaskLiquidMat: THREE.MeshPhysicalMaterial;
-    // 3rd person character model
+    // 3rd Person Character
     characterGroup: THREE.Group;
     charLeftLeg: THREE.Mesh;
     charRightLeg: THREE.Mesh;
@@ -210,44 +299,79 @@ export const VirtualLabView: React.FC = () => {
     // Synthesis apparatus
     benchFlaskLiquid: THREE.Mesh;
     benchFlaskLiquidMat: THREE.MeshPhysicalMaterial;
+    benchFlaskVortex: THREE.Mesh;
+    benchFlaskVortexMat: THREE.MeshBasicMaterial;
     benchBubbles: THREE.Points;
+    benchSteam: THREE.Points;
+    benchPourStream: THREE.Mesh;
     benchGlowLight: THREE.PointLight;
     benchBunsenInner: THREE.Mesh;
     benchBunsenOuter: THREE.Mesh;
     benchFlameLight: THREE.PointLight;
     benchStirBar: THREE.Mesh;
     benchSampleRod: THREE.Group;
-    // Cryo particles
+    benchThermalShimmer: THREE.Mesh;
+    // Cryo mist
     cryoParticles: THREE.Points;
-    // Flame station apparatus
+    // Flame test apparatus
     specBurnerFlame: THREE.Mesh;
+    specFlameSparks: THREE.Points;
     specFlameLight: THREE.PointLight;
-    // Station glowing beacons & holograms
     beacons: Record<LabStationType, THREE.Mesh>;
-    // Animation frame & disposal
     animId: number;
-    lastTime: number;
     stepSoundTimer: number;
   } | null>(null);
 
-  // Toggle sound
-  const handleToggleSound = () => {
-    const next = !isMuted;
-    setIsMuted(next);
-    labAudio.setMuted(next);
-  };
+  // Sync state to ref
+  useEffect(() => {
+    simStateRef.current.activeStation = activeStation;
+  }, [activeStation]);
 
-  // Toggle Fullscreen
-  const handleToggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen?.().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-      setIsFullscreen(false);
+  useEffect(() => {
+    simStateRef.current.cameraMode = cameraMode;
+  }, [cameraMode]);
+
+  useEffect(() => {
+    simStateRef.current.isHeating = isHeating;
+  }, [isHeating]);
+
+  useEffect(() => {
+    simStateRef.current.burnerMode = burnerMode;
+  }, [burnerMode]);
+
+  useEffect(() => {
+    simStateRef.current.stirrerRPM = stirrerRPM;
+  }, [stirrerRPM]);
+
+  useEffect(() => {
+    simStateRef.current.temperature = temperature;
+  }, [temperature]);
+
+  useEffect(() => {
+    simStateRef.current.vesselVolume = vesselVolume;
+  }, [vesselVolume]);
+
+  useEffect(() => {
+    simStateRef.current.isPouringStream = isPouringStream;
+  }, [isPouringStream]);
+
+  useEffect(() => {
+    simStateRef.current.isFlameRodInBurner = isFlameRodInBurner;
+  }, [isFlameRodInBurner]);
+
+  useEffect(() => {
+    simStateRef.current.selectedFlameElement = selectedFlameElement;
+  }, [selectedFlameElement]);
+
+  useEffect(() => {
+    simStateRef.current.graphicsQuality = graphicsQuality;
+    if (threeRef.current) {
+      const dpr = graphicsQuality === 'smooth' ? 1.0 : graphicsQuality === 'balanced' ? 1.35 : Math.min(window.devicePixelRatio, 2.0);
+      threeRef.current.renderer.setPixelRatio(dpr);
+      threeRef.current.renderer.shadowMap.enabled = graphicsQuality !== 'smooth';
+      threeRef.current.keyLight.castShadow = graphicsQuality !== 'smooth';
     }
-  };
+  }, [graphicsQuality]);
 
   // Determine current chemical reaction status
   const reactionStatus = useMemo(() => {
@@ -266,10 +390,8 @@ export const VirtualLabView: React.FC = () => {
           break;
         }
       }
-      if (matches) {
-        if (protocol.requiredTemp && temperature < protocol.requiredTemp.min) {
-          matches = false;
-        }
+      if (matches && protocol.requiredTemp && temperature < protocol.requiredTemp.min) {
+        matches = false;
       }
       if (matches) {
         activeProtocol = protocol;
@@ -285,33 +407,24 @@ export const VirtualLabView: React.FC = () => {
     let isGlowing = false;
     let glowColor = '#38bdf8';
     let ph = 7.0;
-    let absorbancePeakNm = 300;
 
     if (activeProtocol) {
       liquidColor = activeProtocol.targetProduct.color;
       liquidOpacity = activeProtocol.targetProduct.opacity;
       isBubbling = activeProtocol.targetProduct.isBubbling;
       isPrecipitate = activeProtocol.targetProduct.isPrecipitate;
-      if (activeProtocol.targetProduct.precipitateColor) {
-        precipitateColor = activeProtocol.targetProduct.precipitateColor;
-      }
+      if (activeProtocol.targetProduct.precipitateColor) precipitateColor = activeProtocol.targetProduct.precipitateColor;
       isGlowing = activeProtocol.targetProduct.isGlowing;
-      if (activeProtocol.targetProduct.glowColor) {
-        glowColor = activeProtocol.targetProduct.glowColor;
-      }
+      if (activeProtocol.targetProduct.glowColor) glowColor = activeProtocol.targetProduct.glowColor;
       ph = activeProtocol.targetProduct.ph;
-      absorbancePeakNm = activeProtocol.targetProduct.absorbancePeakNm;
     } else if (addedReagents.length > 0) {
       const lastReagent = REAGENTS_CATALOG[addedReagents[addedReagents.length - 1].reagentId];
       if (lastReagent) {
         liquidColor = lastReagent.color;
         liquidOpacity = Math.max(0.35, lastReagent.opacity);
         ph = lastReagent.ph;
-        absorbancePeakNm = lastReagent.absorbancePeakNm;
       }
-      if (temperature >= 95) {
-        isBubbling = true;
-      }
+      if (temperature >= 95) isBubbling = true;
     }
 
     return {
@@ -324,9 +437,12 @@ export const VirtualLabView: React.FC = () => {
       isGlowing,
       glowColor,
       ph,
-      absorbancePeakNm,
     };
   }, [addedReagents, temperature]);
+
+  useEffect(() => {
+    simStateRef.current.reactionStatus = reactionStatus;
+  }, [reactionStatus]);
 
   // Protocol discovery effect
   useEffect(() => {
@@ -339,11 +455,6 @@ export const VirtualLabView: React.FC = () => {
         try {
           confetti({ particleCount: 75, spread: 80, origin: { y: 0.55 } });
         } catch {}
-        setLogs((prev) => [
-          `Discovery logged: ${proto.title}! (+${proto.xpReward} XP)`,
-          proto.discoveryNotes,
-          ...prev.slice(0, 8),
-        ]);
         setTimeout(() => setCurrentDiscoveredNotice(null), 6000);
       }
     }
@@ -354,19 +465,22 @@ export const VirtualLabView: React.FC = () => {
     let interval: number | null = null;
     if (isHeating) {
       labAudio.setBurnerState(true);
+      const heatRate = burnerMode === 'roaring' ? 3 : 1;
+      const tickMs = burnerMode === 'roaring' ? 240 : 400;
+
       interval = window.setInterval(() => {
         setTemperature((prev) => {
-          if (prev < 110) {
-            const next = prev + 2;
-            if (next === 100) {
-              setLogs((p) => ['Vessel boiling point (100°C) reached. Vigorous vapor evolution.', ...p.slice(0, 8)]);
+          const maxTemp = burnerMode === 'roaring' ? 115 : 65;
+          if (prev < maxTemp) {
+            const next = prev + heatRate;
+            if (next >= 100 && prev < 100) {
               labAudio.playBubbling(3000);
             }
-            return next;
+            return Math.min(maxTemp, next);
           }
           return prev;
         });
-      }, 300);
+      }, tickMs);
     } else {
       labAudio.setBurnerState(false);
       interval = window.setInterval(() => {
@@ -377,12 +491,30 @@ export const VirtualLabView: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isHeating]);
+  }, [isHeating, burnerMode]);
 
-  // Add reagent
+  // Sound toggle
+  const handleToggleSound = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    labAudio.setMuted(next);
+  };
+
+  // Fullscreen
+  const handleToggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen?.().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  // Add reagent with fluid pour stream animation
   const handleAddReagent = (reagent: ChemicalReagent) => {
     if (vesselVolume >= 120) {
-      setLogs((p) => ['Warning: Reaction flask full (120 mL). Rinse flask to mix new reagents.', ...p.slice(0, 8)]);
       setActionToast({
         id: String(Date.now()),
         text: 'Vessel Full (120 mL)',
@@ -393,6 +525,9 @@ export const VirtualLabView: React.FC = () => {
     }
 
     labAudio.playLiquidPour();
+    setIsPouringStream(true);
+    setTimeout(() => setIsPouringStream(false), 600);
+
     const actualAdd = Math.min(dispenseAmount, 120 - vesselVolume);
     const addedMass = Number((actualAdd * reagent.density).toFixed(1));
 
@@ -406,11 +541,6 @@ export const VirtualLabView: React.FC = () => {
       sub: `${reagent.formula} · Molar mass: ${reagent.molarMass} g/mol`,
       color: reagent.color,
     });
-
-    setLogs((prev) => [
-      `Dispensed ${actualAdd} mL of ${reagent.name} (${reagent.formula}) into reaction vessel.`,
-      ...prev.slice(0, 8),
-    ]);
   };
 
   // Adjust magnetic stirrer
@@ -419,14 +549,13 @@ export const VirtualLabView: React.FC = () => {
     setActionToast({
       id: String(Date.now()),
       text: rpm === 0 ? 'Stirrer Off' : `Stirrer Active: ${rpm} RPM`,
-      sub: rpm === 0 ? 'Stationary solution' : 'Homogeneous stoichiometric mixing',
+      sub: rpm === 0 ? 'Stationary solution' : 'Hydrodynamic vortex mixing',
       color: '#38bdf8',
     });
-    setLogs((p) => [`Magnetic stirrer adjusted to ${rpm} RPM.`, ...p.slice(0, 8)]);
   };
 
   // Rinse reaction flask
-  const handleRinseFlask = () => {
+  const handleRinseFlask = useCallback(() => {
     labAudio.playGlassClink();
     setVesselVolume(0);
     setVesselMass(0);
@@ -440,8 +569,17 @@ export const VirtualLabView: React.FC = () => {
       sub: 'Sanitized with deionized H₂O and dried',
       color: '#34d399',
     });
-    setLogs((p) => ['Erlenmeyer flask washed, rinsed with distilled water, and dried.', ...p.slice(0, 8)]);
-  };
+  }, []);
+
+  // Exit 3D lab game back to platform
+  const handleExitGame = useCallback(() => {
+    labAudio.playStationInteract();
+    if (onExit) {
+      onExit();
+    } else {
+      window.location.href = '/#home';
+    }
+  }, [onExit]);
 
   // Flame test insertion
   const handleInsertFlameRod = (element: FlameElement) => {
@@ -454,37 +592,69 @@ export const VirtualLabView: React.FC = () => {
       sub: `${element.name} (${element.ion}) · ${element.wavelength}`,
       color: element.color,
     });
-    setLogs((p) => [
-      `Clean platinum wire dipped into ${element.name} salt (${element.ion}) and placed in Bunsen flame.`,
-      `Observed characteristic emission: ${element.flameName} at ${element.wavelength} (${element.electronTransition}).`,
-      ...p.slice(0, 8),
-    ]);
   };
 
   const handleRemoveFlameRod = () => {
     setIsFlameRodInBurner(false);
     setSelectedFlameElement(null);
-    setLogs((p) => ['Platinum wire removed from flame and quenched in dilute HCl.', ...p.slice(0, 8)]);
   };
 
   // Toggle station engagement
   const handleToggleStation = useCallback((stationId?: LabStationType) => {
     const target = stationId || nearestStation?.id;
     if (activeStation) {
-      // Exit station back to free walking
       setActiveStation(null);
       labAudio.playStationInteract();
-      setLogs((p) => ['Exited workstation. Free 3D exploration resumed.', ...p.slice(0, 8)]);
     } else if (target) {
-      // Enter station hands-on mode
       setActiveStation(target);
       labAudio.playStationInteract();
-      setLogs((p) => [`Engaged workstation: ${LAB_STATIONS[target].name}.`, ...p.slice(0, 8)]);
       if (target === 'spectroscopy') setDockTab('flame');
       else if (target === 'mainframe') setDockTab('protocols');
       else setDockTab('reagents');
     }
   }, [activeStation, nearestStation]);
+
+  const handleExitGameRef = useRef(handleExitGame);
+  handleExitGameRef.current = handleExitGame;
+  const handleToggleStationRef = useRef(handleToggleStation);
+  handleToggleStationRef.current = handleToggleStation;
+
+  // Global window pointerup/cancel listener to prevent joystick or look gestures from sticking
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (touchStickId.current !== null) {
+        touchStickId.current = null;
+        setTouchStick({ x: 0, y: 0 });
+        touchStickRef.current = { x: 0, y: 0 };
+      }
+      if (touchLookId.current !== null) {
+        touchLookId.current = null;
+      }
+    };
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+    };
+  }, []);
+
+  // Fast Travel / Station Teleportation
+  const handleFastTravel = useCallback((stationKey: LabStationType) => {
+    const st = LAB_STATIONS[stationKey];
+    if (!st || !threeRef.current) return;
+    threeRef.current.playerPos.copy(st.teleportPos);
+    threeRef.current.playerYaw = st.teleportYaw;
+    threeRef.current.playerVelocity.set(0, 0, 0);
+    setActiveStation(st.id);
+    labAudio.playStationInteract();
+    setActionToast({
+      id: String(Date.now()),
+      text: `Teleported to ${st.name}`,
+      sub: st.sector,
+      color: st.accentColor,
+    });
+  }, []);
 
   // Flashlight toggle
   const handleToggleFlashlight = useCallback(() => {
@@ -519,6 +689,15 @@ export const VirtualLabView: React.FC = () => {
     setIsSprinting((prev) => {
       const next = !prev;
       if (threeRef.current) threeRef.current.isSprintingRef = next;
+      return next;
+    });
+  }, []);
+
+  // Cycle Graphics Quality
+  const handleCycleGraphics = useCallback(() => {
+    setGraphicsQuality((prev) => {
+      const next = prev === 'smooth' ? 'balanced' : prev === 'balanced' ? 'cinematic' : 'smooth';
+      labAudio.playScannerBeep();
       return next;
     });
   }, []);
@@ -590,8 +769,8 @@ export const VirtualLabView: React.FC = () => {
     const sensitivity = 0.005;
     threeRef.current.playerYaw -= dx * sensitivity;
     threeRef.current.playerPitch = Math.max(
-      -Math.PI / 2.5,
-      Math.min(Math.PI / 2.5, threeRef.current.playerPitch - dy * sensitivity)
+      -Math.PI / 2.3,
+      Math.min(Math.PI / 2.3, threeRef.current.playerPitch - dy * sensitivity)
     );
   };
 
@@ -602,7 +781,7 @@ export const VirtualLabView: React.FC = () => {
   };
 
   // --------------------------------------------------------------------------
-  // THREE.JS INITIALIZATION & GAME LOOP
+  // ONE-TIME THREE.JS INITIALIZATION & HIGH PERFORMANCE RENDER LOOP
   // --------------------------------------------------------------------------
   useEffect(() => {
     const container = mountRef.current;
@@ -614,56 +793,57 @@ export const VirtualLabView: React.FC = () => {
     // 1. Scene & Atmosphere
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x040914);
-    scene.fog = new THREE.FogExp2(0x040914, 0.035);
+    scene.fog = new THREE.FogExp2(0x040914, 0.032);
 
     // 2. Camera
     const camera = new THREE.PerspectiveCamera(72, width / height, 0.1, 100);
     camera.position.set(0, 1.65, 4);
 
-    // 3. Renderer with PBR Color Pipeline
+    // 3. Renderer with High Performance Configuration
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
       powerPreference: 'high-performance',
+      stencil: false,
+      depth: true,
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(1.0); // Defaults to smooth 1.0; adapts dynamically
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.25;
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // 4. Studio Environment Reflections
+    // 4. Studio Environment Reflection Map
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     pmremGenerator.dispose();
 
-    // 5. Lighting Setup
-    const ambientLight = new THREE.AmbientLight(0x1e293b, 0.5);
+    // 5. Lighting Rig
+    const ambientLight = new THREE.AmbientLight(0x1e293b, 0.65);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x090d16, 0.7);
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x090d16, 0.85);
     scene.add(hemiLight);
 
-    // Main central ceiling fixture
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
     keyLight.position.set(5, 12, 6);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
+    keyLight.castShadow = false;
+    keyLight.shadow.mapSize.width = 1024;
+    keyLight.shadow.mapSize.height = 1024;
     keyLight.shadow.bias = -0.0005;
-    keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
 
-    // Sector accent overhead spot/point lights
-    const sec1Light = new THREE.PointLight(0x00f0ff, 1.2, 16);
+    // Sector Beacons
+    const sec1Light = new THREE.PointLight(0x00f0ff, 1.3, 16);
     sec1Light.position.set(0, 4.5, 0);
     scene.add(sec1Light);
 
-    const sec2Light = new THREE.PointLight(0x10b981, 1.2, 16);
+    const sec2Light = new THREE.PointLight(0x10b981, 1.3, 16);
     sec2Light.position.set(-8.5, 4.5, 0);
     scene.add(sec2Light);
 
@@ -671,15 +851,15 @@ export const VirtualLabView: React.FC = () => {
     sec3Light.position.set(0, 4.5, 8.5);
     scene.add(sec3Light);
 
-    const sec4Light = new THREE.PointLight(0xf59e0b, 1.2, 16);
+    const sec4Light = new THREE.PointLight(0xf59e0b, 1.3, 16);
     sec4Light.position.set(8.5, 4.5, 0);
     scene.add(sec4Light);
 
-    const sec5Light = new THREE.PointLight(0x3b82f6, 1.2, 16);
+    const sec5Light = new THREE.PointLight(0x3b82f6, 1.3, 16);
     sec5Light.position.set(0, 4.5, -8.5);
     scene.add(sec5Light);
 
-    // Flashlight / UV lamp attached to camera
+    // Flashlight
     const flashlight = new THREE.SpotLight(0x93c5fd, 3.5, 25, Math.PI / 5, 0.35, 1.2);
     flashlight.position.copy(camera.position);
     flashlight.visible = false;
@@ -689,30 +869,30 @@ export const VirtualLabView: React.FC = () => {
     scene.add(flashlightTarget);
     flashlight.target = flashlightTarget;
 
-    // 6. PROCEDURAL OPEN-WORLD LABORATORY ARCHITECTURE
+    // 6. Architecture & Facilities
     const facilityGroup = new THREE.Group();
     scene.add(facilityGroup);
 
-    // A. Floor: High-Gloss Polished Epoxy Tile with Grid
-    const floorGeo = new THREE.PlaneGeometry(32, 32, 32, 32);
-    const floorMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0a1424,
-      metalness: 0.25,
-      roughness: 0.18,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.12,
-    });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
+    // High-Gloss Floor
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(32, 32, 16, 16),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x0a1424,
+        metalness: 0.25,
+        roughness: 0.18,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.12,
+      })
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     facilityGroup.add(floor);
 
-    // Floor navigation grid lines
     const gridHelper = new THREE.GridHelper(32, 32, 0x00f0ff, 0x1e3a5f);
     gridHelper.position.y = 0.005;
     facilityGroup.add(gridHelper);
 
-    // B. Walls & Perimeter Bulkheads
+    // Wall Construction
     const wallMat = new THREE.MeshStandardMaterial({
       color: 0x0f1c30,
       metalness: 0.4,
@@ -726,34 +906,28 @@ export const VirtualLabView: React.FC = () => {
       roughness: 0.2,
     });
 
-    const createWall = (width: number, height: number, pos: [number, number, number], rotY: number = 0) => {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.4), wallMat);
+    const createWall = (w: number, h: number, pos: [number, number, number], rotY: number = 0) => {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.4), wallMat);
       wall.position.set(pos[0], pos[1], pos[2]);
       wall.rotation.y = rotY;
-      wall.castShadow = true;
-      wall.receiveShadow = true;
       facilityGroup.add(wall);
 
-      // Accent glowing LED strip
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(width, 0.08, 0.44), wallTrimMat);
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.44), wallTrimMat);
       strip.position.set(pos[0], pos[1] + 1.2, pos[2]);
       strip.rotation.y = rotY;
       facilityGroup.add(strip);
     };
 
-    // Outer perimeter walls (30x30 facility with 4.5m ceiling)
-    createWall(32, 5.0, [0, 2.5, -16]); // North wall
-    createWall(32, 5.0, [0, 2.5, 16]); // South wall
-    createWall(32, 5.0, [-16, 2.5, 0], Math.PI / 2); // West wall
-    createWall(32, 5.0, [16, 2.5, 0], Math.PI / 2); // East wall
+    createWall(32, 5.0, [0, 2.5, -16]);
+    createWall(32, 5.0, [0, 2.5, 16]);
+    createWall(32, 5.0, [-16, 2.5, 0], Math.PI / 2);
+    createWall(32, 5.0, [16, 2.5, 0], Math.PI / 2);
 
-    // Internal Sector Divider Partitions with Archways
     createWall(10, 4.5, [-8, 2.25, -6]);
     createWall(10, 4.5, [8, 2.25, -6]);
     createWall(10, 4.5, [-8, 2.25, 6]);
     createWall(10, 4.5, [8, 2.25, 6]);
 
-    // Ceiling Structure with Skylight Grids
     const ceiling = new THREE.Mesh(
       new THREE.PlaneGeometry(32, 32),
       new THREE.MeshStandardMaterial({ color: 0x07111e, roughness: 0.8 })
@@ -762,32 +936,24 @@ export const VirtualLabView: React.FC = () => {
     ceiling.rotation.x = Math.PI / 2;
     facilityGroup.add(ceiling);
 
-    // 7. INTERACTIVE STATIONS 3D MODELS & BEACONS
+    // Beacons
     const beacons: Record<LabStationType, THREE.Mesh> = {} as any;
-
-    // Helper to generate station holographic ring beacon
     const addStationBeacon = (type: LabStationType, pos: THREE.Vector3, colorHex: number) => {
-      const ringGeo = new THREE.TorusGeometry(1.4, 0.04, 16, 48);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: colorHex,
-        transparent: true,
-        opacity: 0.8,
-      });
+      const ringGeo = new THREE.TorusGeometry(1.4, 0.04, 12, 36);
+      const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.8 });
       const beacon = new THREE.Mesh(ringGeo, ringMat);
       beacon.rotation.x = Math.PI / 2;
       beacon.position.set(pos.x, 0.03, pos.z);
       facilityGroup.add(beacon);
       beacons[type] = beacon;
 
-      // Vertical station label pedestal
       const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.06, 2.4, 16),
+        new THREE.CylinderGeometry(0.06, 0.06, 2.4, 12),
         new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 })
       );
       pole.position.set(pos.x + 1.2, 1.2, pos.z - 1.2);
       facilityGroup.add(pole);
 
-      // Illuminated station header plate
       const plate = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 0.35, 0.06),
         new THREE.MeshStandardMaterial({
@@ -802,29 +968,24 @@ export const VirtualLabView: React.FC = () => {
       facilityGroup.add(plate);
     };
 
-    // --- SECTOR 1: WET SYNTHESIS ISLAND (Center: 0, 0, 0) ---
+    // --- SECTOR 1: WET SYNTHESIS ISLAND (0,0,0) ---
     addStationBeacon('synthesis', LAB_STATIONS.synthesis.position, 0x00f0ff);
 
-    // Heavy laboratory island bench
     const synthBench = new THREE.Mesh(
       new THREE.BoxGeometry(4.2, 0.95, 2.4),
       new THREE.MeshStandardMaterial({ color: 0x0b192e, metalness: 0.3, roughness: 0.3 })
     );
     synthBench.position.set(0, 0.475, 0);
-    synthBench.castShadow = true;
-    synthBench.receiveShadow = true;
     facilityGroup.add(synthBench);
 
-    // Black chemical-resistant countertop
     const synthTop = new THREE.Mesh(
       new THREE.BoxGeometry(4.4, 0.1, 2.6),
       new THREE.MeshPhysicalMaterial({ color: 0x020610, roughness: 0.15, clearcoat: 0.9 })
     );
-    synthTop.position.set(0, 0.95 + 0.05, 0);
-    synthTop.receiveShadow = true;
+    synthTop.position.set(0, 1.0, 0);
     facilityGroup.add(synthTop);
 
-    // Overhead reagent shelf rack
+    // Overhead shelf & bottles
     const shelfFrame = new THREE.Mesh(
       new THREE.BoxGeometry(3.6, 0.06, 0.6),
       new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 })
@@ -832,7 +993,6 @@ export const VirtualLabView: React.FC = () => {
     shelfFrame.position.set(0, 1.9, 0);
     facilityGroup.add(shelfFrame);
 
-    // Rows of reagent bottles on shelf
     for (let i = -1.5; i <= 1.5; i += 0.4) {
       const bottle = new THREE.Mesh(
         new THREE.CylinderGeometry(0.08, 0.08, 0.28, 12),
@@ -846,12 +1006,11 @@ export const VirtualLabView: React.FC = () => {
       facilityGroup.add(bottle);
     }
 
-    // Synthesis Erlenmeyer Reaction Flask
+    // Reaction Erlenmeyer Flask
     const flaskGroup = new THREE.Group();
     flaskGroup.position.set(0, 1.05, 0);
     facilityGroup.add(flaskGroup);
 
-    // Glass body
     const flaskBody = new THREE.Mesh(
       new THREE.CylinderGeometry(0.12, 0.38, 0.55, 24),
       new THREE.MeshPhysicalMaterial({
@@ -867,7 +1026,6 @@ export const VirtualLabView: React.FC = () => {
     flaskBody.position.y = 0.275;
     flaskGroup.add(flaskBody);
 
-    // Glass neck
     const flaskNeck = new THREE.Mesh(
       new THREE.CylinderGeometry(0.11, 0.11, 0.25, 24),
       new THREE.MeshPhysicalMaterial({
@@ -882,7 +1040,7 @@ export const VirtualLabView: React.FC = () => {
     flaskNeck.position.y = 0.55 + 0.125;
     flaskGroup.add(flaskNeck);
 
-    // Reaction liquid inside synthesis flask
+    // Liquid mesh
     const benchFlaskLiquidMat = new THREE.MeshPhysicalMaterial({
       color: 0x38bdf8,
       transparent: true,
@@ -898,7 +1056,23 @@ export const VirtualLabView: React.FC = () => {
     benchFlaskLiquid.position.y = 0.18;
     flaskGroup.add(benchFlaskLiquid);
 
-    // Magnetic stir bar
+    // Vortex funnel for magnetic stirrer
+    const benchFlaskVortexMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.25,
+      wireframe: true,
+    });
+    const benchFlaskVortex = new THREE.Mesh(
+      new THREE.ConeGeometry(0.12, 0.24, 16, 1, true),
+      benchFlaskVortexMat
+    );
+    benchFlaskVortex.rotation.x = Math.PI;
+    benchFlaskVortex.position.y = 0.22;
+    benchFlaskVortex.visible = false;
+    flaskGroup.add(benchFlaskVortex);
+
+    // Stir bar
     const benchStirBar = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.02, 0.1, 8, 12),
       new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.5, roughness: 0.2 })
@@ -907,9 +1081,9 @@ export const VirtualLabView: React.FC = () => {
     benchStirBar.position.y = 0.04;
     flaskGroup.add(benchStirBar);
 
-    // Reaction bubbling particles
+    // Bubbles
     const bubbleGeo = new THREE.BufferGeometry();
-    const bubbleCount = 45;
+    const bubbleCount = 40;
     const bubblePositions = new Float32Array(bubbleCount * 3);
     for (let i = 0; i < bubbleCount; i++) {
       bubblePositions[i * 3] = (Math.random() - 0.5) * 0.25;
@@ -919,31 +1093,66 @@ export const VirtualLabView: React.FC = () => {
     bubbleGeo.setAttribute('position', new THREE.BufferAttribute(bubblePositions, 3));
     const benchBubbles = new THREE.Points(
       bubbleGeo,
-      new THREE.PointsMaterial({ color: 0xffffff, size: 0.03, transparent: true, opacity: 0.6 })
+      new THREE.PointsMaterial({ color: 0xffffff, size: 0.035, transparent: true, opacity: 0.7 })
     );
     flaskGroup.add(benchBubbles);
 
-    // Reaction glow light
+    // Rising Steam / Gas Particle System
+    const steamGeo = new THREE.BufferGeometry();
+    const steamCount = 30;
+    const steamPositions = new Float32Array(steamCount * 3);
+    for (let i = 0; i < steamCount; i++) {
+      steamPositions[i * 3] = (Math.random() - 0.5) * 0.15;
+      steamPositions[i * 3 + 1] = 0.8 + Math.random() * 0.8;
+      steamPositions[i * 3 + 2] = (Math.random() - 0.5) * 0.15;
+    }
+    steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPositions, 3));
+    const benchSteam = new THREE.Points(
+      steamGeo,
+      new THREE.PointsMaterial({ color: 0xe0f2fe, size: 0.06, transparent: true, opacity: 0.55 })
+    );
+    benchSteam.visible = false;
+    flaskGroup.add(benchSteam);
+
+    // Dynamic Pouring Stream Mesh
+    const benchPourStream = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.02, 0.65, 12),
+      new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transmission: 0.85, transparent: true, opacity: 0.8 })
+    );
+    benchPourStream.position.set(0, 1.15, 0);
+    benchPourStream.visible = false;
+    flaskGroup.add(benchPourStream);
+
+    // Thermal infrared heat shimmer ring
+    const benchThermalShimmer = new THREE.Mesh(
+      new THREE.RingGeometry(0.38, 0.44, 24),
+      new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.0, side: THREE.DoubleSide })
+    );
+    benchThermalShimmer.rotation.x = -Math.PI / 2;
+    benchThermalShimmer.position.y = 0.02;
+    flaskGroup.add(benchThermalShimmer);
+
+    // Glow light
     const benchGlowLight = new THREE.PointLight(0x00f0ff, 0, 3.5);
     benchGlowLight.position.set(0, 1.3, 0);
     facilityGroup.add(benchGlowLight);
 
-    // Bunsen burner beside flask
+    // Bunsen Burner Apparatus
     const bunsenBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.16, 0.18, 0.05, 20),
+      new THREE.CylinderGeometry(0.16, 0.18, 0.05, 16),
       new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.15 })
     );
     bunsenBase.position.set(0.85, 1.025, 0);
     facilityGroup.add(bunsenBase);
 
     const bunsenTube = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.045, 0.045, 0.38, 20),
+      new THREE.CylinderGeometry(0.045, 0.045, 0.38, 16),
       new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.2 })
     );
     bunsenTube.position.set(0.85, 1.24, 0);
     facilityGroup.add(bunsenTube);
 
-    // Bunsen Flame
+    // Bunsen Flames: Inner Cone and Outer Sheath
     const benchBunsenInner = new THREE.Mesh(
       new THREE.ConeGeometry(0.035, 0.22, 16),
       new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 })
@@ -964,7 +1173,7 @@ export const VirtualLabView: React.FC = () => {
     benchFlameLight.position.set(0.85, 1.6, 0);
     facilityGroup.add(benchFlameLight);
 
-    // Platinum test wire rod
+    // Platinum test loop rod
     const benchSampleRod = new THREE.Group();
     benchSampleRod.position.set(1.4, 1.05, 0.4);
     const rodHandle = new THREE.Mesh(
@@ -990,7 +1199,6 @@ export const VirtualLabView: React.FC = () => {
     specBench.position.set(-8.5, 0.475, 0);
     facilityGroup.add(specBench);
 
-    // Spectrometer housing console
     const specConsole = new THREE.Mesh(
       new THREE.BoxGeometry(1.2, 0.6, 0.8),
       new THREE.MeshStandardMaterial({ color: 0x134e4a, metalness: 0.6, roughness: 0.3 })
@@ -998,7 +1206,6 @@ export const VirtualLabView: React.FC = () => {
     specConsole.position.set(-8.5, 1.25, -0.4);
     facilityGroup.add(specConsole);
 
-    // Spectrometer digital screen
     const specScreen = new THREE.Mesh(
       new THREE.PlaneGeometry(0.7, 0.35),
       new THREE.MeshBasicMaterial({ color: 0x10b981 })
@@ -1006,7 +1213,7 @@ export const VirtualLabView: React.FC = () => {
     specScreen.position.set(-8.5, 1.3, -0.01 + 0.02);
     facilityGroup.add(specScreen);
 
-    // Flame emission testing burner
+    // Flame emission burner
     const specBurner = new THREE.Mesh(
       new THREE.CylinderGeometry(0.08, 0.12, 0.35, 16),
       new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.2 })
@@ -1021,29 +1228,29 @@ export const VirtualLabView: React.FC = () => {
     specBurnerFlame.position.set(-7.5, 1.45, 0.2);
     facilityGroup.add(specBurnerFlame);
 
+    // Flame emission spark particles
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkCount = 20;
+    const sparkPos = new Float32Array(sparkCount * 3);
+    for (let i = 0; i < sparkCount; i++) {
+      sparkPos[i * 3] = -7.5 + (Math.random() - 0.5) * 0.15;
+      sparkPos[i * 3 + 1] = 1.4 + Math.random() * 0.4;
+      sparkPos[i * 3 + 2] = 0.2 + (Math.random() - 0.5) * 0.15;
+    }
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+    const specFlameSparks = new THREE.Points(
+      sparkGeo,
+      new THREE.PointsMaterial({ color: 0x10b981, size: 0.035, transparent: true, opacity: 0.8 })
+    );
+    facilityGroup.add(specFlameSparks);
+
     const specFlameLight = new THREE.PointLight(0x10b981, 1.5, 4);
     specFlameLight.position.set(-7.5, 1.6, 0.2);
     facilityGroup.add(specFlameLight);
 
-    // Analytical balance glass enclosure
-    const balanceBase = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.1, 0.6),
-      new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7 })
-    );
-    balanceBase.position.set(-9.5, 1.0, 0.2);
-    facilityGroup.add(balanceBase);
-
-    const balanceGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55, 0.45, 0.55),
-      new THREE.MeshPhysicalMaterial({ transmission: 0.92, transparent: true, opacity: 0.3, roughness: 0.05 })
-    );
-    balanceGlass.position.set(-9.5, 1.25, 0.2);
-    facilityGroup.add(balanceGlass);
-
-    // --- SECTOR 3: CRYO VAULT & HAZARDS (0, 0, 8.5) ---
+    // --- SECTOR 3: CRYO VAULT (0, 0, 8.5) ---
     addStationBeacon('cryovault', LAB_STATIONS.cryovault.position, 0xa855f7);
 
-    // Cryo storage platform & dewars
     const cryoPlatform = new THREE.Mesh(
       new THREE.BoxGeometry(4.2, 0.2, 2.6),
       new THREE.MeshStandardMaterial({ color: 0x1e152a, metalness: 0.6, roughness: 0.4 })
@@ -1051,14 +1258,12 @@ export const VirtualLabView: React.FC = () => {
     cryoPlatform.position.set(0, 0.1, 8.5);
     facilityGroup.add(cryoPlatform);
 
-    // Giant Liquid Nitrogen Dewar Cylinders
-    for (let x of [-1.2, 0, 1.2]) {
+    for (const x of [-1.2, 0, 1.2]) {
       const dewar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.38, 0.38, 1.5, 24),
+        new THREE.CylinderGeometry(0.38, 0.38, 1.5, 20),
         new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 })
       );
       dewar.position.set(x, 0.95, 8.5);
-      dewar.castShadow = true;
       facilityGroup.add(dewar);
 
       const dewarCap = new THREE.Mesh(
@@ -1069,9 +1274,8 @@ export const VirtualLabView: React.FC = () => {
       facilityGroup.add(dewarCap);
     }
 
-    // Cryo Vapor Mist Particle System
     const cryoGeo = new THREE.BufferGeometry();
-    const cryoCount = 60;
+    const cryoCount = 45;
     const cryoPositions = new Float32Array(cryoCount * 3);
     for (let i = 0; i < cryoCount; i++) {
       cryoPositions[i * 3] = (Math.random() - 0.5) * 3.0;
@@ -1085,18 +1289,9 @@ export const VirtualLabView: React.FC = () => {
     );
     facilityGroup.add(cryoParticles);
 
-    // Hazard Containment Pod with warning stripes
-    const hazardLocker = new THREE.Mesh(
-      new THREE.BoxGeometry(1.6, 2.4, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x581c87, metalness: 0.7, roughness: 0.3 })
-    );
-    hazardLocker.position.set(2.8, 1.2, 8.5);
-    facilityGroup.add(hazardLocker);
-
-    // --- SECTOR 4: RESEARCH MAINFRAME & ARCHIVES (8.5, 0, 0) ---
+    // --- SECTOR 4: RESEARCH MAINFRAME (8.5, 0, 0) ---
     addStationBeacon('mainframe', LAB_STATIONS.mainframe.position, 0xf59e0b);
 
-    // High-tech curved workstation desk
     const mainDesk = new THREE.Mesh(
       new THREE.BoxGeometry(3.6, 0.9, 1.8),
       new THREE.MeshStandardMaterial({ color: 0x1f190e, metalness: 0.4, roughness: 0.3 })
@@ -1104,8 +1299,7 @@ export const VirtualLabView: React.FC = () => {
     mainDesk.position.set(8.5, 0.45, 0);
     facilityGroup.add(mainDesk);
 
-    // Triple-screen terminal displays
-    for (let offset of [-0.9, 0, 0.9]) {
+    for (const offset of [-0.9, 0, 0.9]) {
       const monitor = new THREE.Mesh(
         new THREE.BoxGeometry(0.75, 0.5, 0.05),
         new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 })
@@ -1124,7 +1318,6 @@ export const VirtualLabView: React.FC = () => {
       facilityGroup.add(screenFace);
     }
 
-    // Giant Illuminated Periodic Table Wall Board
     const pTableBoard = new THREE.Mesh(
       new THREE.BoxGeometry(0.1, 2.8, 5.0),
       new THREE.MeshStandardMaterial({
@@ -1137,32 +1330,23 @@ export const VirtualLabView: React.FC = () => {
     pTableBoard.position.set(15.7, 2.5, 0);
     facilityGroup.add(pTableBoard);
 
-    // --- SECTOR 5: DECONTAMINATION & OBSERVATION (0, 0, -8.5) ---
+    // --- SECTOR 5: OBSERVATION DECK (0, 0, -8.5) ---
     addStationBeacon('decon', LAB_STATIONS.decon.position, 0x3b82f6);
 
-    // Emergency Eyewash & Safety Shower Station
     const showerPole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 3.2, 16),
+      new THREE.CylinderGeometry(0.05, 0.05, 3.2, 12),
       new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.8, roughness: 0.2 })
     );
     showerPole.position.set(-1.8, 1.6, -8.5);
     facilityGroup.add(showerPole);
 
     const showerHead = new THREE.Mesh(
-      new THREE.ConeGeometry(0.25, 0.15, 16),
+      new THREE.ConeGeometry(0.25, 0.15, 14),
       new THREE.MeshStandardMaterial({ color: 0x22c55e, metalness: 0.7 })
     );
     showerHead.position.set(-1.8, 3.1, -8.1);
     showerHead.rotation.x = Math.PI / 2;
     facilityGroup.add(showerHead);
-
-    // Panoramic Observation Window looking into cosmic sky
-    const windowFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(10, 3.2, 0.2),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 })
-    );
-    windowFrame.position.set(0, 2.5, -15.8);
-    facilityGroup.add(windowFrame);
 
     const windowGlass = new THREE.Mesh(
       new THREE.PlaneGeometry(9.6, 2.8),
@@ -1177,9 +1361,9 @@ export const VirtualLabView: React.FC = () => {
     windowGlass.position.set(0, 2.5, -15.7);
     facilityGroup.add(windowGlass);
 
-    // Cosmic sky backdrop beyond window
+    // Stars
     const starsGeo = new THREE.BufferGeometry();
-    const starCount = 300;
+    const starCount = 200;
     const starPos = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
       starPos[i * 3] = (Math.random() - 0.5) * 40;
@@ -1193,7 +1377,7 @@ export const VirtualLabView: React.FC = () => {
     );
     scene.add(starField);
 
-    // 8. FIRST-PERSON VIEW: CARRIED HANDHELD FLASK / SCANNER
+    // 8. FPS View: Handheld Flask
     const fpsHandGroup = new THREE.Group();
     camera.add(fpsHandGroup);
     scene.add(camera);
@@ -1222,29 +1406,24 @@ export const VirtualLabView: React.FC = () => {
     fpsFlaskLiquid.position.set(0.28, -0.28, -0.55);
     fpsHandGroup.add(fpsFlaskLiquid);
 
-    // 9. THIRD-PERSON VIEW: CHEMIST CHARACTER MODEL
+    // 9. 3rd Person Character
     const characterGroup = new THREE.Group();
     scene.add(characterGroup);
 
-    // Torso / Lab coat
     const coat = new THREE.Mesh(
       new THREE.BoxGeometry(0.48, 0.65, 0.28),
       new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 })
     );
     coat.position.y = 1.05;
-    coat.castShadow = true;
     characterGroup.add(coat);
 
-    // Head
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.16, 16, 16),
+      new THREE.SphereGeometry(0.16, 14, 14),
       new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.6 })
     );
     head.position.y = 1.55;
-    head.castShadow = true;
     characterGroup.add(head);
 
-    // Cyan Safety Goggles
     const goggles = new THREE.Mesh(
       new THREE.BoxGeometry(0.26, 0.08, 0.08),
       new THREE.MeshPhysicalMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.6 })
@@ -1252,7 +1431,6 @@ export const VirtualLabView: React.FC = () => {
     goggles.position.set(0, 1.56, 0.14);
     characterGroup.add(goggles);
 
-    // Chemical Backpack with containment tubes
     const pack = new THREE.Mesh(
       new THREE.BoxGeometry(0.32, 0.45, 0.16),
       new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 })
@@ -1260,10 +1438,8 @@ export const VirtualLabView: React.FC = () => {
     pack.position.set(0, 1.1, -0.2);
     characterGroup.add(pack);
 
-    // Arms
-    const armGeo = new THREE.CapsuleGeometry(0.06, 0.35, 6, 8);
+    const armGeo = new THREE.CapsuleGeometry(0.06, 0.35, 4, 8);
     const armMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-
     const charLeftArm = new THREE.Mesh(armGeo, armMat);
     charLeftArm.position.set(-0.32, 1.05, 0);
     characterGroup.add(charLeftArm);
@@ -1272,21 +1448,16 @@ export const VirtualLabView: React.FC = () => {
     charRightArm.position.set(0.32, 1.05, 0);
     characterGroup.add(charRightArm);
 
-    // Legs
-    const legGeo = new THREE.CapsuleGeometry(0.075, 0.45, 6, 8);
+    const legGeo = new THREE.CapsuleGeometry(0.075, 0.45, 4, 8);
     const legMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
-
     const charLeftLeg = new THREE.Mesh(legGeo, legMat);
     charLeftLeg.position.set(-0.14, 0.45, 0);
-    charLeftLeg.castShadow = true;
     characterGroup.add(charLeftLeg);
 
     const charRightLeg = new THREE.Mesh(legGeo, legMat);
     charRightLeg.position.set(0.14, 0.45, 0);
-    charRightLeg.castShadow = true;
     characterGroup.add(charRightLeg);
 
-    // Ground contact shadow
     const shadowPlane = new THREE.Mesh(
       new THREE.PlaneGeometry(0.9, 0.9),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45 })
@@ -1295,39 +1466,39 @@ export const VirtualLabView: React.FC = () => {
     shadowPlane.position.y = 0.015;
     characterGroup.add(shadowPlane);
 
-    // Keyboard state
+    // Keyboard handlers
     const keys: Record<string, boolean> = {};
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       keys[e.code] = true;
+      setActiveKeys((prev) => (prev[e.code] ? prev : { ...prev, [e.code]: true }));
 
-      // Hotkey E to interact
-      if (e.code === 'KeyE') {
-        handleToggleStation();
+      // ESC or Q: Return from workstation to free roam, or exit 3D lab back to Chemora
+      if (e.code === 'Escape' || e.code === 'KeyQ') {
+        if (simStateRef.current.activeStation) {
+          handleToggleStationRef.current();
+        } else {
+          handleExitGameRef.current();
+        }
       }
-      // Hotkey F for Flashlight
-      if (e.code === 'KeyF') {
-        handleToggleFlashlight();
-      }
-      // Hotkey V for Camera View mode
-      if (e.code === 'KeyV') {
-        handleToggleCameraMode();
-      }
-      // Hotkey Space for Jump
+      if (e.code === 'KeyK') setShowKeyboardGuide((prev) => !prev);
+      if (e.code === 'KeyE') handleToggleStationRef.current();
+      if (e.code === 'KeyF') handleToggleFlashlight();
+      if (e.code === 'KeyV') handleToggleCameraMode();
+      if (e.code === 'KeyP') handleCycleGraphics();
+      if (e.code === 'KeyH') setIsDockCollapsed((c) => !c);
+      if (e.code === 'Digit1') handleFastTravel('synthesis');
+      if (e.code === 'Digit2') handleFastTravel('spectroscopy');
+      if (e.code === 'Digit3') handleFastTravel('cryovault');
+      if (e.code === 'Digit4') handleFastTravel('mainframe');
+      if (e.code === 'Digit5') handleFastTravel('decon');
       if (e.code === 'Space') {
         e.preventDefault();
         handleJump();
       }
-      // Hotkey M for Map / Radar
-      if (e.code === 'KeyM') {
-        setShowRadar((prev) => !prev);
-      }
-      // Hotkey R for Rinse flask
-      if (e.code === 'KeyR') {
-        handleRinseFlask();
-      }
-      // Hotkey Shift for Sprint
+      if (e.code === 'KeyM') setShowRadar((prev) => !prev);
+      if (e.code === 'KeyR') handleRinseFlask();
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         setIsSprinting(true);
         if (threeRef.current) threeRef.current.isSprintingRef = true;
@@ -1336,16 +1507,30 @@ export const VirtualLabView: React.FC = () => {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keys[e.code] = false;
+      setActiveKeys((prev) => {
+        if (!prev[e.code]) return prev;
+        const next = { ...prev };
+        delete next[e.code];
+        return next;
+      });
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         setIsSprinting(false);
         if (threeRef.current) threeRef.current.isSprintingRef = false;
       }
     };
 
+    const handleWindowBlur = () => {
+      for (const k in keys) keys[k] = false;
+      setActiveKeys({});
+      setIsSprinting(false);
+      if (threeRef.current) threeRef.current.isSprintingRef = false;
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleWindowBlur);
 
-    // Mouse Pointer Lock & Look
+    // Mouse Pointer Lock
     const dom = renderer.domElement;
     let isMouseDown = false;
     let mousePrev = { x: 0, y: 0 };
@@ -1354,8 +1539,7 @@ export const VirtualLabView: React.FC = () => {
       if (e.button === 0) {
         isMouseDown = true;
         mousePrev = { x: e.clientX, y: e.clientY };
-        // Request pointer lock for desktop FPS experience
-        if (!activeStation && document.pointerLockElement !== dom) {
+        if (!simStateRef.current.activeStation && document.pointerLockElement !== dom) {
           dom.requestPointerLock?.();
         }
       }
@@ -1365,7 +1549,6 @@ export const VirtualLabView: React.FC = () => {
       if (!threeRef.current) return;
       let dx = 0;
       let dy = 0;
-
       if (document.pointerLockElement === dom) {
         dx = e.movementX;
         dy = e.movementY;
@@ -1393,7 +1576,6 @@ export const VirtualLabView: React.FC = () => {
     window.addEventListener('mousemove', handlePointerMove);
     window.addEventListener('mouseup', handlePointerUp);
 
-    // Resize handler
     const handleResize = () => {
       if (!container || !threeRef.current) return;
       const w = container.clientWidth || window.innerWidth;
@@ -1404,7 +1586,10 @@ export const VirtualLabView: React.FC = () => {
     };
     window.addEventListener('resize', handleResize);
 
-    // Save mutable reference
+    // Pre-warm WebGL shaders to avoid first-frame drop
+    renderer.compile(scene, camera);
+
+    // Initialize State Handle
     threeRef.current = {
       scene,
       camera,
@@ -1419,6 +1604,7 @@ export const VirtualLabView: React.FC = () => {
       keys,
       flashlight,
       flashlightTarget,
+      keyLight,
       fpsHandGroup,
       fpsFlaskLiquid,
       fpsFlaskLiquidMat,
@@ -1429,7 +1615,12 @@ export const VirtualLabView: React.FC = () => {
       charRightArm,
       benchFlaskLiquid,
       benchFlaskLiquidMat,
+      benchFlaskVortex,
+      benchFlaskVortexMat,
       benchBubbles,
+      benchSteam,
+      benchPourStream,
+      benchThermalShimmer,
       benchGlowLight,
       benchBunsenInner,
       benchBunsenOuter,
@@ -1438,31 +1629,44 @@ export const VirtualLabView: React.FC = () => {
       benchSampleRod,
       cryoParticles,
       specBurnerFlame,
+      specFlameSparks,
       specFlameLight,
       beacons,
       animId: 0,
-      lastTime: performance.now(),
       stepSoundTimer: 0,
     };
 
     // ------------------------------------------------------------------------
-    // ANIMATION & PHYSICS TICK LOOP
+    // SILKY SMOOTH 60FPS RENDER & PHYSICS LOOP
     // ------------------------------------------------------------------------
     const clock = new THREE.Clock();
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
 
     const animate = () => {
       const state = threeRef.current;
       if (!state) return;
 
-      const delta = Math.min(clock.getDelta(), 0.1);
+      const sim = simStateRef.current;
+      const delta = Math.min(clock.getDelta(), 0.08);
       const time = performance.now() * 0.001;
 
-      // 1. BEACON ROTATION & PULSE
+      // Real-time FPS Calculation
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 600) {
+        const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+        setCurrentFps(fps);
+        frameCount = 0;
+        lastFpsUpdate = now;
+      }
+
+      // 1. BEACON ROTATIONS
       for (const b of Object.values(state.beacons)) {
         b.rotation.z += delta * 1.5;
       }
 
-      // 2. CRYO PARTICLES RISING
+      // 2. CRYO PARTICLES
       const cryoPos = state.cryoParticles.geometry.attributes.position.array as Float32Array;
       for (let i = 1; i < cryoPos.length; i += 3) {
         cryoPos[i] += delta * 0.35;
@@ -1471,29 +1675,49 @@ export const VirtualLabView: React.FC = () => {
       state.cryoParticles.geometry.attributes.position.needsUpdate = true;
 
       // 3. SYNTHESIS BENCH DYNAMICS
-      if (isHeating) {
+      if (sim.isHeating) {
         state.benchBunsenInner.visible = true;
         state.benchBunsenOuter.visible = true;
-        state.benchBunsenInner.scale.y = 0.85 + Math.sin(time * 30) * 0.15;
-        state.benchBunsenOuter.scale.y = 0.85 + Math.cos(time * 24) * 0.15;
-        state.benchFlameLight.intensity = 2.2 + Math.sin(time * 20) * 0.4;
+
+        if (sim.burnerMode === 'roaring') {
+          (state.benchBunsenInner.material as THREE.MeshBasicMaterial).color.set(0x38bdf8);
+          (state.benchBunsenOuter.material as THREE.MeshBasicMaterial).color.set(0x2563eb);
+          state.benchBunsenInner.scale.set(1.0, 0.95 + Math.sin(time * 36) * 0.2, 1.0);
+          state.benchBunsenOuter.scale.set(1.0, 0.95 + Math.cos(time * 30) * 0.2, 1.0);
+          state.benchFlameLight.color.set(0x38bdf8);
+          state.benchFlameLight.intensity = 2.8 + Math.sin(time * 24) * 0.6;
+        } else {
+          // Safety Yellow Flame
+          (state.benchBunsenInner.material as THREE.MeshBasicMaterial).color.set(0xfbbf24);
+          (state.benchBunsenOuter.material as THREE.MeshBasicMaterial).color.set(0xf59e0b);
+          state.benchBunsenInner.scale.set(1.2, 0.8 + Math.sin(time * 12) * 0.15, 1.2);
+          state.benchBunsenOuter.scale.set(1.2, 0.8 + Math.cos(time * 10) * 0.15, 1.2);
+          state.benchFlameLight.color.set(0xf59e0b);
+          state.benchFlameLight.intensity = 1.4 + Math.sin(time * 10) * 0.3;
+        }
       } else {
         state.benchBunsenInner.visible = false;
         state.benchBunsenOuter.visible = false;
         state.benchFlameLight.intensity = 0;
       }
 
-      // Magnetic stirrer rotation
-      if (stirrerRPM > 0) {
-        state.benchStirBar.rotation.y += (stirrerRPM / 60) * Math.PI * 2 * delta;
+      // Magnetic Stirrer Whirlpool Vortex
+      if (sim.stirrerRPM > 0) {
+        state.benchStirBar.rotation.y += (sim.stirrerRPM / 60) * Math.PI * 2 * delta;
+        state.benchFlaskVortex.visible = sim.vesselVolume > 15;
+        state.benchFlaskVortex.rotation.y += (sim.stirrerRPM / 60) * Math.PI * 3 * delta;
+        const vortexDepth = (sim.stirrerRPM / 1200) * 0.18;
+        state.benchFlaskVortex.scale.set(1.0, vortexDepth, 1.0);
+      } else {
+        state.benchFlaskVortex.visible = false;
       }
 
-      // Bubbling particles in flask
-      if (reactionStatus.isBubbling) {
+      // Bubbling particles
+      if (sim.reactionStatus.isBubbling) {
         state.benchBubbles.visible = true;
         const bPos = state.benchBubbles.geometry.attributes.position.array as Float32Array;
         for (let i = 1; i < bPos.length; i += 3) {
-          bPos[i] += delta * 0.4;
+          bPos[i] += delta * 0.45;
           if (bPos[i] > 0.45) bPos[i] = 0.05;
         }
         state.benchBubbles.geometry.attributes.position.needsUpdate = true;
@@ -1501,35 +1725,69 @@ export const VirtualLabView: React.FC = () => {
         state.benchBubbles.visible = false;
       }
 
-      // Reaction liquid colors
-      state.benchFlaskLiquidMat.color.set(reactionStatus.liquidColor);
-      state.benchFlaskLiquidMat.opacity = reactionStatus.liquidOpacity;
-      state.fpsFlaskLiquidMat.color.set(reactionStatus.liquidColor);
-      state.fpsFlaskLiquidMat.opacity = reactionStatus.liquidOpacity;
+      // Steam & Gas emission particle system
+      if (sim.temperature >= 90 || sim.reactionStatus.isBubbling) {
+        state.benchSteam.visible = true;
+        const sPos = state.benchSteam.geometry.attributes.position.array as Float32Array;
+        for (let i = 1; i < sPos.length; i += 3) {
+          sPos[i] += delta * 0.55;
+          if (sPos[i] > 1.8) sPos[i] = 0.8;
+        }
+        state.benchSteam.geometry.attributes.position.needsUpdate = true;
+      } else {
+        state.benchSteam.visible = false;
+      }
 
-      if (reactionStatus.isGlowing) {
+      // Pouring Stream Mesh
+      state.benchPourStream.visible = sim.isPouringStream;
+      if (sim.isPouringStream) {
+        (state.benchPourStream.material as THREE.MeshPhysicalMaterial).color.set(sim.reactionStatus.liquidColor);
+      }
+
+      // Reaction liquid materials
+      state.benchFlaskLiquidMat.color.set(sim.reactionStatus.liquidColor);
+      state.benchFlaskLiquidMat.opacity = sim.reactionStatus.liquidOpacity;
+      state.fpsFlaskLiquidMat.color.set(sim.reactionStatus.liquidColor);
+      state.fpsFlaskLiquidMat.opacity = sim.reactionStatus.liquidOpacity;
+
+      // Thermal heat shimmer ring on vessel
+      const thermalOpacity = Math.max(0, (sim.temperature - 60) / 50) * 0.45;
+      (state.benchThermalShimmer.material as THREE.MeshBasicMaterial).opacity = thermalOpacity;
+
+      if (sim.reactionStatus.isGlowing) {
         state.benchGlowLight.intensity = 2.5 + Math.sin(time * 6) * 0.8;
-        state.benchGlowLight.color.set(reactionStatus.glowColor);
+        state.benchGlowLight.color.set(sim.reactionStatus.glowColor);
       } else {
         state.benchGlowLight.intensity = 0;
       }
 
-      // Flame spectroscopy station flame
-      if (isFlameRodInBurner && selectedFlameElement) {
+      // Flame spectroscopy station
+      if (sim.isFlameRodInBurner && sim.selectedFlameElement) {
         state.specBurnerFlame.visible = true;
-        (state.specBurnerFlame.material as THREE.MeshBasicMaterial).color.set(selectedFlameElement.color);
-        state.specFlameLight.intensity = 3.0 + Math.sin(time * 25) * 0.5;
-        state.specFlameLight.color.set(selectedFlameElement.color);
+        state.specFlameSparks.visible = true;
+        const col = sim.selectedFlameElement.color;
+        (state.specBurnerFlame.material as THREE.MeshBasicMaterial).color.set(col);
+        (state.specFlameSparks.material as THREE.PointsMaterial).color.set(col);
+        state.specFlameLight.intensity = 3.2 + Math.sin(time * 25) * 0.6;
+        state.specFlameLight.color.set(col);
+
+        // Animate emission sparks rising
+        const spkPos = state.specFlameSparks.geometry.attributes.position.array as Float32Array;
+        for (let i = 1; i < spkPos.length; i += 3) {
+          spkPos[i] += delta * 0.6;
+          if (spkPos[i] > 1.9) spkPos[i] = 1.4;
+        }
+        state.specFlameSparks.geometry.attributes.position.needsUpdate = true;
       } else {
+        state.specFlameSparks.visible = false;
         state.specBurnerFlame.visible = true;
         (state.specBurnerFlame.material as THREE.MeshBasicMaterial).color.set(0x10b981);
         state.specFlameLight.intensity = 1.0;
         state.specFlameLight.color.set(0x10b981);
       }
 
-      // 4. PLAYER MOVEMENT & PHYSICS
-      if (!activeStation) {
-        // Collect keyboard inputs
+      // 4. ZERO-GC PLAYER MOVEMENT & KINEMATICS
+      if (!sim.activeStation) {
         let moveX = 0;
         let moveZ = 0;
 
@@ -1538,7 +1796,6 @@ export const VirtualLabView: React.FC = () => {
         if (state.keys['KeyA'] || state.keys['ArrowLeft']) moveX -= 1;
         if (state.keys['KeyD'] || state.keys['ArrowRight']) moveX += 1;
 
-        // Merge touch joystick input
         if (touchStickRef.current.x !== 0 || touchStickRef.current.y !== 0) {
           moveX += touchStickRef.current.x;
           moveZ += touchStickRef.current.y;
@@ -1546,23 +1803,20 @@ export const VirtualLabView: React.FC = () => {
 
         const inputLength = Math.hypot(moveX, moveZ);
         const isMoving = inputLength > 0.08;
+        const speed = state.isSprintingRef ? 6.4 : 3.8;
 
-        const speed = state.isSprintingRef ? 6.2 : 3.6;
-        const forward = new THREE.Vector3(-Math.sin(state.playerYaw), 0, -Math.cos(state.playerYaw));
-        const right = new THREE.Vector3(Math.cos(state.playerYaw), 0, -Math.sin(state.playerYaw));
+        _vForward.set(-Math.sin(state.playerYaw), 0, -Math.cos(state.playerYaw));
+        _vRight.set(Math.cos(state.playerYaw), 0, -Math.sin(state.playerYaw));
 
         if (isMoving) {
           const normX = moveX / Math.max(1, inputLength);
           const normZ = moveZ / Math.max(1, inputLength);
-          const desiredVel = forward
-            .clone()
-            .multiplyScalar(-normZ * speed)
-            .add(right.clone().multiplyScalar(normX * speed));
 
-          state.playerVelocity.x = THREE.MathUtils.damp(state.playerVelocity.x, desiredVel.x, 10, delta);
-          state.playerVelocity.z = THREE.MathUtils.damp(state.playerVelocity.z, desiredVel.z, 10, delta);
+          _vDesiredVel.copy(_vForward).multiplyScalar(-normZ * speed).addScaledVector(_vRight, normX * speed);
 
-          // Head bobbing & footstep audio cadence
+          state.playerVelocity.x = THREE.MathUtils.damp(state.playerVelocity.x, _vDesiredVel.x, 11, delta);
+          state.playerVelocity.z = THREE.MathUtils.damp(state.playerVelocity.z, _vDesiredVel.z, 11, delta);
+
           state.headBobTimer += delta * (state.isSprintingRef ? 14 : 9);
           state.stepSoundTimer += delta * (state.isSprintingRef ? 2.8 : 1.8);
           if (state.stepSoundTimer > 1.0) {
@@ -1570,26 +1824,24 @@ export const VirtualLabView: React.FC = () => {
             labAudio.playFootstep();
           }
 
-          // Animate 3rd person character limbs
           const legAngle = Math.sin(state.headBobTimer) * 0.65;
           state.charLeftLeg.rotation.x = legAngle;
           state.charRightLeg.rotation.x = -legAngle;
           state.charLeftArm.rotation.x = -legAngle;
           state.charRightArm.rotation.x = legAngle;
         } else {
-          state.playerVelocity.x = THREE.MathUtils.damp(state.playerVelocity.x, 0, 12, delta);
-          state.playerVelocity.z = THREE.MathUtils.damp(state.playerVelocity.z, 0, 12, delta);
+          state.playerVelocity.x = THREE.MathUtils.damp(state.playerVelocity.x, 0, 13, delta);
+          state.playerVelocity.z = THREE.MathUtils.damp(state.playerVelocity.z, 0, 13, delta);
           state.charLeftLeg.rotation.x = THREE.MathUtils.damp(state.charLeftLeg.rotation.x, 0, 8, delta);
           state.charRightLeg.rotation.x = THREE.MathUtils.damp(state.charRightLeg.rotation.x, 0, 8, delta);
           state.charLeftArm.rotation.x = THREE.MathUtils.damp(state.charLeftArm.rotation.x, 0, 8, delta);
           state.charRightArm.rotation.x = THREE.MathUtils.damp(state.charRightArm.rotation.x, 0, 8, delta);
         }
 
-        // Apply gravity & jumping
+        // Gravity
         state.playerVelocity.y -= 19.6 * delta;
         state.playerPos.addScaledVector(state.playerVelocity, delta);
 
-        // Ground floor collision (eye level = 1.65)
         if (state.playerPos.y <= 1.65) {
           if (!state.isGrounded && state.playerVelocity.y < -4) {
             labAudio.playLand();
@@ -1599,11 +1851,11 @@ export const VirtualLabView: React.FC = () => {
           state.isGrounded = true;
         }
 
-        // Facility perimeter wall collision boundaries (-14.5 to +14.5)
+        // Room boundaries
         state.playerPos.x = Math.max(-14.2, Math.min(14.2, state.playerPos.x));
         state.playerPos.z = Math.max(-14.2, Math.min(14.2, state.playerPos.z));
 
-        // Prevent walking through central wet synthesis bench box
+        // Central table collision
         if (Math.abs(state.playerPos.x) < 2.3 && Math.abs(state.playerPos.z) < 1.4) {
           const pushX = state.playerPos.x > 0 ? 2.3 : -2.3;
           const pushZ = state.playerPos.z > 0 ? 1.4 : -1.4;
@@ -1614,46 +1866,35 @@ export const VirtualLabView: React.FC = () => {
           }
         }
 
-        // Update 3rd person character position & yaw
         state.characterGroup.position.set(state.playerPos.x, 0, state.playerPos.z);
         state.characterGroup.rotation.y = state.playerYaw;
 
-        // Position camera based on mode
-        if (cameraMode === 'first') {
+        if (sim.cameraMode === 'first') {
           state.characterGroup.visible = false;
           state.fpsHandGroup.visible = true;
 
-          // Head bobbing offset
           const bobY = Math.sin(state.headBobTimer * 2) * 0.035;
           const bobX = Math.cos(state.headBobTimer) * 0.02;
 
           state.camera.position.set(state.playerPos.x + bobX, state.playerPos.y + bobY, state.playerPos.z);
-
-          // Camera rotation from Yaw & Pitch
           state.camera.rotation.order = 'YXZ';
           state.camera.rotation.y = state.playerYaw;
           state.camera.rotation.x = state.playerPitch;
 
-          // FPS Handheld flask sway
           state.fpsHandGroup.position.set(bobX * 0.5, bobY * 0.5, 0);
           state.fpsHandGroup.rotation.z = Math.sin(state.headBobTimer) * 0.04;
         } else {
-          // Third-Person Over-the-Shoulder Camera
           state.characterGroup.visible = true;
           state.fpsHandGroup.visible = false;
 
-          const dist = 3.2;
-          const camOffset = new THREE.Vector3(
-            0.6,
-            0.4,
-            dist
-          ).applyEuler(new THREE.Euler(state.playerPitch * 0.6, state.playerYaw, 0, 'YXZ'));
+          _eulerCam.set(state.playerPitch * 0.6, state.playerYaw, 0, 'YXZ');
+          _vCamOffset.set(0.6, 0.4, 3.2).applyEuler(_eulerCam);
 
-          state.camera.position.copy(state.playerPos).add(camOffset);
+          state.camera.position.copy(state.playerPos).add(_vCamOffset);
           state.camera.lookAt(state.playerPos.x, state.playerPos.y + 0.1, state.playerPos.z);
         }
 
-        // Proximity detection to nearest laboratory station
+        // Proximity detection
         let closest: LabStationDef | null = null;
         let minDist = 3.2;
 
@@ -1667,22 +1908,22 @@ export const VirtualLabView: React.FC = () => {
         setNearestStation(closest);
       } else {
         // STATION HANDS-ON BENCH CAMERA VIEW
-        const st = LAB_STATIONS[activeStation];
+        const st = LAB_STATIONS[sim.activeStation];
         state.camera.position.lerp(st.cameraPos, 1 - Math.exp(-6 * delta));
-        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(
-          new THREE.Matrix4().lookAt(state.camera.position, st.lookAt, new THREE.Vector3(0, 1, 0))
-        );
-        state.camera.quaternion.slerp(targetQuat, 1 - Math.exp(-6 * delta));
+        _vStationLookAt.copy(st.lookAt);
+        _mLookAt.lookAt(state.camera.position, _vStationLookAt, _vUp);
+        _qTargetQuat.setFromRotationMatrix(_mLookAt);
+        state.camera.quaternion.slerp(_qTargetQuat, 1 - Math.exp(-6 * delta));
         state.fpsHandGroup.visible = false;
         state.characterGroup.visible = false;
       }
 
-      // Update Flashlight beam position & target
+      // Flashlight beam
       state.flashlight.position.copy(state.camera.position);
-      const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(state.camera.quaternion);
-      state.flashlightTarget.position.copy(state.camera.position).add(forwardDir.multiplyScalar(10));
+      _vForwardDir.set(0, 0, -1).applyQuaternion(state.camera.quaternion);
+      state.flashlightTarget.position.copy(state.camera.position).addScaledVector(_vForwardDir, 10);
 
-      // Render frame
+      // Render WebGL frame
       state.renderer.render(state.scene, state.camera);
       state.animId = requestAnimationFrame(animate);
     };
@@ -1693,6 +1934,7 @@ export const VirtualLabView: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleWindowBlur);
       dom.removeEventListener('mousedown', handlePointerDown);
       window.removeEventListener('mousemove', handlePointerMove);
       window.removeEventListener('mouseup', handlePointerUp);
@@ -1703,13 +1945,13 @@ export const VirtualLabView: React.FC = () => {
         threeRef.current.renderer.dispose();
       }
     };
-  }, [activeStation, cameraMode, isHeating, stirrerRPM, reactionStatus, isFlameRodInBurner, selectedFlameElement, handleToggleStation, handleToggleFlashlight, handleToggleCameraMode, handleJump, handleRinseFlask]);
+  }, [handleFastTravel, handleToggleStation, handleToggleFlashlight, handleToggleCameraMode, handleCycleGraphics, handleJump, handleRinseFlask]);
 
   return (
     <div
       ref={containerRef}
       className={`relative w-full overflow-hidden select-none font-sans bg-[#020816] ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen' : 'h-[calc(100vh-4.5rem)] rounded-3xl border border-cyan-500/20 shadow-2xl'
+        isFullscreen || isStandalone ? 'fixed inset-0 z-50 h-screen w-screen' : 'h-[calc(100vh-4.5rem)] rounded-3xl border border-cyan-500/25 shadow-2xl'
       }`}
     >
       {/* 3D WebGL Canvas Mount Container */}
@@ -1725,34 +1967,84 @@ export const VirtualLabView: React.FC = () => {
       />
 
       {/* -------------------------------------------------------------------- */}
-      {/* HUD OVERLAY: TOP BAR */}
+      {/* HUD OVERLAY: TOP UTILITY BAR (ZERO BLUR STALLS) */}
       {/* -------------------------------------------------------------------- */}
-      <div className="absolute top-3 left-3 right-3 z-30 pointer-events-none flex items-center justify-between">
-        {/* Left: Sector & Station Badge */}
-        <div className="flex items-center gap-2.5">
-          <div className="pointer-events-auto px-3.5 py-1.5 rounded-xl bg-[#030d22]/90 border border-cyan-500/40 text-cyan-300 backdrop-blur-md shadow-xl flex items-center gap-2">
+      <div className="absolute top-3 left-3 right-3 z-30 pointer-events-none flex items-center justify-between gap-2">
+        {/* Left: Exit Button, Sector Badge, Teleport Jump Pills & Stats */}
+        <div className="flex items-center gap-2 pointer-events-auto flex-wrap sm:flex-nowrap">
+          {/* Prominent Exit Button in Play Game */}
+          <button
+            onClick={handleExitGame}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-950/90 to-red-950/90 hover:from-rose-900 hover:to-red-900 border border-rose-500/70 hover:border-rose-400 text-rose-200 hover:text-white shadow-xl transition active:scale-95 group text-xs font-mono font-bold cursor-pointer"
+            title="Exit 3D Lab Simulation [ESC or Q]"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Exit Lab</span>
+            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-rose-900/80 text-[9px] text-rose-300 font-mono border border-rose-700/50">ESC</span>
+          </button>
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-[#040e24]/95 border border-cyan-500/40 text-cyan-300 shadow-xl flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]" />
-            <span className="text-xs font-mono font-bold tracking-wider uppercase">
+            <span className="text-xs font-mono font-bold tracking-wider uppercase truncate max-w-[120px] sm:max-w-none">
               {activeStation ? LAB_STATIONS[activeStation].sector : nearestStation ? nearestStation.sector : 'SECTOR 1 · RESEARCH OPEN WORLD'}
             </span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 pointer-events-auto px-3 py-1.5 rounded-xl bg-[#030d22]/80 border border-slate-700/60 text-slate-300 text-xs font-mono backdrop-blur-md">
-            <span>Temp: {temperature}°C</span>
+          {/* Quick Teleport Hotkeys (1-5) */}
+          <div className="hidden xl:flex items-center gap-1 bg-[#040e24]/90 p-1 rounded-xl border border-slate-700/60 shadow-lg">
+            {(Object.values(LAB_STATIONS) as LabStationDef[]).map((st) => (
+              <button
+                key={st.id}
+                onClick={() => handleFastTravel(st.id)}
+                className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition flex items-center gap-1 ${
+                  activeStation === st.id
+                    ? 'bg-cyan-500 text-slate-950'
+                    : 'text-slate-300 hover:text-white hover:bg-cyan-500/10'
+                }`}
+                title={`Fast Travel to ${st.name} [${st.key}]`}
+              >
+                <span className="opacity-70">[{st.key}]</span>
+                <span className="truncate max-w-[80px]">{st.name.split(' ')[0]}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Real-time Vessel Specs */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#040e24]/90 border border-slate-700/60 text-slate-300 text-xs font-mono shadow-lg">
+            <span>Temp: <strong className={temperature > 70 ? 'text-rose-400' : 'text-cyan-300'}>{temperature}°C</strong></span>
             <span className="text-slate-600">|</span>
-            <span>Mass: {vesselMass}g</span>
+            <span>Vol: <strong className="text-white">{vesselVolume}mL</strong></span>
+            <span className="text-slate-600">|</span>
+            <span>Mass: <strong className="text-white">{vesselMass}g</strong></span>
           </div>
         </div>
 
-        {/* Right: Sound, Fullscreen, Help, Mode Toggles */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+        {/* Right: FPS Counter, Quality, Flashlight, Camera, Joystick Toggle, Keyboard HUD Toggle, Radar, Audio, Help, Fullscreen */}
+        <div className="flex items-center gap-1.5 pointer-events-auto">
+          {/* Live 60FPS Performance Badge & Quality Switcher */}
+          <button
+            onClick={handleCycleGraphics}
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-mono font-bold transition flex items-center gap-1.5 shadow-lg ${
+              graphicsQuality === 'smooth'
+                ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300'
+                : graphicsQuality === 'balanced'
+                ? 'bg-cyan-950/80 border-cyan-400 text-cyan-300'
+                : 'bg-purple-950/80 border-purple-400 text-purple-300'
+            }`}
+            title="Click to toggle Graphics Quality (Smooth 60FPS / Balanced / Cinematic) [P]"
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            <span>{currentFps} FPS</span>
+            <span className="hidden md:inline uppercase text-[10px] opacity-80">· {graphicsQuality}</span>
+          </button>
+
           {/* Flashlight button */}
           <button
             onClick={handleToggleFlashlight}
-            className={`p-2.5 rounded-xl border backdrop-blur-md transition shadow-lg ${
+            className={`p-2.5 rounded-xl border transition shadow-lg ${
               flashlightOn
                 ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-                : 'bg-[#030d22]/80 border-slate-700/60 text-slate-300 hover:text-white'
+                : 'bg-[#040e24]/90 border-slate-700/60 text-slate-300 hover:text-white'
             }`}
             title="Toggle Flashlight / UV Lamp (F)"
             aria-label="Toggle Flashlight"
@@ -1763,21 +2055,49 @@ export const VirtualLabView: React.FC = () => {
           {/* Camera Perspective 1st/3rd person */}
           <button
             onClick={handleToggleCameraMode}
-            className={`px-3 py-1.5 rounded-xl border backdrop-blur-md text-xs font-mono font-bold transition flex items-center gap-1.5 shadow-lg ${
+            className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition flex items-center gap-1.5 shadow-lg ${
               cameraMode === 'third'
                 ? 'bg-purple-600/30 border-purple-400 text-purple-200'
-                : 'bg-[#030d22]/80 border-slate-700/60 text-slate-300 hover:text-white'
+                : 'bg-[#040e24]/90 border-slate-700/60 text-slate-300 hover:text-white'
             }`}
             title="Toggle Camera Perspective (V)"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{cameraMode === 'first' ? '1st Person' : '3rd Person'}</span>
+            <span className="hidden sm:inline">{cameraMode === 'first' ? '1st' : '3rd'}</span>
+          </button>
+
+          {/* Mobile Joystick Toggle */}
+          <button
+            onClick={() => setShowJoystick((j) => !j)}
+            className={`p-2.5 rounded-xl border transition shadow-lg ${
+              showJoystick
+                ? 'bg-cyan-500/25 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
+                : 'bg-[#040e24]/90 border-slate-700/60 text-slate-300 hover:text-white'
+            }`}
+            title={showJoystick ? 'Hide Mobile Joystick' : 'Show Mobile Joystick'}
+            aria-label="Toggle Mobile Joystick"
+          >
+            <Gamepad2 className="w-4 h-4" />
+          </button>
+
+          {/* PC Keyboard HUD Toggle */}
+          <button
+            onClick={() => setShowKeyboardGuide((k) => !k)}
+            className={`hidden md:flex p-2.5 rounded-xl border transition shadow-lg ${
+              showKeyboardGuide && !showJoystick
+                ? 'bg-cyan-500/25 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
+                : 'bg-[#040e24]/90 border-slate-700/60 text-slate-300 hover:text-white'
+            }`}
+            title={showKeyboardGuide ? 'Hide PC Keyboard Controls HUD (K)' : 'Show PC Keyboard Controls HUD (K)'}
+            aria-label="Toggle PC Keyboard Controls HUD"
+          >
+            <Keyboard className="w-4 h-4" />
           </button>
 
           {/* Radar toggle */}
           <button
             onClick={() => setShowRadar(!showRadar)}
-            className="p-2.5 rounded-xl bg-[#030d22]/80 border border-slate-700/60 text-slate-300 hover:text-white backdrop-blur-md transition shadow-lg"
+            className="p-2.5 rounded-xl bg-[#040e24]/90 border border-slate-700/60 text-slate-300 hover:text-white transition shadow-lg"
             title="Toggle Facility Radar (M)"
           >
             <Compass className="w-4 h-4" />
@@ -1786,7 +2106,7 @@ export const VirtualLabView: React.FC = () => {
           {/* Sound Toggle */}
           <button
             onClick={handleToggleSound}
-            className="p-2.5 rounded-xl bg-[#030d22]/80 border border-slate-700/60 text-slate-300 hover:text-white backdrop-blur-md transition shadow-lg"
+            className="p-2.5 rounded-xl bg-[#040e24]/90 border border-slate-700/60 text-slate-300 hover:text-white transition shadow-lg"
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
           >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
@@ -1795,7 +2115,7 @@ export const VirtualLabView: React.FC = () => {
           {/* Help Controls Modal */}
           <button
             onClick={() => setIsHelpOpen(true)}
-            className="p-2.5 rounded-xl bg-[#030d22]/80 border border-slate-700/60 text-slate-300 hover:text-white backdrop-blur-md transition shadow-lg"
+            className="p-2.5 rounded-xl bg-[#040e24]/90 border border-slate-700/60 text-slate-300 hover:text-white transition shadow-lg"
             title="Controls & Instructions"
           >
             <Info className="w-4 h-4 text-cyan-300" />
@@ -1804,7 +2124,7 @@ export const VirtualLabView: React.FC = () => {
           {/* Fullscreen Toggle */}
           <button
             onClick={handleToggleFullscreen}
-            className="p-2.5 rounded-xl bg-[#030d22]/80 border border-slate-700/60 text-slate-300 hover:text-white backdrop-blur-md transition shadow-lg"
+            className="p-2.5 rounded-xl bg-[#040e24]/90 border border-slate-700/60 text-slate-300 hover:text-white transition shadow-lg"
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Cinema Fullscreen'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -1816,28 +2136,22 @@ export const VirtualLabView: React.FC = () => {
       {/* MINI-RADAR / FACILITY COMPASS (TOP RIGHT) */}
       {/* -------------------------------------------------------------------- */}
       {showRadar && (
-        <div className="absolute top-16 right-3 z-30 pointer-events-auto p-2.5 rounded-2xl bg-[#020b1c]/90 border border-cyan-500/30 backdrop-blur-md shadow-2xl">
+        <div className="absolute top-16 right-3 z-30 pointer-events-auto p-2.5 rounded-2xl bg-[#020b1c]/95 border border-cyan-500/30 shadow-2xl">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">LAB FACILITY RADAR</span>
             <span className="text-[9px] font-mono text-slate-400">SECTORS 1-5</span>
           </div>
           <div className="relative w-28 h-28 rounded-xl bg-[#030814] border border-cyan-900/60 overflow-hidden flex items-center justify-center">
-            {/* Radar concentric sweep lines */}
             <div className="absolute inset-0 rounded-full border border-cyan-500/20 scale-75" />
             <div className="absolute inset-0 rounded-full border border-cyan-500/10 scale-50" />
             <div className="absolute inset-x-0 top-1/2 h-[1px] bg-cyan-500/15" />
             <div className="absolute inset-y-0 left-1/2 w-[1px] bg-cyan-500/15" />
 
             {/* Station icons on radar */}
-            {/* Center: Synthesis */}
             <span className="absolute w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#00f0ff]" title="Wet Synthesis" />
-            {/* West: Spectroscopy */}
             <span className="absolute left-2.5 w-2 h-2 rounded-full bg-emerald-400" title="Spectroscopy" />
-            {/* North: Cryo Vault */}
             <span className="absolute bottom-2.5 w-2 h-2 rounded-full bg-purple-400" title="Cryo Vault" />
-            {/* East: Mainframe */}
             <span className="absolute right-2.5 w-2 h-2 rounded-full bg-amber-400" title="Mainframe" />
-            {/* South: Observation */}
             <span className="absolute top-2.5 w-2 h-2 rounded-full bg-blue-400" title="Observation Deck" />
 
             {/* Player indicator */}
@@ -1858,16 +2172,14 @@ export const VirtualLabView: React.FC = () => {
       {/* -------------------------------------------------------------------- */}
       {!activeStation && (
         <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-25">
-          {/* Subtle sci-fi center crosshair */}
           <div className="relative w-5 h-5 flex items-center justify-center">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/70 shadow-[0_0_6px_#00f0ff]" />
-            <div className="absolute w-4 h-[1px] bg-cyan-400/30" />
-            <div className="absolute h-4 w-[1px] bg-cyan-400/30" />
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/80 shadow-[0_0_6px_#00f0ff]" />
+            <div className="absolute w-4 h-[1px] bg-cyan-400/35" />
+            <div className="absolute h-4 w-[1px] bg-cyan-400/35" />
           </div>
 
-          {/* Interactive Proximity Callout when near a station */}
           {nearestStation && (
-            <div className="mt-8 pointer-events-auto animate-bounce flex flex-col items-center gap-1.5">
+            <div className="mt-8 pointer-events-auto flex flex-col items-center gap-1.5 anim-popup">
               <button
                 onClick={() => handleToggleStation(nearestStation.id)}
                 className="px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black text-xs tracking-wider uppercase shadow-[0_0_30px_rgba(0,240,255,0.6)] border border-white/60 transition transform hover:scale-105 active:scale-95 flex items-center gap-2 cursor-pointer"
@@ -1889,7 +2201,7 @@ export const VirtualLabView: React.FC = () => {
       {/* ACTIVE STATION BANNER (WHEN DOCKED AT A WORKSTATION) */}
       {/* -------------------------------------------------------------------- */}
       {activeStation && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-3 px-5 py-2 rounded-2xl bg-[#040e24]/95 border border-cyan-400/60 backdrop-blur-xl shadow-2xl">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-3 px-5 py-2 rounded-2xl bg-[#040e24]/95 border border-cyan-400/60 shadow-2xl">
           <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff]" />
           <div>
             <span className="text-xs font-bold text-white block">{LAB_STATIONS[activeStation].name} Active</span>
@@ -1908,7 +2220,7 @@ export const VirtualLabView: React.FC = () => {
       {/* DISCOVERY / CELEBRATION TOAST */}
       {/* -------------------------------------------------------------------- */}
       {currentDiscoveredNotice && (
-        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-40 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-950/95 via-[#06241b]/95 to-cyan-950/95 border border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4)] backdrop-blur-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-40 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-950/95 via-[#06241b]/95 to-cyan-950/95 border border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4)] flex items-center gap-4 anim-popup pointer-events-auto">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-300 text-2xl font-bold">
             <Sparkles className="w-6 h-6 animate-spin" />
           </div>
@@ -1928,7 +2240,7 @@ export const VirtualLabView: React.FC = () => {
       {actionToast && (
         <div
           key={actionToast.id}
-          className="absolute top-24 left-1/2 -translate-x-1/2 z-35 px-4 py-2 rounded-xl bg-[#051126]/90 border border-cyan-400/40 backdrop-blur-md shadow-xl flex items-center gap-2 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200"
+          className="absolute top-24 left-1/2 -translate-x-1/2 z-35 px-4 py-2 rounded-xl bg-[#051126]/95 border border-cyan-400/50 shadow-xl flex items-center gap-2 pointer-events-none anim-slide-down"
         >
           {actionToast.color && (
             <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: actionToast.color }} />
@@ -1943,26 +2255,38 @@ export const VirtualLabView: React.FC = () => {
       {/* -------------------------------------------------------------------- */}
       {/* MOBILE CONTROLS: VIRTUAL ANALOG JOYSTICK (BOTTOM LEFT) */}
       {/* -------------------------------------------------------------------- */}
-      {!activeStation && (
-        <div className="lg:hidden absolute bottom-5 left-5 z-35 pointer-events-auto">
+      {showJoystick && !activeStation && (
+        <div className="absolute bottom-5 left-5 z-40 pointer-events-auto flex flex-col items-center select-none">
           <div
-            className="relative w-28 h-28 rounded-full bg-[#040e24]/75 border-2 border-cyan-500/40 backdrop-blur-md flex items-center justify-center touch-none shadow-2xl"
+            className="relative w-32 h-32 rounded-full bg-gradient-to-br from-[#040e24]/90 to-[#020816]/95 border-2 border-cyan-400/50 flex items-center justify-center touch-none select-none shadow-[0_0_30px_rgba(0,240,255,0.25)]"
             onPointerDown={handleJoystickPointerDown}
             onPointerMove={handleJoystickPointerMove}
             onPointerUp={handleJoystickPointerUp}
             onPointerCancel={handleJoystickPointerUp}
+            style={{ touchAction: 'none' }}
           >
-            {/* Center resting ring */}
-            <div className="w-8 h-8 rounded-full border border-cyan-500/25 pointer-events-none" />
-            {/* Movable thumb knob */}
+            {/* Directional markers */}
+            <span className="absolute top-1 text-[9px] font-mono font-black text-cyan-400 pointer-events-none">▲ W</span>
+            <span className="absolute bottom-1 text-[9px] font-mono font-black text-cyan-400 pointer-events-none">▼ S</span>
+            <span className="absolute left-1.5 text-[9px] font-mono font-black text-cyan-400 pointer-events-none">◄ A</span>
+            <span className="absolute right-1.5 text-[9px] font-mono font-black text-cyan-400 pointer-events-none">► D</span>
+
+            {/* Concentric inner guideline rings */}
+            <div className="w-20 h-20 rounded-full border border-cyan-500/20 pointer-events-none" />
+            <div className="absolute w-10 h-10 rounded-full border border-cyan-500/15 pointer-events-none" />
+
+            {/* Floating Analog Thumb Stick Knob */}
             <div
-              className="absolute w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 border-2 border-white/80 shadow-[0_0_15px_rgba(0,240,255,0.7)] pointer-events-none transition-transform duration-75"
+              className="absolute w-14 h-14 rounded-full bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600 border-2 border-white shadow-[0_0_20px_rgba(0,240,255,0.8)] pointer-events-none flex items-center justify-center"
               style={{
-                transform: `translate(${touchStick.x * 28}px, ${touchStick.y * 28}px)`,
+                transform: `translate3d(${touchStick.x * 36}px, ${touchStick.y * 36}px, 0)`,
+                transition: touchStickId.current ? 'none' : 'transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               }}
-            />
+            >
+              <div className="w-3.5 h-3.5 rounded-full bg-white/90 shadow-sm" />
+            </div>
           </div>
-          <span className="block text-center text-[9px] font-mono font-bold text-cyan-400 mt-1 tracking-wider">
+          <span className="text-[10px] font-mono font-bold text-cyan-300 mt-1.5 tracking-wider uppercase drop-shadow">
             MOVE JOYSTICK
           </span>
         </div>
@@ -1971,52 +2295,168 @@ export const VirtualLabView: React.FC = () => {
       {/* -------------------------------------------------------------------- */}
       {/* MOBILE TOUCH ACTION BUTTONS (BOTTOM RIGHT) */}
       {/* -------------------------------------------------------------------- */}
-      {!activeStation && (
-        <div className="lg:hidden absolute bottom-5 right-5 z-35 pointer-events-auto flex flex-col items-end gap-2.5">
-          {/* Proximity Interact Button on Mobile */}
+      {showJoystick && !activeStation && (
+        <div className="absolute bottom-5 right-5 z-40 pointer-events-auto flex flex-col items-end gap-2.5 select-none">
           {nearestStation && (
             <button
               onClick={() => handleToggleStation(nearestStation.id)}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black text-xs tracking-wider uppercase shadow-[0_0_20px_rgba(0,240,255,0.8)] border border-white active:scale-95 flex items-center gap-2"
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-600 text-slate-950 font-black text-xs tracking-wider uppercase shadow-[0_0_25px_rgba(0,240,255,0.9)] border-2 border-white active:scale-95 flex items-center gap-2 animate-pulse"
             >
               <Zap className="w-4 h-4 fill-slate-950" />
-              <span>INTERACT (E)</span>
+              <span>INTERACT [E]</span>
             </button>
           )}
 
           <div className="flex items-center gap-2">
-            {/* Sprint toggle button */}
             <button
               onClick={handleToggleSprint}
-              className={`p-3 rounded-2xl border text-xs font-mono font-bold backdrop-blur-md shadow-lg active:scale-95 ${
+              className={`px-3.5 py-3 rounded-2xl border text-xs font-mono font-bold shadow-xl active:scale-95 flex items-center gap-1.5 transition ${
                 isSprinting
-                  ? 'bg-amber-500 text-slate-950 border-amber-300'
-                  : 'bg-[#030d22]/90 border-slate-700 text-slate-300'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.6)]'
+                  : 'bg-[#040e24]/95 border-slate-700 text-slate-300'
               }`}
+              title="Toggle Sprint Run (Shift)"
             >
-              <Footprints className="w-5 h-5" />
+              <Footprints className="w-4 h-4" />
+              <span className="text-[10px] font-bold">{isSprinting ? 'FAST' : 'WALK'}</span>
             </button>
 
-            {/* Jump button */}
             <button
               onClick={handleJump}
-              className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 border border-cyan-400 text-white font-black text-xs shadow-lg active:scale-95"
+              className="px-4 py-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 border border-cyan-400 text-white font-black text-xs shadow-xl active:scale-95 flex items-center gap-1.5"
+              title="Jump (Space)"
             >
-              <ArrowUp className="w-5 h-5" />
+              <ArrowUp className="w-4 h-4" />
+              <span className="text-[10px] font-bold">JUMP</span>
             </button>
           </div>
         </div>
       )}
 
       {/* -------------------------------------------------------------------- */}
-      {/* COLLAPSIBLE BOTTOM WORKSTATION DOCK (FOR HANDS-ON BENCH EXPERIMENTATION) */}
+      {/* PC KEYBOARD FUNCTION: TACTICAL ON-SCREEN KEYBOARD HUD (BOTTOM LEFT) */}
+      {/* -------------------------------------------------------------------- */}
+      {showKeyboardGuide && !showJoystick && !activeStation && (
+        <div className="hidden md:flex absolute bottom-5 left-5 z-35 flex-col gap-1.5 p-3 rounded-2xl bg-[#040e24]/90 border border-cyan-500/30 shadow-2xl pointer-events-auto select-none">
+          <div className="flex items-center justify-between gap-3 pb-1 border-b border-cyan-950">
+            <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider flex items-center gap-1.5">
+              <Keyboard className="w-3.5 h-3.5 text-cyan-400" />
+              PC KEYBOARD CONTROLS
+            </span>
+            <button
+              onClick={() => setShowKeyboardGuide(false)}
+              className="text-[9px] font-mono text-slate-400 hover:text-white px-1"
+              title="Hide Keyboard HUD (K)"
+            >
+              [K] Hide
+            </button>
+          </div>
+
+          {/* WASD & Action Keys Display with Real-Time Keypress Highlighting */}
+          <div className="flex items-center gap-3 pt-1">
+            {/* WASD cluster */}
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`w-7 h-7 rounded-lg border flex items-center justify-center text-[10px] font-mono font-bold transition-all duration-75 ${
+                  activeKeys['KeyW'] || activeKeys['ArrowUp']
+                    ? 'bg-cyan-500 text-slate-950 border-white shadow-[0_0_14px_#00f0ff] scale-95'
+                    : 'bg-[#06142c] border-cyan-800/60 text-slate-300'
+                }`}
+                title="Move Forward (W / ↑)"
+              >
+                W
+              </div>
+              <div className="flex items-center gap-1">
+                <div
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center text-[10px] font-mono font-bold transition-all duration-75 ${
+                    activeKeys['KeyA'] || activeKeys['ArrowLeft']
+                      ? 'bg-cyan-500 text-slate-950 border-white shadow-[0_0_14px_#00f0ff] scale-95'
+                      : 'bg-[#06142c] border-cyan-800/60 text-slate-300'
+                  }`}
+                  title="Strafe Left (A / ←)"
+                >
+                  A
+                </div>
+                <div
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center text-[10px] font-mono font-bold transition-all duration-75 ${
+                    activeKeys['KeyS'] || activeKeys['ArrowDown']
+                      ? 'bg-cyan-500 text-slate-950 border-white shadow-[0_0_14px_#00f0ff] scale-95'
+                      : 'bg-[#06142c] border-cyan-800/60 text-slate-300'
+                  }`}
+                  title="Move Back (S / ↓)"
+                >
+                  S
+                </div>
+                <div
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center text-[10px] font-mono font-bold transition-all duration-75 ${
+                    activeKeys['KeyD'] || activeKeys['ArrowRight']
+                      ? 'bg-cyan-500 text-slate-950 border-white shadow-[0_0_14px_#00f0ff] scale-95'
+                      : 'bg-[#06142c] border-cyan-800/60 text-slate-300'
+                  }`}
+                  title="Strafe Right (D / →)"
+                >
+                  D
+                </div>
+              </div>
+            </div>
+
+            {/* Action hotkey badges */}
+            <div className="flex flex-col gap-1 text-[10px] font-mono">
+              <div className="flex items-center gap-1">
+                <div
+                  className={`px-2 py-1 rounded-lg border text-[9px] font-bold transition-all duration-75 ${
+                    activeKeys['ShiftLeft'] || activeKeys['ShiftRight']
+                      ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_12px_#f59e0b]'
+                      : 'bg-[#06142c] border-slate-700 text-slate-300'
+                  }`}
+                >
+                  SHIFT Sprint
+                </div>
+                <div
+                  className={`px-2 py-1 rounded-lg border text-[9px] font-bold transition-all duration-75 ${
+                    activeKeys['Space']
+                      ? 'bg-blue-500 text-white border-blue-300 shadow-[0_0_12px_#3b82f6]'
+                      : 'bg-[#06142c] border-slate-700 text-slate-300'
+                  }`}
+                >
+                  SPACE Jump
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <div
+                  className={`px-2 py-1 rounded-lg border text-[9px] font-bold transition-all duration-75 ${
+                    activeKeys['KeyE']
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-[0_0_12px_#10b981]'
+                      : 'bg-[#06142c] border-slate-700 text-slate-300'
+                  }`}
+                >
+                  E Interact
+                </div>
+                <div
+                  className={`px-2 py-1 rounded-lg border text-[9px] font-bold transition-all duration-75 ${
+                    activeKeys['Escape'] || activeKeys['KeyQ']
+                      ? 'bg-rose-500 text-white border-rose-300 shadow-[0_0_12px_#f43f5e]'
+                      : 'bg-[#06142c] border-slate-700 text-slate-300'
+                  }`}
+                >
+                  ESC Exit
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------------- */}
+      {/* COLLAPSIBLE BOTTOM WORKSTATION DOCK */}
       {/* -------------------------------------------------------------------- */}
       <div
         className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-30 w-full max-w-4xl px-3 transition-transform duration-300 ${
           isDockCollapsed ? 'translate-y-[calc(100%-2.2rem)]' : 'translate-y-0'
         }`}
       >
-        <div className="rounded-2xl bg-[#040e24]/95 border border-cyan-500/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="rounded-2xl bg-[#040e24]/95 border border-cyan-500/40 shadow-2xl overflow-hidden">
           {/* Header Bar with Tabs & Collapse Toggle */}
           <div className="px-4 py-2 border-b border-cyan-950 flex items-center justify-between bg-[#030916]">
             {/* Navigation Tabs */}
@@ -2096,7 +2536,7 @@ export const VirtualLabView: React.FC = () => {
               <button
                 onClick={() => setIsDockCollapsed(!isDockCollapsed)}
                 className="p-1.5 rounded-lg bg-[#0b172d] text-slate-300 hover:text-white transition"
-                title={isDockCollapsed ? 'Expand Dock' : 'Collapse Dock'}
+                title={isDockCollapsed ? 'Expand Dock (H)' : 'Collapse Dock (H)'}
               >
                 {isDockCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -2155,28 +2595,44 @@ export const VirtualLabView: React.FC = () => {
                     <div>
                       <span className="text-xs font-bold text-white block">Bunsen Burner Flame</span>
                       <span className="text-[10px] text-slate-400 font-mono">
-                        {isHeating ? 'Ignited · Oxidizing flame (1100°C)' : 'Extinguished'}
+                        {isHeating
+                          ? burnerMode === 'roaring'
+                            ? 'Ignited · Roaring Blue Oxidizing Flame (1100°C)'
+                            : 'Ignited · Gentle Safety Yellow Flame (300°C)'
+                          : 'Extinguished'}
                       </span>
                     </div>
-                    <button
-                      onClick={() => setIsHeating(!isHeating)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
-                        isHeating
-                          ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
-                          : 'bg-[#0a1833] text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      <Flame className="w-3.5 h-3.5" />
-                      <span>{isHeating ? 'EXTINGUISH' : 'IGNITE FLAME'}</span>
-                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      {isHeating && (
+                        <button
+                          onClick={() => setBurnerMode((m) => (m === 'roaring' ? 'safety' : 'roaring'))}
+                          className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold bg-[#0f244a] text-cyan-300 hover:text-white border border-cyan-700/60 transition"
+                          title="Switch Flame Type"
+                        >
+                          {burnerMode === 'roaring' ? 'BLUE ROAR' : 'YELLOW SAFETY'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setIsHeating(!isHeating)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                          isHeating
+                            ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
+                            : 'bg-[#0a1833] text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        <Flame className="w-3.5 h-3.5" />
+                        <span>{isHeating ? 'EXTINGUISH' : 'IGNITE FLAME'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs font-mono text-slate-300">
-                    <span>Flask Temp: {temperature}°C</span>
+                    <span>Flask Temp: <strong className={temperature > 70 ? 'text-rose-400' : 'text-cyan-300'}>{temperature}°C</strong></span>
                     <div className="flex-1 bg-[#020610] h-2 rounded-full overflow-hidden border border-cyan-950">
                       <div
                         className="h-full bg-gradient-to-r from-cyan-500 via-amber-500 to-rose-500 transition-all duration-300"
-                        style={{ width: `${Math.min(100, ((temperature - 20) / 90) * 100)}%` }}
+                        style={{ width: `${Math.min(100, ((temperature - 20) / 95) * 100)}%` }}
                       />
                     </div>
                   </div>
@@ -2206,7 +2662,7 @@ export const VirtualLabView: React.FC = () => {
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-tight">
-                    Agitation accelerates stoichiometric dissolution and ensures uniform heat distribution.
+                    Agitation generates a dynamic hydrodynamic liquid vortex funnel and accelerates stoichiometry.
                   </p>
                 </div>
               </div>
@@ -2294,7 +2750,7 @@ export const VirtualLabView: React.FC = () => {
       {/* PROTOCOL INSPECTOR MODAL */}
       {/* -------------------------------------------------------------------- */}
       {inspectingProtocol && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm pointer-events-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 pointer-events-auto">
           <div className="w-full max-w-lg rounded-3xl bg-[#040e24] border border-cyan-500/40 p-6 shadow-2xl relative">
             <button
               onClick={() => setInspectingProtocol(null)}
@@ -2344,7 +2800,7 @@ export const VirtualLabView: React.FC = () => {
       {/* CONTROLS GUIDE MODAL */}
       {/* -------------------------------------------------------------------- */}
       {isHelpOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm pointer-events-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 pointer-events-auto">
           <div className="w-full max-w-md rounded-3xl bg-[#040e24] border border-cyan-500/40 p-6 shadow-2xl relative">
             <button
               onClick={() => setIsHelpOpen(false)}
@@ -2355,33 +2811,39 @@ export const VirtualLabView: React.FC = () => {
 
             <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
               <Compass className="w-5 h-5 text-cyan-400" />
-              <span>Indie Game Controls</span>
+              <span>CHEMORA 3D Lab Controls &amp; Shortcuts</span>
             </h3>
-            <p className="text-xs text-slate-400 mb-4">Full player controls across desktop and mobile devices.</p>
+            <p className="text-xs text-slate-400 mb-4">High-performance 60FPS exploration across desktop and mobile.</p>
 
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-2xl bg-[#020816] border border-cyan-950">
-                <strong className="text-cyan-300 block mb-1">Laptop &amp; Desktop (Keyboard &amp; Mouse)</strong>
+                <strong className="text-cyan-300 block mb-1">PC / Computer Keyboard &amp; Mouse</strong>
                 <ul className="space-y-1 text-slate-300 font-mono text-[11px]">
+                  <li>• <strong className="text-rose-400">ESC or Q / Exit Button:</strong> Exit 3D Lab game back to CHEMORA Dashboard</li>
                   <li>• <strong className="text-white">W, A, S, D / Arrows:</strong> Walk &amp; strafe</li>
-                  <li>• <strong className="text-white">Shift:</strong> Hold to sprint</li>
-                  <li>• <strong className="text-white">Space:</strong> Jump with physics</li>
-                  <li>• <strong className="text-white">Mouse:</strong> Click to lock pointer &amp; look 360°</li>
-                  <li>• <strong className="text-white">E:</strong> Interact with nearest station</li>
+                  <li>• <strong className="text-white">Shift:</strong> Hold to sprint (6.4 m/s)</li>
+                  <li>• <strong className="text-white">Space:</strong> Jump with gravity physics</li>
+                  <li>• <strong className="text-white">Mouse Click &amp; Drag:</strong> 360° first-person/third-person camera look</li>
+                  <li>• <strong className="text-white">E:</strong> Interact with nearest workstation / Free roam toggle</li>
+                  <li>• <strong className="text-white">K:</strong> Show / hide PC Keyboard tactical on-screen HUD</li>
+                  <li>• <strong className="text-white">1 - 5:</strong> Instant teleport to any of the 5 lab sectors</li>
+                  <li>• <strong className="text-white">P:</strong> Toggle Performance mode (Smooth 60FPS / Balanced / Cinematic)</li>
+                  <li>• <strong className="text-white">H:</strong> Collapse / Expand bottom experiment dock</li>
                   <li>• <strong className="text-white">F:</strong> Toggle Flashlight / UV lamp</li>
-                  <li>• <strong className="text-white">V:</strong> Toggle 1st / 3rd Person view</li>
-                  <li>• <strong className="text-white">R:</strong> Rinse flask at bench</li>
+                  <li>• <strong className="text-white">V:</strong> Toggle 1st / 3rd Person camera perspective</li>
+                  <li>• <strong className="text-white">R:</strong> Rinse &amp; sanitize reaction flask at bench</li>
                   <li>• <strong className="text-white">M:</strong> Toggle facility radar map</li>
                 </ul>
               </div>
 
               <div className="p-3 rounded-2xl bg-[#020816] border border-cyan-950">
-                <strong className="text-emerald-300 block mb-1">Phone &amp; Tablet (Touch Screen)</strong>
+                <strong className="text-emerald-300 block mb-1">Phone &amp; Tablet Mobile Controls</strong>
                 <ul className="space-y-1 text-slate-300 font-mono text-[11px]">
-                  <li>• <strong className="text-white">Left Joystick:</strong> Analog 360° walking</li>
-                  <li>• <strong className="text-white">Right Screen Swipe:</strong> Swipe to rotate camera</li>
-                  <li>• <strong className="text-white">Interact Button [E]:</strong> Appears near stations</li>
-                  <li>• <strong className="text-white">Action Buttons:</strong> Dedicated Jump &amp; Sprint</li>
+                  <li>• <strong className="text-white">Virtual Analog Joystick:</strong> Smooth 360° analog thumb stick (bottom-left)</li>
+                  <li>• <strong className="text-white">Right Screen Swipe:</strong> Fluid camera yaw &amp; pitch rotation</li>
+                  <li>• <strong className="text-white">INTERACT [E]:</strong> High-visibility action button near workstations</li>
+                  <li>• <strong className="text-white">JUMP &amp; FAST RUN:</strong> Dedicated touch buttons with instant response</li>
+                  <li>• <strong className="text-white">Joystick Toggle:</strong> Click gamepad icon in top bar to show/hide anytime</li>
                 </ul>
               </div>
             </div>

@@ -8,7 +8,6 @@ import { ChallengeView } from './components/ChallengeView';
 import { ExperimentsView } from './components/ExperimentsView';
 import { ProgressView } from './components/ProgressView';
 import { AccountView } from './components/AccountView';
-import { VirtualLabView } from './components/VirtualLabView';
 import { AIAssistant } from './components/AIAssistant';
 
 export default function App() {
@@ -54,6 +53,10 @@ export default function App() {
   }, []);
 
   const handleSelectTab = (tab: ActiveTab) => {
+    if (tab === 'lab') {
+      window.location.href = '/play';
+      return;
+    }
     setActiveTab(tab);
     window.location.hash = tab === 'home' ? '' : tab;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -114,7 +117,28 @@ export default function App() {
             onGoToExperiments={() => handleSelectTab('experiments')}
           />
         )}
-        {activeTab === 'lab' && <VirtualLabView />}
+        {activeTab === 'lab' && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 bg-gradient-to-br from-[#06142a]/95 via-[#030d1c]/90 to-[#020814]/95 border border-cyan-500/30 rounded-3xl shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-3xl font-black text-cyan-300 mb-4 shadow-[0_0_30px_rgba(6,182,212,0.4)]">
+              ⚗
+            </div>
+            <span className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase mb-2">
+              DEDICATED SEPARATE FULLSCREEN LAB
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">
+              CHEMORA 3D Open World Simulation
+            </h2>
+            <p className="text-slate-300 text-sm max-w-md mb-6 leading-relaxed">
+              To maximize frame rates and eliminate lag, the 3D chemistry lab simulation opens on its own dedicated separate screen with full hardware acceleration.
+            </p>
+            <a
+              href="/play"
+              className="px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black text-sm tracking-wider uppercase shadow-[0_0_35px_rgba(0,240,255,0.7)] transition transform hover:scale-105 active:scale-95 flex items-center gap-2"
+            >
+              <span>Launch 3D Lab Simulation →</span>
+            </a>
+          </div>
+        )}
         {activeTab === 'account' && (
           <AccountView onThemeChanged={() => setIsLightMode(!isLightMode)} />
         )}
