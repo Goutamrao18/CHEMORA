@@ -1,9 +1,9 @@
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { useGameStore } from '../gameplay/gameState';
+import { detectRoomId, type LabRoomId } from '../layout';
 import { EquipmentItem, type EquipmentSpec } from './EquipmentPrimitives';
 import { ReagentBottleShelf } from './ReagentBottleShelf';
-import { useGameStore } from '../gameplay/gameState';
-import { useShallow } from 'zustand/react/shallow';
-import { detectRoomId, type LabRoomId } from '../layout';
 
 const MAIN: EquipmentSpec[] = [
   { id: 'safety-ppe-rack', label: 'Goggles, gloves and coat rack', kind: 'rack', position: [5.35, 0, 6.35], size: [2.2, 1.7, 0.45], accent: '#22c55e' },

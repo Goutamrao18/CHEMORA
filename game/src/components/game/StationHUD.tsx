@@ -1,32 +1,32 @@
+import {
+  Activity,
+  ArrowRightLeft,
+  CheckCircle2,
+  Flame,
+  FlaskConical,
+  Layers,
+  Scale,
+  Sparkles,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 import React, { useState } from 'react';
 import {
-  useGameStore,
-  type LabStationId,
-} from '../../gameplay/gameState';
-import {
-  REAGENTS_CATALOG,
-  generateSpectrumData,
-} from '../../gameplay/chemistry';
-import {
-  playPourLiquid,
-  playScaleBeep,
-  playGlasswareClick,
   playAnalysisScan,
-  playReactionComplete,
   playBubbleEffervescence,
+  playGlasswareClick,
+  playPourLiquid,
+  playReactionComplete,
+  playScaleBeep,
 } from '../../gameplay/audio';
 import {
-  FlaskConical,
-  Flame,
-  Scale,
-  ArrowRightLeft,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Activity,
-  Layers,
-  Sparkles,
-} from 'lucide-react';
+  generateSpectrumData,
+  REAGENTS_CATALOG,
+} from '../../gameplay/chemistry';
+import {
+  type LabStationId,
+  useGameStore,
+} from '../../gameplay/gameState';
 
 export const StationHUD: React.FC = () => {
   const activeStation = useGameStore((s) => s.activeStation);

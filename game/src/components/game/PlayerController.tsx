@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useRapier } from '@react-three/rapier';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { useGameStore, type LabStationId } from '../../gameplay/gameState';
-import { playGlasswareClick, playFootstep } from '../../gameplay/audio';
+import { playFootstep, playGlasswareClick } from '../../gameplay/audio';
+import { type LabStationId, useGameStore } from '../../gameplay/gameState';
 import { detectRoomId, getFootstepFloor } from '../../layout';
 
 export const PlayerController: React.FC = () => {

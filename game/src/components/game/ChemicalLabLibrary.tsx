@@ -1,5 +1,5 @@
+import { Beaker, FlaskConical, Plus, Search, Sparkles, X } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
-import { Beaker, FlaskConical, Search, X, Plus, Sparkles } from 'lucide-react';
 import { REAGENTS_CATALOG } from '../../gameplay/chemistry';
 import { useGameStore, type VesselState } from '../../gameplay/gameState';
 

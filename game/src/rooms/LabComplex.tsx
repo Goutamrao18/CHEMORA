@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { playDoorSound } from '../gameplay/audio';
-import * as THREE from 'three';
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
+import React, { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { playDoorSound } from '../gameplay/audio';
 import { useGameStore } from '../gameplay/gameState';
 
-import { ROOMS, CORRIDORS, LOCKED_DOORS, ROOM_LOCK_THRESHOLDS, WALL_HEIGHT, WALL_THICKNESS, DOOR_HEIGHT, DOOR_WIDTH, type Side, type RoomSpec, type CorridorSpec } from '../layout';
+import { CORRIDORS, type CorridorSpec, DOOR_HEIGHT, DOOR_WIDTH, LOCKED_DOORS, ROOM_LOCK_THRESHOLDS, ROOMS, type RoomSpec, type Side, WALL_HEIGHT, WALL_THICKNESS } from '../layout';
 
 const WALL_H = WALL_HEIGHT;
 const WALL_T = WALL_THICKNESS;

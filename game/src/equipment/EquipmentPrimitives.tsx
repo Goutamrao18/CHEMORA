@@ -1,8 +1,8 @@
+import { CuboidCollider, RigidBody } from '@react-three/rapier';
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { CuboidCollider, RigidBody } from '@react-three/rapier';
-import { equipmentPromptHandlers, registerInteractable } from './EquipmentInteraction';
 import { useGraphicsSettings } from '../graphics/quality';
+import { equipmentPromptHandlers, registerInteractable } from './EquipmentInteraction';
 
 export type EquipmentKind = 'bench' | 'cabinet' | 'fridge' | 'balance' | 'meter' | 'instrument' | 'safety' | 'bin' | 'desk' | 'computer' | 'board' | 'sink' | 'hood' | 'stand' | 'burner' | 'shower' | 'extinguisher' | 'kit' | 'rack' | 'glassware' | 'clamp' | 'gasTap';
 export type EquipmentSpec = { id: string; label: string; prompt?: string; kind: EquipmentKind; position: [number, number, number]; size?: [number, number, number]; color?: string; accent?: string; rotationY?: number; collider?: boolean };

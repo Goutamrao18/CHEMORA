@@ -1,5 +1,5 @@
+import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useSyncExternalStore } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 type EquipmentPrompt = { id: string; label: string; prompt: string; position?: [number, number, number] } | null;

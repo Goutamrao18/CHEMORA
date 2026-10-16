@@ -1,7 +1,7 @@
 import React from 'react';
 import * as THREE from 'three';
-import { useGameStore } from '../../gameplay/gameState';
 import { REAGENTS_CATALOG } from '../../gameplay/chemistry';
+import { useGameStore } from '../../gameplay/gameState';
 import { LabVessel3D } from './LabVessel3D';
 
 export const Stations3D: React.FC = () => {

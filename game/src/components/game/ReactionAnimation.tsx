@@ -1,5 +1,5 @@
+import { CircleDot, Sparkles, Waves, Wind } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Waves, Wind, CircleDot } from 'lucide-react';
 import { useGameStore } from '../../gameplay/gameState';
 
 export const ReactionAnimation: React.FC = () => {

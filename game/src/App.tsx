@@ -1,28 +1,28 @@
-import React, { Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
-import { useGameStore } from './gameplay/gameState';
-import { LabRoom } from './components/game/LabRoom';
-import { Stations3D } from './components/game/Stations3D';
-import { PlayerController } from './components/game/PlayerController';
+import React, { Suspense, useEffect } from 'react';
+import { ChemicalLabLibrary } from './components/game/ChemicalLabLibrary';
 import { HandsView3D } from './components/game/HandsView3D';
+import { LabRoom } from './components/game/LabRoom';
 import { LiquidPourStream } from './components/game/LiquidPourStream';
 import { MainHUD } from './components/game/MainHUD';
-import { StationHUD } from './components/game/StationHUD';
-import { ResearchJournal } from './components/game/ResearchJournal';
 import { MainMenu } from './components/game/MainMenu';
-import { ChemicalLabLibrary } from './components/game/ChemicalLabLibrary';
-import { ReactionAnimation } from './components/game/ReactionAnimation';
 import { MobileControls } from './components/game/MobileControls';
+import { PlayerController } from './components/game/PlayerController';
+import { ReactionAnimation } from './components/game/ReactionAnimation';
+import { ResearchJournal } from './components/game/ResearchJournal';
+import { StationHUD } from './components/game/StationHUD';
+import { Stations3D } from './components/game/Stations3D';
+import { EquipmentCarryView3D } from './equipment/EquipmentCarryView3D';
 import { EquipmentComplex } from './equipment/EquipmentComplex';
 import { EquipmentPromptHUD, EquipmentRaycast } from './equipment/EquipmentInteraction';
-import { GraphicsPipeline } from './graphics/GraphicsPipeline';
-import { GameplayHUD } from './gameplay/GameplayHUD';
-import { EquipmentCarryView3D } from './equipment/EquipmentCarryView3D';
 import { initAudio, setAudioMuted, setAudioVolume } from './gameplay/audio';
+import { GameplayHUD } from './gameplay/GameplayHUD';
+import { useGameStore } from './gameplay/gameState';
 import { TutorialGuide } from './gameplay/TutorialGuide';
+import { GraphicsPipeline } from './graphics/GraphicsPipeline';
 import { detectQuality, qualityDpr, setGraphicsSettings, useGraphicsSettings } from './graphics/quality';
-import { detectRoomId, ROOM_BY_ID, ROOM_ADJACENCY } from './layout';
+import { detectRoomId, ROOM_ADJACENCY, ROOM_BY_ID } from './layout';
 
 const LoadingFallback: React.FC = () => {
   return (

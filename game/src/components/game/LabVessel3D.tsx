@@ -1,8 +1,8 @@
+import { useFrame } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
-import { useGameStore } from '../../gameplay/gameState';
 import type { VesselState } from '../../gameplay/gameState';
+import { useGameStore } from '../../gameplay/gameState';
 import { registerVesselRoot } from '../../gameplay/vesselRegistry';
 
 

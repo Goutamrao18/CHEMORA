@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { useGameStore } from '../../gameplay/gameState';
-import { initAudio } from '../../gameplay/audio';
 import {
+  CheckCircle,
   FlaskConical,
   Play,
+  Sparkles,
   Volume2,
   VolumeX,
-  CheckCircle,
-  Sparkles,
 } from 'lucide-react';
+import React, { useState } from 'react';
+import { initAudio } from '../../gameplay/audio';
+import { useGameStore } from '../../gameplay/gameState';
 
 export const MainMenu: React.FC = () => {
   const hasStartedGame = useGameStore((s) => s.hasStartedGame);

@@ -1,7 +1,7 @@
-import React from 'react';
 import { BookOpen, CheckCircle2, FlaskConical, LockKeyhole, X } from 'lucide-react';
-import { useGameStore } from '../../gameplay/gameState';
+import React from 'react';
 import { PROTOCOLS_LIST, REAGENTS_CATALOG } from '../../gameplay/chemistry';
+import { useGameStore } from '../../gameplay/gameState';
 
 /** Research notebook overlay. Reads authoritative progression and analysis data from the game store. */
 export const ResearchJournal: React.FC = () => {

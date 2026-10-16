@@ -16,8 +16,13 @@ const EXCLUDE_TOP = new Set([
 const isDoc = name => /\.md$/i.test(name);
 
 if (!fs.existsSync(path.join(gameDist, "index.html"))) {
-  console.error(`Game build not found at ${path.relative(root, gameDist)} - run 'make build-game' first.`);
-  process.exit(1);
+  console.log(`Game build not found at ${path.relative(root, gameDist)} - automatically building 3D lab...`);
+  try {
+    execSync("npm run build", { cwd: path.join(root, "game"), stdio: "inherit" });
+  } catch (gameErr) {
+    console.error(`Failed to build game: ${gameErr?.message}`);
+    process.exit(1);
+  }
 }
 if (dist === root || dist.startsWith(gameDist)) { console.error("Refusing unsafe dist path."); process.exit(1); }
 

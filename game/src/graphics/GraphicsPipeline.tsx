@@ -1,7 +1,7 @@
+import { useThree } from '@react-three/fiber';
+import { Bloom, EffectComposer, N8AO, SMAA } from '@react-three/postprocessing';
 import React, { useEffect } from 'react';
 import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
-import { EffectComposer, Bloom, N8AO, SMAA } from '@react-three/postprocessing';
 import { useGraphicsSettings } from './quality';
 
 export const GraphicsPipeline: React.FC = () => {

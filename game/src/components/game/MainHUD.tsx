@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { useGameStore } from '../../gameplay/gameState';
 import {
+  Activity,
   BookOpen,
+  Flame,
+  FlaskConical,
+  HelpCircle,
+  Maximize2,
+  Scale,
+  Settings,
   Volume2,
   VolumeX,
-  Settings,
-  HelpCircle,
-  FlaskConical,
-  Flame,
-  Scale,
-  Activity,
-  Maximize2,
 } from 'lucide-react';
+import React, { useState } from 'react';
 import { playGlasswareClick } from '../../gameplay/audio';
+import { useGameStore } from '../../gameplay/gameState';
 import { setGraphicsSettings, useGraphicsSettings } from '../../graphics/quality';
 
 export const MainHUD: React.FC = () => {
