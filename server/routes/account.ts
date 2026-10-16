@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import {
   backendSignUp,
   backendSignIn,
@@ -11,9 +12,9 @@ import {
   backendGetProgress,
   getSupabaseSystemDiagnostics,
   isSupabaseBackendConfigured,
-} from '../supabase';
+} from '../supabase.ts';
 
-const router = Router();
+const router = express.Router();
 
 function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization;
