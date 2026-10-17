@@ -709,5 +709,465 @@ export const EXPERIMENTS: Experiment[] = [
     "equation": "Cu²⁺ + 2e⁻ → Cu",
     "conclusion": "Electrolysis demonstrates how electrical energy can drive chemical change.",
     "safety": "Use only a teacher-approved low-voltage supply; never use mains electricity and keep connections dry."
+  },
+  {
+    "id": "esterification-synthesis",
+    "title": "Esterification: Organic Fragrance Synthesis",
+    "emoji": "🍐",
+    "level": "Intermediate",
+    "topic": "Organic Chemistry",
+    "summary": "Synthesize sweet-smelling ethyl ethanoate ester by heating ethanol with glacial ethanoic acid in the presence of concentrated sulfuric acid catalyst.",
+    "equipment": [
+      "Round bottom flask",
+      "Water bath",
+      "Reflux condenser",
+      "Separating funnel",
+      "Beaker"
+    ],
+    "chemicals": [
+      "Glacial ethanoic acid",
+      "Pure ethanol",
+      "Concentrated sulfuric acid catalyst",
+      "Sodium hydrogencarbonate solution",
+      "Anhydrous sodium sulfate"
+    ],
+    "steps": [
+      "Carefully add 10 cm³ of ethanol and 10 cm³ of glacial ethanoic acid to a round-bottom flask.",
+      "Add 1 cm³ of concentrated sulfuric acid dropwise with continuous swirling under cooling.",
+      "Fit a water-cooled reflux condenser and heat the mixture gently in a boiling water bath for 15 minutes.",
+      "Allow the mixture to cool, then pour into a beaker containing cold aqueous sodium hydrogencarbonate to neutralize unreacted acid.",
+      "Transfer the biphasic mixture to a separating funnel, discard the lower aqueous layer, and collect the sweet, pear-scented ester layer."
+    ],
+    "observations": [
+      "Vigorous effervescence when pouring into hydrogencarbonate as CO₂ evolves",
+      "Distinct immiscible organic layer forms above the aqueous phase",
+      "Characteristic sweet fruity aroma (pear drops / nail polish remover)"
+    ],
+    "explanation": "Carboxylic acids and alcohols undergo Fisher esterification in a reversible condensation equilibrium. Concentrated sulfuric acid acts both as an acid catalyst (protonating the carbonyl oxygen) and as a dehydrating agent to pull equilibrium towards ester formation.",
+    "equation": "CH₃COOH + C₂H₅OH ⇌ CH₃COOC₂H₅ + H₂O (conc. H₂SO₄ catalyst)",
+    "conclusion": "Esterification demonstrates condensation polymer and flavor chemistry principles. Esters are less dense than water and possess characteristic volatile aromas.",
+    "safety": "Concentrated sulfuric acid is severely dehydrating and corrosive. Glacial ethanoic acid is pungent and corrosive. Keep organic vapors away from open Bunsen flames — use a water bath."
+  },
+  {
+    "id": "iodine-clock",
+    "title": "Iodine Clock: Landolt Kinetics Reaction",
+    "emoji": "⏱️",
+    "level": "Intermediate",
+    "topic": "Thermodynamics & Kinetics",
+    "summary": "Investigate how reactant concentration affects chemical reaction velocity with a dramatic sudden color transition from clear to midnight blue.",
+    "equipment": [
+      "Volumetric pipettes",
+      "Conical flasks",
+      "Digital stopwatch",
+      "White measuring tile",
+      "Graduated cylinder"
+    ],
+    "chemicals": [
+      "Potassium iodide solution",
+      "Sodium thiosulfate solution",
+      "Potassium persulfate (peroxydisulfate)",
+      "Starch indicator solution",
+      "Deionized water"
+    ],
+    "steps": [
+      "Prepare Solution A: 25 cm³ potassium iodide, 5 cm³ sodium thiosulfate, and 2 cm³ freshly prepared starch solution in a conical flask.",
+      "Prepare Solution B: 25 cm³ potassium persulfate in a measuring cylinder.",
+      "Simultaneously pour Solution B into Solution A and start the digital timer immediately.",
+      "Swirl continuously against a white background.",
+      "Stop the timer the exact instant the entire solution switches instantaneously to deep blue-black.",
+      "Repeat with varying iodide concentrations to establish reaction orders."
+    ],
+    "observations": [
+      "Mixture remains crystal clear and transparent initially",
+      "Sudden sharp transition (under 0.2s) across the entire flask to intense dark ink-blue",
+      "Higher reactant concentration reduces reaction time substantially"
+    ],
+    "explanation": "Persulfate slowly oxidizes iodide to iodine: S₂O₈²⁻ + 2I⁻ → 2SO₄²⁻ + I₂. As soon as iodine forms, thiosulfate rapidly reduces it back to iodide: I₂ + 2S₂O₃²⁻ → 2I⁻ + S₄O₆²⁻. Only once all thiosulfate is completely consumed does free iodine accumulate and complex with starch to trigger the midnight blue color.",
+    "equation": "S₂O₈²⁻ + 2I⁻ → 2SO₄²⁻ + I₂ (slow); I₂ + 2S₂O₃²⁻ → 2I⁻ + S₄O₆²⁻ (fast)",
+    "conclusion": "Reaction rate is directly proportional to reactant concentrations, confirming collision theory kinetics.",
+    "safety": "Potassium persulfate is a strong oxidizer. Wear eye protection and nitrile gloves. Rinse skin splashes with copious water."
+  },
+  {
+    "id": "aspirin-synthesis",
+    "title": "Synthesis of Aspirin (Acetylsalicylic Acid)",
+    "emoji": "💊",
+    "level": "Advanced",
+    "topic": "Organic Chemistry",
+    "summary": "Prepare the classical analgesic acetylsalicylic acid by esterifying salicylic acid with ethanoic anhydride using phosphoric acid catalyst, followed by recrystallization.",
+    "equipment": [
+      "Conical flask",
+      "Buchner funnel and vacuum flask",
+      "Ice bath",
+      "Water bath",
+      "Melting point capillary tubes",
+      "Filter paper"
+    ],
+    "chemicals": [
+      "Salicylic acid",
+      "Ethanoic (acetic) anhydride",
+      "Concentrated phosphoric acid (H₃PO₄)",
+      "Chilled deionized water",
+      "Ethanol"
+    ],
+    "steps": [
+      "Weigh 2.0 g of salicylic acid and transfer to a dry 100 cm³ conical flask.",
+      "Add 5.0 cm³ of ethanoic anhydride and 5 drops of 85% phosphoric acid.",
+      "Warm the flask in a 60°C water bath for 15 minutes, swirling until all solid dissolves.",
+      "Carefully add 20 cm³ of ice-cold water to hydrolyze excess ethanoic anhydride.",
+      "Chill in an ice bath until shiny white needle crystals of crude aspirin precipitate.",
+      "Filter using a Buchner funnel under vacuum, wash with cold water, and recrystallize from hot water/ethanol."
+    ],
+    "observations": [
+      "Initial suspension dissolves to form a clear pale yellow liquid",
+      "Rapid formation of white needle-like crystals upon cooling and scratching the flask",
+      "Test with iron(III) chloride shows no purple coloration if purification is complete"
+    ],
+    "explanation": "The phenolic hydroxyl group of salicylic acid nucleophilically attacks the carbonyl carbon of ethanoic anhydride. Elimination of ethanoic acid yields acetylsalicylic acid. Iron(III) chloride test confirms absence of unreacted phenol groups.",
+    "equation": "C₇H₆O₃ (salicylic acid) + (CH₃CO)₂O → C₉H₈O₄ (aspirin) + CH₃COOH",
+    "conclusion": "Organic synthesis can be coupled with vacuum filtration and recrystallization to isolate pure medicinal compounds with high percentage yield.",
+    "safety": "Ethanoic anhydride is a severe lacrimator and corrosive. Perform heating inside a fume hood. Crude product must not be ingested."
+  },
+  {
+    "id": "le-chatelier-cobalt",
+    "title": "Le Chatelier's Equilibrium: Cobalt(II) Complex Shift",
+    "emoji": "🔄",
+    "level": "Intermediate",
+    "topic": "Solutions & Equilibrium",
+    "summary": "Observe dynamic chemical equilibrium shifts between pink hexaquacobalt(II) and deep blue tetrachlorocobaltate(II) ions under temperature and concentration stresses.",
+    "equipment": [
+      "Test tubes in a rack",
+      "Test tube holder",
+      "Ice bath (0°C)",
+      "Hot water bath (80°C)",
+      "Dropping pipettes"
+    ],
+    "chemicals": [
+      "Cobalt(II) chloride hexahydrate solution",
+      "Concentrated hydrochloric acid",
+      "Deionized water",
+      "Acetone"
+    ],
+    "steps": [
+      "Add 3 cm³ of pink aqueous cobalt(II) chloride to three separate test tubes.",
+      "Keep Tube 1 as an unperturbed room-temperature control.",
+      "To Tube 2, add concentrated HCl dropwise: observe the color change from pink to violet to intense cobalt blue.",
+      "To the blue solution, add drops of deionized water: observe the reverse shift back to rose pink.",
+      "Place Tube 3 (at an intermediate violet tint) into a boiling water bath: observe it turns dark blue.",
+      "Transfer the hot blue Tube 3 directly into an ice-water bath: observe it returns to bright pink."
+    ],
+    "observations": [
+      "Adding chloride ions shifts the pink solution to deep royal blue",
+      "Dilution with water immediately restores the pink color",
+      "Heating promotes the blue complex; cooling promotes the pink complex"
+    ],
+    "explanation": "The forward reaction forming [CoCl₄]²⁻ is endothermic (ΔH > 0): [Co(H₂O)₆]²⁺ (pink) + 4Cl⁻ ⇌ [CoCl₄]²⁻ (blue) + 6H₂O. Le Chatelier's Principle predicts increasing temperature shifts equilibrium right to absorb heat, while adding Cl⁻ shifts equilibrium right to consume added ions.",
+    "equation": "[Co(H₂O)₆]²⁺ (pink) + 4Cl⁻ ⇌ [CoCl₄]²⁻ (blue) + 6H₂O (ΔH > 0)",
+    "conclusion": "Dynamic chemical systems respond to external perturbations (temperature, concentration) in accordance with Le Chatelier's Principle.",
+    "safety": "Cobalt compounds and concentrated HCl are toxic and corrosive. Wear gloves, handle in a fume cupboard, and dispose of cobalt waste in heavy metal collection containers."
+  },
+  {
+    "id": "redox-titration-permanganate",
+    "title": "Redox Titration: Potassium Permanganate vs Iron(II)",
+    "emoji": "🧪",
+    "level": "Advanced",
+    "topic": "Redox & Electrochemistry",
+    "summary": "Standardize iron(II) ammonium sulfate using potassium permanganate as a self-indicating oxidizing agent in acidic medium.",
+    "equipment": [
+      "Burette",
+      "25 cm³ bulb pipette and safety filler",
+      "Conical flask",
+      "White tile",
+      "Stand and clamp"
+    ],
+    "chemicals": [
+      "Standardized potassium permanganate solution (0.02 mol/dm³)",
+      "Unknown iron(II) sulfate solution",
+      "Dilute sulfuric acid (1 mol/dm³)",
+      "Deionized water"
+    ],
+    "steps": [
+      "Pipette 25.0 cm³ of iron(II) solution into a clean conical flask.",
+      "Add 20 cm³ of 1 mol/dm³ sulfuric acid to provide necessary H⁺ ions.",
+      "Fill the burette with intense purple 0.02 mol/dm³ potassium permanganate.",
+      "Titrate dropwise while constantly swirling the flask.",
+      "The purple color discharges instantly as MnO₄⁻ is reduced to colorless Mn²⁺.",
+      "The end-point is reached when one drop imparts a permanent faint pink tint persisting for 30 seconds."
+    ],
+    "observations": [
+      "Burette solution is deep magenta/purple",
+      "Color disappears completely upon entering the flask during titration",
+      "Permanent faint blush pink signals the stoichiometric equivalence point"
+    ],
+    "explanation": "Permanganate ion (MnO₄⁻) is strongly reduced in acid: MnO₄⁻ + 8H⁺ + 5e⁻ → Mn²⁺ + 4H₂O. Iron(II) is oxidized: Fe²⁺ → Fe³⁺ + e⁻. Because MnO₄⁻ is deeply colored while Mn²⁺ and Fe³⁺ are virtually colorless at dilute concentrations, KMnO₄ acts as its own internal indicator.",
+    "equation": "MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O",
+    "conclusion": "Stoichiometric redox titrations allow precise quantification of transition metal ions without requiring an added dye indicator.",
+    "safety": "Potassium permanganate stains skin and bench surfaces brown (MnO₂). Dilute sulfuric acid is corrosive. Wear eye protection."
+  },
+  {
+    "id": "thermite-demonstration",
+    "title": "Thermite Reaction: High-Exothermicity Metal Reduction",
+    "emoji": "🔥",
+    "level": "Advanced",
+    "topic": "Thermodynamics & Kinetics",
+    "summary": "Demonstrate extreme chemical energetics by reducing iron(III) oxide with aluminum powder to produce molten metallic iron.",
+    "equipment": [
+      "Unglazed clay crucible",
+      "Sand bucket / safety pit",
+      "Magnesium ribbon fuse",
+      "Safety blast shield",
+      "Tongs"
+    ],
+    "chemicals": [
+      "Dry iron(III) oxide powder (Fe₂O₃)",
+      "Fine aluminum powder (Al)",
+      "Barium peroxide ignition mixture",
+      "Magnesium ribbon"
+    ],
+    "steps": [
+      "Mix 3 parts dry Fe₂O₃ with 1 part fine Al powder thoroughly in a crucible placed in a thick bed of dry sand.",
+      "Place a small depression on top and add 1 g of barium peroxide ignition powder.",
+      "Insert a 10 cm coiled magnesium ribbon into the center as an ignition fuse.",
+      "Clear all personnel behind a safety blast shield with dark UV-rated goggles.",
+      "Light the magnesium ribbon and immediately step back.",
+      "Observe blinding white ignition, intense heat, and molten white-hot iron pouring through the bottom."
+    ],
+    "observations": [
+      "Blinding white flash and fountain of incandescent orange sparks",
+      "Crucible heats to over 2500°C within seconds",
+      "Molten glowing bead of pure metallic iron settles in the sand bed"
+    ],
+    "explanation": "Aluminum possesses a much higher affinity for oxygen than iron due to the massive lattice energy of aluminum oxide: 2Al + Fe₂O₃ → Al₂O₃ + 2Fe. The reaction enthalpy (ΔH = -851 kJ/mol) is so intensely exothermic that temperatures exceed the melting points of both iron (1538°C) and aluminum oxide.",
+    "equation": "2Al (s) + Fe₂O₃ (s) → Al₂O₃ (s) + 2Fe (l)  (ΔH° = -851.5 kJ/mol)",
+    "conclusion": "Single displacement reactions driven by substantial thermodynamic driving forces can reach extreme pyrochemical temperatures.",
+    "safety": "DANGEROUS: Professional demonstration only! Never conduct with moisture present (steam explosion hazard). Wear shade 5 welding goggles and maintain a 5-meter safety perimeter."
+  },
+  {
+    "id": "daniell-galvanic-cell",
+    "title": "Daniell Galvanic Cell: Chemical to Electrical Energy",
+    "emoji": "⚡",
+    "level": "Intermediate",
+    "topic": "Redox & Electrochemistry",
+    "summary": "Construct an electrochemical Daniell cell to generate electric potential from spontaneous zinc oxidation and copper reduction.",
+    "equipment": [
+      "Two 100 cm³ beakers",
+      "High-impedance digital multimeter",
+      "Alligator clip leads",
+      "U-tube or filter paper salt bridge",
+      "Zinc and copper electrode strips"
+    ],
+    "chemicals": [
+      "1.0 mol/dm³ Zinc sulfate solution (ZnSO₄)",
+      "1.0 mol/dm³ Copper(II) sulfate solution (CuSO₄)",
+      "Saturated potassium nitrate solution (KNO₃)",
+      "Emery paper"
+    ],
+    "steps": [
+      "Clean the zinc and copper electrode strips with emery paper to remove surface oxides.",
+      "Fill Beaker 1 with 1.0 mol/dm³ ZnSO₄ and immerse the zinc strip (anode).",
+      "Fill Beaker 2 with 1.0 mol/dm³ CuSO₄ and immerse the copper strip (cathode).",
+      "Soak a strip of filter paper in saturated KNO₃ and bridge it across both beakers.",
+      "Connect the multimeter leads to the electrodes and record the electromotive force (cell voltage).",
+      "Connect a small red LED to verify direct electrical power generation."
+    ],
+    "observations": [
+      "Multimeter measures a stable potential of approximately +1.10 Volts",
+      "Removing the salt bridge drops the measured voltage immediately to 0 V",
+      "Dark copper deposit forms over time on the cathode"
+    ],
+    "explanation": "Zinc oxidizes spontaneously at the anode: Zn → Zn²⁺ + 2e⁻ (E° = +0.76 V). Electrons flow through the external circuit to the cathode, where copper ions reduce: Cu²⁺ + 2e⁻ → Cu (E° = +0.34 V). The cell potential E°cell = E°cathode - E°anode = +0.34 - (-0.76) = +1.10 V. The salt bridge maintains electroneutrality by ion migration.",
+    "equation": "Zn (s) + Cu²⁺ (aq) → Zn²⁺ (aq) + Cu (s)  (E°cell = +1.10 V)",
+    "conclusion": "Spontaneous redox reactions can be physically separated into half-cells to harness chemical energy directly as electric current.",
+    "safety": "Copper sulfate is toxic to aquatic life. Potassium nitrate is an oxidizer. Avoid short-circuiting connections."
+  },
+  {
+    "id": "nylon-rope-trick",
+    "title": "Nylon 6,6: Interfacial Polymerization Synthesis",
+    "emoji": "🧵",
+    "level": "Intermediate",
+    "topic": "Organic Chemistry",
+    "summary": "Synthesize continuous filaments of Nylon 6,6 polymer at the immiscible liquid interface between diamine and diacid chloride solutions.",
+    "equipment": [
+      "50 cm³ glass beaker",
+      "Metal tweezers / forceps",
+      "Glass stirring rod",
+      "Watch glass"
+    ],
+    "chemicals": [
+      "Hexamethylenediamine (1,6-diaminohexane) in 0.5M NaOH",
+      "Adipoyl chloride (hexanedioyl dichloride) in cyclohexane",
+      "Deionized water",
+      "Ethanol"
+    ],
+    "steps": [
+      "Pour 10 cm³ of aqueous 1,6-diaminohexane with sodium hydroxide into a 50 cm³ beaker.",
+      "Carefully layer 10 cm³ of adipoyl chloride in cyclohexane down the inside wall of the beaker without mixing.",
+      "A shimmering opaque white film of nylon forms instantly at the liquid–liquid boundary.",
+      "Using tweezers, pinch the center of the film and pull upward smoothly.",
+      "Wind the continuous strand of nylon rope around a glass rod as the interface regenerates."
+    ],
+    "observations": [
+      "Immediate polymer membrane forms at the liquid boundary",
+      "Drawing the membrane out continuously generates an endless flexible plastic thread",
+      "Beaker remains two distinct immiscible layers"
+    ],
+    "explanation": "Step-growth condensation polymerization occurs exclusively at the interface where diamine and diacyl chloride molecules meet. Amine groups attack carbonyl carbons, releasing HCl which is neutralized by NaOH: n H₂N(CH₂)₆NH₂ + n ClOC(CH₂)₄COCl → -[HN(CH₂)₆NHCO(CH₂)₄CO]-_n + 2n HCl.",
+    "equation": "n H₂N(CH₂)₆NH₂ + n ClOC(CH₂)₄COCl → -[NH(CH₂)₆NHCO(CH₂)₄CO]-_n + 2n HCl",
+    "conclusion": "Interfacial polymerization provides rapid room-temperature synthesis of synthetic polyamides without needing high pressure or melting.",
+    "safety": "Adipoyl chloride releases corrosive HCl vapors. Perform in a well-ventilated fume hood. Wear nitrile gloves; do not touch fresh polymer until washed."
+  },
+  {
+    "id": "gravimetric-barium-sulfate",
+    "title": "Gravimetric Analysis: Sulfate Quantification",
+    "emoji": "⚖️",
+    "level": "Intermediate",
+    "topic": "Solutions & Equilibrium",
+    "summary": "Determine the exact sulfate concentration of an unknown sample through stoichiometric precipitation and ignition of barium sulfate.",
+    "equipment": [
+      "Analytical balance (0.1 mg precision)",
+      "Porcelain crucible and lid",
+      "Ashless filter paper",
+      "Glass funnel",
+      "Bunsen burner and pipeclay triangle",
+      "Desiccator"
+    ],
+    "chemicals": [
+      "Unknown sulfate salt solution",
+      "0.2 mol/dm³ Barium chloride solution (BaCl₂)",
+      "Concentrated hydrochloric acid",
+      "Silver nitrate test solution"
+    ],
+    "steps": [
+      "Pipette 25.0 cm³ of sulfate solution into a beaker and add 1 cm³ conc. HCl to prevent carbonate coprecipitation.",
+      "Heat near boiling and add hot barium chloride solution slowly with vigorous stirring until no further cloudiness forms.",
+      "Digest the precipitate on a warm water bath for 1 hour to promote crystal coarsening (Ostwald ripening).",
+      "Filter through ashless Whatman 42 filter paper and wash with hot water until filtrate tests negative with AgNO₃.",
+      "Transfer paper and precipitate to a pre-weighed porcelain crucible.",
+      "Gently char the paper, ignite strongly over a Bunsen flame to constant mass, and cool in a desiccator before weighing."
+    ],
+    "observations": [
+      "Immediate dense chalky white precipitate of barium sulfate forms",
+      "Digestion transforms fine milky suspension into readily filterable granular crystals",
+      "Precipitate remains completely white after strong ignition"
+    ],
+    "explanation": "Barium and sulfate ions form insoluble barium sulfate with an exceptionally low solubility product: Ba²⁺ + SO₄²⁻ → BaSO₄ (s). Because BaSO₄ is thermally stable and stoichiometric, its final ignited mass directly yields sulfate content: mass SO₄²⁻ = mass BaSO₄ × (96.06 / 233.39).",
+    "equation": "Ba²⁺ (aq) + SO₄²⁻ (aq) → BaSO₄ (s)↓",
+    "conclusion": "Gravimetry provides an absolute, primary analytical measurement without requiring standard calibration curves.",
+    "safety": "Soluble barium salts are toxic. Hydrochloric acid is corrosive. Handle hot crucibles exclusively with clean metal tongs."
+  },
+  {
+    "id": "calorimetry-neutralization",
+    "title": "Enthalpy of Neutralization: Solution Calorimetry",
+    "emoji": "🌡️",
+    "level": "Intermediate",
+    "topic": "Thermodynamics & Kinetics",
+    "summary": "Measure the standard enthalpy change of neutralization between strong acid and strong base using an expanded polystyrene coffee-cup calorimeter.",
+    "equipment": [
+      "Polystyrene calorimeter with lid",
+      "High-precision digital thermometer (0.01°C)",
+      "Two 50 cm³ measuring cylinders",
+      "Magnetic stirrer"
+    ],
+    "chemicals": [
+      "1.00 mol/dm³ Hydrochloric acid (HCl)",
+      "1.00 mol/dm³ Sodium hydroxide (NaOH)",
+      "Deionized water"
+    ],
+    "steps": [
+      "Measure 50.0 cm³ of 1.00 mol/dm³ HCl into the calorimeter and measure its initial temperature every 30 seconds for 3 minutes.",
+      "Measure 50.0 cm³ of 1.00 mol/dm³ NaOH into a separate cylinder and ensure its temperature matches the acid.",
+      "At exactly minute 4, pour the alkali rapidly into the calorimeter, replace the lid, and swirl gently.",
+      "Record the temperature every 15 seconds for 5 minutes, noting the maximum temperature reached.",
+      "Calculate heat released using q = m · c · ΔT and divide by moles of water formed to determine ΔH_neut."
+    ],
+    "observations": [
+      "Temperature remains flat prior to mixing",
+      "Rapid temperature surge of approximately 6.5°C to 6.8°C upon mixing",
+      "Slow linear thermal cooling back towards room temperature"
+    ],
+    "explanation": "Strong acids and bases dissociate completely in aqueous solution. Neutralization is essentially the combination of aqueous hydronium and hydroxide ions to form water: H⁺(aq) + OH⁻(aq) → H₂O(l). The theoretical standard enthalpy of neutralization is -57.1 kJ/mol.",
+    "equation": "H⁺ (aq) + OH⁻ (aq) → H₂O (l)  (ΔH°neut = -57.1 kJ/mol)",
+    "conclusion": "Calorimetric temperature curves account for system heat losses and demonstrate that all strong acid–strong base reactions share an identical molar enthalpy of neutralization.",
+    "safety": "Both 1M HCl and 1M NaOH are irritants to eyes and skin. Wear lab coat and splash goggles."
+  },
+  {
+    "id": "saponification-soap",
+    "title": "Saponification: Classical Soap Synthesis",
+    "emoji": "🧼",
+    "level": "Beginner",
+    "topic": "Organic Chemistry",
+    "summary": "Transform natural triglyceride vegetable oil into sodium carboxylate soap through alkaline ester hydrolysis followed by salting out.",
+    "equipment": [
+      "250 cm³ glass beaker",
+      "Glass stirring rod",
+      "Water bath / hotplate",
+      "Buchner funnel or cheesecloth",
+      "Soap mold"
+    ],
+    "chemicals": [
+      "Vegetable oil (olive or coconut oil)",
+      "Sodium hydroxide pellets (NaOH)",
+      "Ethanol (solvent carrier)",
+      "Saturated sodium chloride solution (brine)",
+      "Essential oil (fragrance)"
+    ],
+    "steps": [
+      "Dissolve 5.0 g of NaOH in 15 cm³ water and 15 cm³ ethanol in a beaker.",
+      "Add 15 cm³ of vegetable oil and heat in a 70°C water bath with continuous stirring for 25 minutes.",
+      "A thick, creamy homogeneous paste forms as triglycerides hydrolyze.",
+      "Pour the hot mixture into 50 cm³ of chilled saturated NaCl solution ('salting out').",
+      "Curds of raw soap precipitate out on top of the brine.",
+      "Filter the solid curds, press into a mold, and test foaming capability with warm water."
+    ],
+    "observations": [
+      "Separate oil and water layers emulsify into an opaque yellow emulsion",
+      "Solution thickens significantly to paste consistency",
+      "Immediate curdy solid precipitates when added to concentrated brine",
+      "Produces dense rich foam when lathered"
+    ],
+    "explanation": "Triglycerides undergo base-catalyzed ester hydrolysis (saponification) into glycerol and three carboxylate anions (soap). Adding concentrated NaCl increases the ionic strength, reducing soap solubility and causing it to precipitate ('salting out') due to the common ion effect and hydrophobic repulsion.",
+    "equation": "Triglyceride + 3 NaOH → Glycerol + 3 R-COO⁻ Na⁺ (Soap)",
+    "conclusion": "Amphiphilic soap molecules possess a hydrophilic ionic carboxylate head and a long hydrophobic hydrocarbon tail that emulsifies grease into micelles.",
+    "safety": "Sodium hydroxide is caustic and causes chemical burns. Wear gloves and eye protection. Cure soap before direct skin use."
+  },
+  {
+    "id": "spectroscopy-flame-emission",
+    "title": "Spectroscopy & Electronic Transition Flame Emission",
+    "emoji": "🌈",
+    "level": "Intermediate",
+    "topic": "Atomic & Bonding",
+    "summary": "Use a handheld diffraction grating spectroscope to analyze line emission spectra produced by thermally excited metal cations.",
+    "equipment": [
+      "Bunsen burner",
+      "Nichrome or platinum loop wire",
+      "Handheld diffraction grating spectroscope",
+      "Cobalt blue glass",
+      "Watch glass"
+    ],
+    "chemicals": [
+      "Concentrated hydrochloric acid (cleaning)",
+      "Lithium chloride (LiCl)",
+      "Sodium chloride (NaCl)",
+      "Potassium chloride (KCl)",
+      "Barium chloride (BaCl₂)",
+      "Strontium chloride (SrCl₂)"
+    ],
+    "steps": [
+      "Clean the wire loop by dipping in conc. HCl and heating in the roaring blue flame until no color persists.",
+      "Dip the clean moist loop into solid lithium chloride and hold in the non-luminous flame edge.",
+      "View the brilliant carmine red flame directly and through a handheld spectroscope.",
+      "Note the discrete spectral lines (e.g. sharp red line at 670.8 nm).",
+      "Repeat for Strontium (crimson), Sodium (doublet yellow 589 nm), Potassium (lilac, use cobalt glass), and Barium (apple green).",
+      "Record wavelength positions on the nanometer spectral scale."
+    ],
+    "observations": [
+      "Lithium yields sharp crimson flame with a prominent red spectral line at 671 nm",
+      "Sodium exhibits intense golden yellow doublet at 589 nm",
+      "Potassium shows violet-lilac flame with lines in the deep violet and far red",
+      "Strontium produces bright scarlet-red with multiple visible bands"
+    ],
+    "explanation": "Thermal energy from the flame promotes valence electrons to higher quantised energy levels (E₂). When returning to lower orbitals (E₁), energy is emitted as discrete photons according to Planck's equation: ΔE = E₂ - E₁ = hν = hc/λ. The line spectrum serves as an atomic optical fingerprint.",
+    "equation": "ΔE = h · c / λ  (Planck-Einstein Relation)",
+    "conclusion": "Quantized electronic transitions demonstrate atomic shell structures and form the physical basis for analytical flame photometry and astrophysical spectroscopy.",
+    "safety": "Concentrated HCl releases acidic fumes; clean loops in a fume hood. Barium salts are toxic."
   }
 ];

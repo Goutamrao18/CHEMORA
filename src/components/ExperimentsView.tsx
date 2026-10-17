@@ -24,6 +24,7 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
   const [activeLevel, setActiveLevel] = useState<string>('all');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
+  const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
     try {
@@ -51,6 +52,7 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
   const openExperiment = (exp: Experiment) => {
     setSelectedExperiment(exp);
     setCompletedSteps({});
+    setVideoError(false);
   };
 
   return (
