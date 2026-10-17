@@ -1,18 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 
 // Read server-side environment variables
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
-  'https://mcwadkgzplurjtstrhdd.supabase.co'
+  ''
 ).trim().replace(/\/$/, '');
 
 const SUPABASE_KEY = (
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
-  'sb_publishable__35lrwlwhFj4SkhofWXJVw__Jca6f5P'
+  ''
 ).trim();
 
 export interface ServerUserProfile {
@@ -107,14 +109,24 @@ const fallbackUsers = new Map<string, FallbackUser>();
 const fallbackTokens = new Map<string, string>(); // token -> userId
 
 function generateSimpleToken(userId: string): string {
-  const rand = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const rand = crypto.randomBytes(24).toString('hex');
   return `chemora_${userId}_${rand}`;
 }
+
+// Single-use, expiring password reset tokens
+export interface PasswordResetTokenRecord {
+  token: string;
+  userId: string;
+  email: string;
+  expiresAt: number;
+  used: boolean;
+}
+const passwordResetTokens = new Map<string, PasswordResetTokenRecord>();
 
 // ==========================================
 // User Signup
 // ==========================================
-function fallbackSignUp(email: string, password: string, fullName: string) {
+async function fallbackSignUp(email: string, password: string, fullName: string) {
   const normalizedEmail = email.toLowerCase().trim();
   for (const u of fallbackUsers.values()) {
     if (u.email === normalizedEmail) {
@@ -122,11 +134,13 @@ function fallbackSignUp(email: string, password: string, fullName: string) {
     }
   }
 
-  const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const userId = `usr_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const passwordHash = await bcrypt.hash(password, 10);
+
   const newUser: FallbackUser = {
     id: userId,
     email: normalizedEmail,
-    passwordHash: password,
+    passwordHash,
     full_name: fullName.trim() || normalizedEmail.split('@')[0] || 'Researcher',
     avatar_url: '/favicon.png',
     rank: 'Novice Alchemist',
@@ -150,7 +164,7 @@ function fallbackSignUp(email: string, password: string, fullName: string) {
   };
 }
 
-function fallbackSignIn(email: string, password: string) {
+async function fallbackSignIn(email: string, password: string) {
   const normalizedEmail = email.toLowerCase().trim();
   let foundUser: FallbackUser | null = null;
   for (const u of fallbackUsers.values()) {
@@ -164,7 +178,9 @@ function fallbackSignIn(email: string, password: string) {
   if (!foundUser) {
     throw new Error('Invalid email or password. Please verify your credentials or create an account.');
   }
-  if (foundUser.passwordHash !== password) {
+
+  const matches = await bcrypt.compare(password, foundUser.passwordHash);
+  if (!matches) {
     throw new Error('Invalid email or laboratory password.');
   }
 
@@ -539,7 +555,7 @@ export async function backendUpdatePassword(token: string, newPassword: string) 
   if (localUserId || token.startsWith('chemora_')) {
     const user = localUserId ? fallbackUsers.get(localUserId) : null;
     if (user) {
-      user.passwordHash = newPassword;
+      user.passwordHash = await bcrypt.hash(newPassword, 10);
       user.updated_at = new Date().toISOString();
       return { success: true };
     }
@@ -576,13 +592,14 @@ export async function backendUpdatePassword(token: string, newPassword: string) 
 }
 
 // ==========================================
-// Reset Password Request
+// Reset Password Request (Single-use, 1-hour expiry)
 // ==========================================
-export async function backendResetPasswordRequest(email: string) {
+export async function backendResetPasswordRequest(email: string): Promise<{ success: boolean; message: string; resetToken?: string }> {
+  const normalizedEmail = email.toLowerCase().trim();
   const client = getSupabaseBackendClient();
   if (client) {
     try {
-      const { error } = await client.auth.resetPasswordForEmail(email);
+      const { error } = await client.auth.resetPasswordForEmail(normalizedEmail);
       if (error) {
         if (isApiKeyOrNetworkError(error)) {
           return { success: true, message: 'Password reset request acknowledged.' };
@@ -598,7 +615,68 @@ export async function backendResetPasswordRequest(email: string) {
     }
   }
 
+  // Find user in fallback store
+  let targetUser: FallbackUser | null = null;
+  for (const u of fallbackUsers.values()) {
+    if (u.email === normalizedEmail) {
+      targetUser = u;
+      break;
+    }
+  }
+
+  if (targetUser) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1-hour single-use TTL
+    passwordResetTokens.set(resetToken, {
+      token: resetToken,
+      userId: targetUser.id,
+      email: normalizedEmail,
+      expiresAt,
+      used: false,
+    });
+    return {
+      success: true,
+      message: 'Password reset link generated. Valid for 1 hour.',
+      resetToken,
+    };
+  }
+
   return { success: true, message: 'If an account exists, a reset link will be sent.' };
+}
+
+// ==========================================
+// Reset Password With Single-Use Token
+// ==========================================
+export async function backendResetPasswordWithToken(resetToken: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  if (!resetToken || !newPassword || newPassword.length < 6) {
+    throw new Error('Valid reset token and new password (min 6 characters) are required.');
+  }
+
+  const record = passwordResetTokens.get(resetToken);
+  if (!record) {
+    throw new Error('Invalid or expired password reset token.');
+  }
+
+  if (record.used) {
+    throw new Error('This password reset token has already been used.');
+  }
+
+  if (Date.now() > record.expiresAt) {
+    passwordResetTokens.delete(resetToken);
+    throw new Error('This password reset token has expired. Please request a new one.');
+  }
+
+  const user = fallbackUsers.get(record.userId);
+  if (!user) {
+    throw new Error('User account associated with this token was not found.');
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.updated_at = new Date().toISOString();
+  record.used = true;
+  passwordResetTokens.delete(resetToken);
+
+  return { success: true, message: 'Password updated successfully. You can now log in.' };
 }
 
 // ==========================================

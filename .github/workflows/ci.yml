@@ -1,4 +1,4 @@
-name: CI
+name: CI Quality Gates
 
 on:
   push:
@@ -7,17 +7,36 @@ on:
     branches: [ main ]
 
 jobs:
-  validate:
+  quality-gates:
+    name: Typecheck, Lint, Test & Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate Project
-        run: node scripts/validate-project.mjs
-      - name: Smoke API
-        run: node scripts/smoke-api.mjs
-      - name: Test Experiments
-        run: node scripts/test-experiments.mjs
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript Strict Typecheck & Lint
+        run: npm run lint
+
+      - name: Run Vitest Unit Tests
+        run: npm test
+
+      - name: Validate Project Structure & Integrity
+        run: npm run validate:project
+
+      - name: Smoke Test API
+        run: npm run test:smoke
+
+      - name: Validate Experiments Data
+        run: npm run test:experiments
+
+      - name: Production Bundle Build
+        run: npm run build

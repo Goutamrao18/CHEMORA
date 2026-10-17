@@ -313,10 +313,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
       let isDecoded = false;
 
       try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (openRouterKey.trim()) {
-          headers['x-openrouter-key'] = openRouterKey.trim();
-        }
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        };
 
         const payload: Record<string, any> = {
           prompt: query,

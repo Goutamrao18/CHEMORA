@@ -1,8 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const FALLBACK_URL = 'https://mcwadkgzplurjtstrhdd.supabase.co';
-const FALLBACK_KEY = 'sb_publishable__35lrwlwhFj4SkhofWXJVw__Jca6f5P';
-
 function resolveValidUrl(candidate?: unknown): string {
   if (typeof candidate === 'string') {
     const trimmed = candidate.trim();
@@ -13,11 +10,11 @@ function resolveValidUrl(candidate?: unknown): string {
           return trimmed.replace(/\/$/, '');
         }
       } catch {
-        // invalid URL format, ignore and use fallback
+        // invalid URL format
       }
     }
   }
-  return FALLBACK_URL;
+  return '';
 }
 
 function resolveValidKey(candidate?: unknown): string {
@@ -27,7 +24,7 @@ function resolveValidKey(candidate?: unknown): string {
       return trimmed;
     }
   }
-  return FALLBACK_KEY;
+  return '';
 }
 
 export const SUPABASE_URL: string = resolveValidUrl(import.meta.env?.VITE_SUPABASE_URL);
@@ -84,6 +81,9 @@ function createMockSupabaseClient(): SupabaseClient {
 }
 
 function initSupabase(): SupabaseClient {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return createMockSupabaseClient();
+  }
   try {
     return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {

@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import accountRouter from './server/routes/account.ts';
 import reviewsRouter from './server/routes/reviews.ts';
+import {
+  apiRateLimiter,
+  aiRateLimiter,
+  databaseRateLimiter,
+  authRateLimiter,
+} from './server/middleware/rateLimit.ts';
 
 // Load environment variables from .env if present
 dotenv.config();
@@ -18,6 +24,9 @@ async function startServer() {
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const isProd = process.env.NODE_ENV === 'production';
 
+  // Enable trust proxy so client IP is accurately extracted behind reverse proxies / cloud environments
+  app.set('trust proxy', 1);
+
   app.use(express.json({ limit: '15mb' }));
   app.use(express.urlencoded({ extended: true, limit: '15mb' }));
   app.use(cookieParser());
@@ -29,6 +38,23 @@ async function startServer() {
   app.use('/challenge/data', express.static(path.resolve(__dirname, 'challenge', 'data')));
   app.use('/data', express.static(path.resolve(__dirname, 'data')));
   app.use(express.static(path.resolve(__dirname, 'public')));
+
+  // --- Rate Limiting Protection Middleware ---
+  // Baseline shield: Ensure no single IP can flood the /api routes
+  app.use('/api', apiRateLimiter);
+
+  // AI Endpoint Protection: Prevent expensive LLM vision / assistant prompt abuse
+  app.use('/api/assistant', aiRateLimiter);
+
+  // Authentication & Brute-Force Protection: Guard signup/login/password mutations
+  app.use('/api/account/signup', authRateLimiter);
+  app.use('/api/account/login', authRateLimiter);
+  app.use('/api/account/forgot-password', authRateLimiter);
+  app.use('/api/account/password', authRateLimiter);
+
+  // Database Protection: Protect Supabase & file database from heavy write/read abuse
+  app.use('/api/account', databaseRateLimiter);
+  app.use('/api/reviews', databaseRateLimiter);
 
   // Mount backend API routes
   app.use('/api/account', accountRouter);
@@ -115,7 +141,8 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🧪 CHEMORA Server online at http://0.0.0.0:${PORT} [mode: ${isProd ? 'production' : 'development'}]`);
-    console.log(`📡 Backend account endpoints active at /api/account\n`);
+    console.log(`📡 Backend account endpoints active at /api/account`);
+    console.log(`🛡️ Rate limiting middleware active across /api routes (AI: 20/min, DB: 60/min, Auth: 25/15min, API: 120/min)\n`);
   });
 }
 

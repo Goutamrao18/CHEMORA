@@ -1,14 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ActiveTab } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
-import { HomeView } from './components/HomeView';
-import { KnowView } from './components/KnowView';
-import { ChallengeView } from './components/ChallengeView';
-import { ExperimentsView } from './components/ExperimentsView';
-import { ProgressView } from './components/ProgressView';
-import { AccountView } from './components/AccountView';
-import { AIAssistant } from './components/AIAssistant';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Code-split heavy views to keep initial bundle size minimal
+const HomeView = lazy(() => import('./components/HomeView').then((m) => ({ default: m.HomeView })));
+const KnowView = lazy(() => import('./components/KnowView').then((m) => ({ default: m.KnowView })));
+const ChallengeView = lazy(() => import('./components/ChallengeView').then((m) => ({ default: m.ChallengeView })));
+const ExperimentsView = lazy(() => import('./components/ExperimentsView').then((m) => ({ default: m.ExperimentsView })));
+const ProgressView = lazy(() => import('./components/ProgressView').then((m) => ({ default: m.ProgressView })));
+const AccountView = lazy(() => import('./components/AccountView').then((m) => ({ default: m.AccountView })));
+const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
+
+function ViewSkeleton({ label }: { label: string }) {
+  return (
+    <div className="w-full min-h-[500px] flex flex-col items-center justify-center p-8 text-center animate-pulse">
+      <div className="w-14 h-14 rounded-2xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-2xl font-bold mb-4 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
+        ⚗
+      </div>
+      <p className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase mb-2">
+        INITIALIZING CHAMBER
+      </p>
+      <p className="text-slate-400 text-sm max-w-xs">{label}</p>
+    </div>
+  );
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -68,7 +85,7 @@ export default function App() {
     window.location.hash = 'know';
   };
 
-  const handleAskAI = (topic: string) => {
+  const handleAskAI = (_topic?: string) => {
     setIsAssistantOpen(true);
   };
 
@@ -98,25 +115,52 @@ export default function App() {
 
       {/* Main Content Area - Shifted 172px for Desktop Sidebar */}
       <main className={`relative z-10 lg:ml-[172px] ${activeTab === 'lab' ? 'pt-16 p-0 max-w-none w-full min-h-[calc(100vh-4rem)]' : 'pt-20 px-4 sm:px-8 pb-12 max-w-[1300px] mx-auto min-h-screen'}`}>
-        {activeTab === 'home' && <HomeView onSelectTab={handleSelectTab} />}
+        {activeTab === 'home' && (
+          <ErrorBoundary tabName="Home">
+            <Suspense fallback={<ViewSkeleton label="Loading Laboratory Chamber..." />}>
+              <HomeView onSelectTab={handleSelectTab} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
         {activeTab === 'know' && (
-          <KnowView
-            initialSearch={searchQuery}
-            onAskAI={handleAskAI}
-          />
+          <ErrorBoundary tabName="Knowledge Library">
+            <Suspense fallback={<ViewSkeleton label="Retrieving Apparatus & Reaction Library..." />}>
+              <KnowView
+                initialSearch={searchQuery}
+                onAskAI={handleAskAI}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
+
         {activeTab === 'challenge' && (
-          <ChallengeView onAskAI={handleAskAI} />
+          <ErrorBoundary tabName="Challenge Arena">
+            <Suspense fallback={<ViewSkeleton label="Compiling Chemistry Challenge Sets..." />}>
+              <ChallengeView onAskAI={handleAskAI} />
+            </Suspense>
+          </ErrorBoundary>
         )}
+
         {activeTab === 'experiments' && (
-          <ExperimentsView onAskAI={handleAskAI} />
+          <ErrorBoundary tabName="Guided Experiments">
+            <Suspense fallback={<ViewSkeleton label="Preparing Practical Procedures..." />}>
+              <ExperimentsView onAskAI={handleAskAI} />
+            </Suspense>
+          </ErrorBoundary>
         )}
+
         {activeTab === 'progress' && (
-          <ProgressView
-            onGoToChallenge={() => handleSelectTab('challenge')}
-            onGoToExperiments={() => handleSelectTab('experiments')}
-          />
+          <ErrorBoundary tabName="Researcher Progress">
+            <Suspense fallback={<ViewSkeleton label="Synchronizing Research Milestones..." />}>
+              <ProgressView
+                onGoToChallenge={() => handleSelectTab('challenge')}
+                onGoToExperiments={() => handleSelectTab('experiments')}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
+
         {activeTab === 'lab' && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 bg-gradient-to-br from-[#06142a]/95 via-[#030d1c]/90 to-[#020814]/95 border border-cyan-500/30 rounded-3xl shadow-2xl">
             <div className="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-3xl font-black text-cyan-300 mb-4 shadow-[0_0_30px_rgba(6,182,212,0.4)]">
@@ -139,17 +183,26 @@ export default function App() {
             </a>
           </div>
         )}
+
         {activeTab === 'account' && (
-          <AccountView onThemeChanged={() => setIsLightMode(!isLightMode)} />
+          <ErrorBoundary tabName="Researcher Account">
+            <Suspense fallback={<ViewSkeleton label="Connecting to Researcher Profile..." />}>
+              <AccountView onThemeChanged={() => setIsLightMode(!isLightMode)} />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </main>
 
       {/* CHEMORA AI Chemistry Assistant Modal & Launcher */}
-      <AIAssistant
-        isOpen={isAssistantOpen}
-        onOpen={() => setIsAssistantOpen(true)}
-        onClose={() => setIsAssistantOpen(false)}
-      />
+      <ErrorBoundary tabName="CHEMORA AI Assistant">
+        <Suspense fallback={null}>
+          <AIAssistant
+            isOpen={isAssistantOpen}
+            onOpen={() => setIsAssistantOpen(true)}
+            onClose={() => setIsAssistantOpen(false)}
+          />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

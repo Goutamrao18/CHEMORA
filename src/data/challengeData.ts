@@ -25,32 +25,44 @@ export interface ChallengeState {
   rewards: string[];
 }
 
+import { safeGetItem, safeSetItem } from '../utils/safeStorage';
+import { fetchWithRetry } from '../utils/fetchWithRetry';
+
 const STORAGE_KEY = 'chemoraChallengeState';
 
+const DEFAULT_CHALLENGE_STATE: ChallengeState = {
+  levels: [],
+  xp: 0,
+  answers: 0,
+  correct: 0,
+  levelResults: {},
+  rewards: [],
+};
+
+function isValidChallengeState(val: any): boolean {
+  return (
+    val &&
+    typeof val === 'object' &&
+    (Array.isArray(val.levels) || typeof val.xp === 'number')
+  );
+}
+
 export function getInitialChallengeState(): ChallengeState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { levels: [], xp: 0, answers: 0, correct: 0, levelResults: {}, rewards: [] };
-    const parsed = JSON.parse(raw);
-    return {
-      levels: Array.isArray(parsed.levels) ? parsed.levels.filter((n: unknown) => typeof n === 'number' && n >= 1 && n <= 100) : [],
-      xp: Math.max(0, Number(parsed.xp) || 0),
-      answers: Math.max(0, Number(parsed.answers) || 0),
-      correct: Math.max(0, Number(parsed.correct) || 0),
-      levelResults: parsed.levelResults && typeof parsed.levelResults === 'object' ? parsed.levelResults : {},
-      rewards: Array.isArray(parsed.rewards) ? parsed.rewards : []
-    };
-  } catch {
-    return { levels: [], xp: 0, answers: 0, correct: 0, levelResults: {}, rewards: [] };
-  }
+  const loaded = safeGetItem<ChallengeState>(STORAGE_KEY, DEFAULT_CHALLENGE_STATE, isValidChallengeState);
+  return {
+    levels: Array.isArray(loaded.levels) ? loaded.levels.filter((n: unknown) => typeof n === 'number' && n >= 1 && n <= 100) : [],
+    xp: Math.max(0, Number(loaded.xp) || 0),
+    answers: Math.max(0, Number(loaded.answers) || 0),
+    correct: Math.max(0, Number(loaded.correct) || 0),
+    levelResults: loaded.levelResults && typeof loaded.levelResults === 'object' ? loaded.levelResults : {},
+    rewards: Array.isArray(loaded.rewards) ? loaded.rewards : [],
+  };
 }
 
 export function saveChallengeState(state: ChallengeState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  safeSetItem(STORAGE_KEY, state, 1);
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('chemora:progress'));
-  } catch {
-    // Storage quota or restricted access fallback
   }
 }
 
@@ -62,14 +74,14 @@ export async function fetchLevelQuestions(level: number): Promise<Question[]> {
   ];
   for (const url of urls) {
     try {
-      const res = await fetch(url);
+      const res = await fetchWithRetry(url, { timeoutMs: 5000, retries: 1 });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) return data;
         if (data && Array.isArray(data.questions)) return data.questions;
       }
     } catch {
-      // try next path
+      // Continue to fallback url
     }
   }
   return [];

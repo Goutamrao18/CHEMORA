@@ -49,7 +49,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
+            poster="/assets/chemora-share.png"
             className="w-full h-full object-cover object-center filter saturate-[1.15] contrast-[1.08] brightness-[0.88]"
           >
             <source src="/videos/chemora-intro.mp4" type="video/mp4" />
@@ -311,8 +312,9 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             <div className="aspect-video bg-black flex items-center justify-center">
               <video
                 controls
-                autoPlay
                 playsInline
+                preload="none"
+                poster="/assets/chemora-share.png"
                 className="w-full h-full object-contain"
                 src="/videos/chemora-showcase.mp4"
               >

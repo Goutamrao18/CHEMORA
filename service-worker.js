@@ -1,23 +1,12 @@
-const CACHE_NAME = "chemora-shell-v3";
+const CACHE_NAME = "chemora-shell-v4";
 const PRECACHE = [
   "/",
   "/index.html",
-  "/style.css",
-  "/v2-enhancements.css",
-  "/modern-overhaul.css",
-  "/reference-ui.css",
-  "/app.js",
-  "/voice-assistant.js",
-  "/progress.html",
-  "/progress.css",
-  "/progress.js",
-  "/challenge/challenge.html",
-  "/challenge/challenge.css",
-  "/know/know.html",
-  "/experiments/experiments.html",
+  "/offline.html",
   "/manifest.webmanifest",
   "/icon-192.png",
-  "/icon-512.png"
+  "/icon-512.png",
+  "/favicon.png"
 ];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache =>
@@ -60,7 +49,7 @@ self.addEventListener("fetch", event => {
       return response;
     }).catch(async () => {
       const cached = await caches.match(req);
-      return cached || caches.match("/index.html") || Response.error();
+      return cached || (await caches.match("/index.html")) || (await caches.match("/offline.html")) || Response.error();
     }));
   }
 });

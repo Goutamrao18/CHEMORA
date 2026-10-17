@@ -46,19 +46,17 @@ const DEFAULT_STREAK: DailyStreakState = {
   hasCompletedToday: false,
 };
 
+import { safeGetItem, safeSetItem } from '../utils/safeStorage';
+
 export function getDailyStreak(): DailyStreakState {
   try {
-    const raw = localStorage.getItem(STREAK_STORAGE_KEY);
     const today = getTodayString();
     const yesterday = getYesterdayString();
 
-    if (!raw) {
-      // First time initialization with yesterday as active for pleasant onboarding
-      saveDailyStreak(DEFAULT_STREAK);
-      return DEFAULT_STREAK;
-    }
+    const parsed = safeGetItem<DailyStreakState>(STREAK_STORAGE_KEY, DEFAULT_STREAK, (val) => {
+      return val && typeof val === 'object' && typeof val.currentStreak === 'number';
+    });
 
-    const parsed = JSON.parse(raw) as DailyStreakState;
     const hasCompletedToday = parsed.activeDates?.includes(today) || parsed.lastActiveDate === today;
 
     // Check if streak was broken (last activity older than yesterday and not today)
@@ -89,10 +87,10 @@ export function getDailyStreak(): DailyStreakState {
 }
 
 export function saveDailyStreak(state: DailyStreakState): void {
-  try {
-    localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(state));
+  safeSetItem(STREAK_STORAGE_KEY, state, 1);
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('chemora:streak_update'));
-  } catch {}
+  }
 }
 
 export function recordStreakActivity(): DailyStreakState {

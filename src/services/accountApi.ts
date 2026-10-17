@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { fetchWithRetry, fetchJsonWithRetry } from '../utils/fetchWithRetry';
 
 export interface AccountUser {
   id: string;
@@ -134,9 +135,10 @@ export async function getAuthHeaders(): Promise<HeadersInit> {
 
 export async function checkBackendStatus(): Promise<{ status: string; databaseConnected: boolean }> {
   try {
-    const res = await fetch('/api/account/status');
-    if (!res.ok) throw new Error('Status endpoint failed');
-    return await res.json();
+    return await fetchJsonWithRetry<{ status: string; databaseConnected: boolean }>(
+      '/api/account/status',
+      { timeoutMs: 5000, retries: 1 }
+    );
   } catch {
     return { status: 'unknown', databaseConnected: false };
   }
@@ -144,9 +146,10 @@ export async function checkBackendStatus(): Promise<{ status: string; databaseCo
 
 export async function fetchDatabaseDiagnostics(): Promise<SupabaseDatabaseDiagnostics> {
   try {
-    const res = await fetch('/api/account/database');
-    if (!res.ok) throw new Error('Database diagnostics endpoint failed');
-    return await res.json();
+    return await fetchJsonWithRetry<SupabaseDatabaseDiagnostics>(
+      '/api/account/database',
+      { timeoutMs: 6000, retries: 1 }
+    );
   } catch {
     return {
       databaseConnected: false,
@@ -175,8 +178,10 @@ export async function fetchCurrentAccount(): Promise<{
 
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch('/api/account/me', {
+    const res = await fetchWithRetry('/api/account/me', {
       headers,
+      timeoutMs: 6000,
+      retries: 1,
     });
 
     if (res.status === 401) {
@@ -201,10 +206,12 @@ export async function signUpResearcher(
   password: string,
   fullName: string
 ): Promise<AuthResponse> {
-  const res = await fetch('/api/account/signup', {
+  const res = await fetchWithRetry('/api/account/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, full_name: fullName }),
+    timeoutMs: 8000,
+    retries: 1,
   });
 
   const data = await res.json().catch(() => ({}));
@@ -224,10 +231,12 @@ export async function signUpResearcher(
 }
 
 export async function signInResearcher(email: string, password: string): Promise<AuthResponse> {
-  const res = await fetch('/api/account/login', {
+  const res = await fetchWithRetry('/api/account/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
+    timeoutMs: 8000,
+    retries: 1,
   });
 
   const data = await res.json().catch(() => ({}));
@@ -266,10 +275,12 @@ export async function updateResearcherProfile(updates: {
   rank?: string;
 }): Promise<AccountProfile> {
   const headers = await getAuthHeaders();
-  const res = await fetch('/api/account/profile', {
+  const res = await fetchWithRetry('/api/account/profile', {
     method: 'PUT',
     headers,
     body: JSON.stringify(updates),
+    timeoutMs: 8000,
+    retries: 1,
   });
 
   const data = await res.json();
@@ -282,10 +293,12 @@ export async function updateResearcherProfile(updates: {
 
 export async function updateResearcherPassword(newPassword: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch('/api/account/password', {
+  const res = await fetchWithRetry('/api/account/password', {
     method: 'PUT',
     headers,
     body: JSON.stringify({ new_password: newPassword }),
+    timeoutMs: 8000,
+    retries: 1,
   });
 
   const data = await res.json();
@@ -295,10 +308,12 @@ export async function updateResearcherPassword(newPassword: string): Promise<voi
 }
 
 export async function requestPasswordReset(email: string): Promise<string> {
-  const res = await fetch('/api/account/forgot-password', {
+  const res = await fetchWithRetry('/api/account/forgot-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
+    timeoutMs: 8000,
+    retries: 1,
   });
 
   const data = await res.json();
@@ -313,10 +328,12 @@ export async function syncResearcherProgressToDatabase(
   progress: Partial<ResearcherProgressData>
 ): Promise<{ success: boolean; progress: ResearcherProgressData; source: 'supabase' | 'server-store' }> {
   const headers = await getAuthHeaders();
-  const res = await fetch('/api/account/sync', {
+  const res = await fetchWithRetry('/api/account/sync', {
     method: 'POST',
     headers,
     body: JSON.stringify(progress),
+    timeoutMs: 10000,
+    retries: 2,
   });
 
   const data = await res.json();
@@ -331,8 +348,10 @@ export async function fetchResearcherProgressFromDatabase(): Promise<{
   source: 'supabase' | 'server-store';
 }> {
   const headers = await getAuthHeaders();
-  const res = await fetch('/api/account/progress', {
+  const res = await fetchWithRetry('/api/account/progress', {
     headers,
+    timeoutMs: 8000,
+    retries: 2,
   });
 
   const data = await res.json();

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 interface EquationTextProps {
   content: string;
@@ -118,6 +119,7 @@ export const EquationText: React.FC<EquationTextProps> = ({ content, className =
           );
         }
 
+        const sanitizedHtml = DOMPurify.sanitize(html);
         return (
           <div
             key={`block-${index}`}
@@ -125,7 +127,7 @@ export const EquationText: React.FC<EquationTextProps> = ({ content, className =
           >
             <div
               className="py-1 text-center font-serif text-sm sm:text-base leading-relaxed tracking-wide text-cyan-100"
-              dangerouslySetInnerHTML={{ __html: html }}
+              dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           </div>
         );
@@ -150,11 +152,12 @@ export const EquationText: React.FC<EquationTextProps> = ({ content, className =
           );
         }
 
+        const sanitizedInlineHtml = DOMPurify.sanitize(html);
         return (
           <span
             key={`inline-${index}`}
             className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md bg-cyan-950/50 border border-cyan-500/20 text-cyan-100 font-serif"
-            dangerouslySetInnerHTML={{ __html: html }}
+            dangerouslySetInnerHTML={{ __html: sanitizedInlineHtml }}
           />
         );
       }

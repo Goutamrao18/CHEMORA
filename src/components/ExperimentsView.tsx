@@ -208,7 +208,8 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
                 <video
                   controls
                   playsInline
-                  preload="metadata"
+                  preload="none"
+                  poster="/assets/chemora-share.png"
                   className="w-full h-full object-contain"
                   src={`/videos/${selectedExperiment.id}.mp4`}
                 >

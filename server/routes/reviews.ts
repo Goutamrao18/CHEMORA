@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
 import { getSupabaseBackendClient } from '../supabase.ts';
 
 const router = express.Router();
@@ -146,13 +147,26 @@ function calculateSummary(records: ReviewRecord[]): ReviewSummary {
   };
 }
 
+export const ReviewsQuerySchema = z.object({
+  category: z.string().trim().max(60).optional(),
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  sort: z.enum(['helpful', 'recent']).optional(),
+});
+
+export const ReviewIdParamSchema = z.object({
+  id: z.string().trim().min(3).max(100).regex(/^[a-zA-Z0-9_\-]+$/, 'Invalid review ID format'),
+});
+
 // GET /api/reviews - Get filtered and sorted reviews with summary statistics
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const parsedQuery = ReviewsQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return res.status(400).json({ error: 'Invalid query parameters', details: parsedQuery.error.issues });
+    }
+
+    const { category, rating: minRating, sort = 'helpful' } = parsedQuery.data;
     const list = await loadReviews();
-    const category = req.query.category as string | undefined;
-    const minRating = req.query.rating ? parseInt(req.query.rating as string, 10) : undefined;
-    const sort = (req.query.sort as string) || 'helpful'; // 'helpful' | 'recent'
 
     let filtered = [...list];
 
@@ -160,7 +174,7 @@ router.get('/', async (req: Request, res: Response) => {
       filtered = filtered.filter((r) => r.category.toLowerCase().includes(category.toLowerCase()));
     }
 
-    if (minRating && !isNaN(minRating)) {
+    if (minRating !== undefined) {
       filtered = filtered.filter((r) => r.rating >= minRating);
     }
 
@@ -193,39 +207,39 @@ router.get('/stats', async (_req: Request, res: Response) => {
   }
 });
 
+export const CreateReviewSchema = z.object({
+  authorName: z.string().trim().min(1, 'Author name is required').max(80),
+  role: z.string().trim().max(80).optional(),
+  rating: z.coerce.number().int().min(1, 'Rating must be at least 1').max(5, 'Rating must be at most 5'),
+  category: z.string().trim().max(60).optional(),
+  title: z.string().trim().min(1, 'Review title is required').max(120),
+  content: z.string().trim().min(5, 'Review content must be at least 5 characters').max(1500),
+  wouldRecommend: z.boolean().optional(),
+  avatarUrl: z.string().trim().max(255).optional(),
+});
+
 // POST /api/reviews - Add a new review to the database
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { authorName, role, rating, category, title, content, wouldRecommend, avatarUrl } = req.body;
-
-    if (!authorName || typeof authorName !== 'string' || authorName.trim().length === 0) {
-      return res.status(400).json({ error: 'Author name is required' });
+    const parsed = CreateReviewSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message || 'Invalid review data.';
+      return res.status(400).json({ error: message, details: parsed.error.issues });
     }
 
-    const numericRating = parseInt(rating, 10);
-    if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
-      return res.status(400).json({ error: 'Rating must be an integer between 1 and 5' });
-    }
-
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      return res.status(400).json({ error: 'Review title is required' });
-    }
-
-    if (!content || typeof content !== 'string' || content.trim().length < 5) {
-      return res.status(400).json({ error: 'Review content must be at least 5 characters long' });
-    }
+    const { authorName, role, rating, category, title, content, wouldRecommend, avatarUrl } = parsed.data;
 
     const list = await loadReviews();
 
     const newReview: ReviewRecord = {
       id: `rev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      authorName: authorName.trim().substring(0, 80),
-      role: (role && typeof role === 'string' ? role.trim() : 'Chemistry Learner').substring(0, 80),
+      authorName,
+      role: role || 'Chemistry Learner',
       avatarUrl: avatarUrl || '/favicon.png',
-      rating: numericRating,
-      category: (category && typeof category === 'string' ? category.trim() : 'General Experience').substring(0, 60),
-      title: title.trim().substring(0, 120),
-      content: content.trim().substring(0, 1500),
+      rating,
+      category: category || 'General Experience',
+      title,
+      content,
       wouldRecommend: wouldRecommend !== false,
       helpful: 0,
       verified: true,
@@ -249,7 +263,12 @@ router.post('/', async (req: Request, res: Response) => {
 // POST /api/reviews/:id/helpful - Upvote review helpfulness in database
 router.post('/:id/helpful', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const parsed = ReviewIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid review id format', details: parsed.error.issues });
+    }
+
+    const { id } = parsed.data;
     const list = await loadReviews();
     const index = list.findIndex((r) => r.id === id);
 

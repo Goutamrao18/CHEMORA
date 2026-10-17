@@ -228,7 +228,9 @@ export const NOTABLE_PDB_STRUCTURES: PdbStructureData[] = [
   },
 ];
 
-// Query PubChem live API with graceful fallback to curated cache
+import { fetchJsonWithRetry } from '../utils/fetchWithRetry';
+
+// Query PubChem live API via server proxy with graceful fallback to curated cache
 export async function queryPubChemCompound(queryName: string): Promise<PubChemCompoundData> {
   const clean = queryName.trim().toLowerCase();
 
@@ -245,19 +247,14 @@ export async function queryPubChemCompound(queryName: string): Promise<PubChemCo
   }
 
   try {
-    // 1. Resolve name to CID
-    const cidRes = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(queryName)}/cids/JSON`);
-    if (!cidRes.ok) throw new Error('PubChem CID lookup failed');
-    const cidData = await cidRes.json();
-    const cid = cidData?.IdentifierList?.CID?.[0];
-    if (!cid) throw new Error('No compound found for query');
+    // 1. Query server science proxy with timeout
+    const data = await fetchJsonWithRetry<{ cid: number; properties: any }>(
+      `/api/science/compound?name=${encodeURIComponent(queryName)}`,
+      { timeoutMs: 7000, retries: 1 }
+    );
 
-    // 2. Fetch properties
-    const propsUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChIKey,XLogP,TPSA,HBondDonorCount,HBondAcceptorCount/JSON`;
-    const propsRes = await fetch(propsUrl);
-    if (!propsRes.ok) throw new Error('PubChem properties lookup failed');
-    const propsData = await propsRes.json();
-    const p = propsData?.PropertyTable?.Properties?.[0];
+    const cid = data.cid;
+    const p = data.properties || {};
 
     return {
       cid,

@@ -40,6 +40,8 @@ export interface SubmitReviewInput {
   avatarUrl?: string;
 }
 
+import { fetchWithRetry, fetchJsonWithRetry } from '../utils/fetchWithRetry';
+
 export async function fetchDatabaseReviews(filters?: {
   category?: string;
   rating?: number;
@@ -58,15 +60,11 @@ export async function fetchDatabaseReviews(filters?: {
     }
 
     const queryStr = params.toString() ? `?${params.toString()}` : '';
-    const res = await fetch(`/api/reviews${queryStr}`, {
-      headers: { 'Accept': 'application/json' },
-    });
+    const data = await fetchJsonWithRetry<{ reviews: ReviewItem[]; summary: ReviewSummaryStats }>(
+      `/api/reviews${queryStr}`,
+      { timeoutMs: 8000, retries: 2 }
+    );
 
-    if (!res.ok) {
-      throw new Error(`Server returned ${res.status}`);
-    }
-
-    const data = await res.json();
     return {
       reviews: data.reviews || [],
       summary: data.summary || {
@@ -93,34 +91,31 @@ export async function fetchDatabaseReviews(filters?: {
 }
 
 export async function submitDatabaseReview(input: SubmitReviewInput): Promise<ReviewItem> {
-  const res = await fetch('/api/reviews', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify(input),
-  });
+  const data = await fetchJsonWithRetry<{ review: ReviewItem }>(
+    '/api/reviews',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+      timeoutMs: 10000,
+      retries: 1,
+    }
+  );
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to submit review to database');
-  }
-
-  const data = await res.json();
   return data.review;
 }
 
 export async function upvoteDatabaseReview(reviewId: string): Promise<number> {
-  const res = await fetch(`/api/reviews/${reviewId}/helpful`, {
-    method: 'POST',
-    headers: { 'Accept': 'application/json' },
-  });
+  const data = await fetchJsonWithRetry<{ helpful: number }>(
+    `/api/reviews/${encodeURIComponent(reviewId)}/helpful`,
+    {
+      method: 'POST',
+      timeoutMs: 6000,
+      retries: 1,
+    }
+  );
 
-  if (!res.ok) {
-    throw new Error('Failed to upvote review');
-  }
-
-  const data = await res.json();
   return data.helpful;
 }

@@ -11,6 +11,7 @@
     "preview": "node server.ts",
     "validate:project": "node scripts/validate-project.mjs",
     "test:smoke": "node scripts/smoke-api.mjs",
+    "test:rate-limit": "node scripts/test-rate-limit.mjs",
     "test:experiments": "node scripts/test-experiments.mjs"
   },
   "dependencies": {

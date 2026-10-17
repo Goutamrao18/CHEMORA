@@ -1,5 +1,6 @@
 import express from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import {
   backendSignUp,
   backendSignIn,
@@ -8,6 +9,7 @@ import {
   backendUpdateProfile,
   backendUpdatePassword,
   backendResetPasswordRequest,
+  backendResetPasswordWithToken,
   backendSyncProgress,
   backendGetProgress,
   getSupabaseSystemDiagnostics,
@@ -15,6 +17,47 @@ import {
 } from '../supabase.ts';
 
 const router = express.Router();
+const isProd = process.env.NODE_ENV === 'production';
+
+// Strict validation schemas using Zod
+export const SignUpSchema = z.object({
+  email: z.string().trim().email('Invalid email address').max(120),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(120),
+  full_name: z.string().trim().max(80).optional(),
+});
+
+export const LoginSchema = z.object({
+  email: z.string().trim().email('Invalid email address').max(120),
+  password: z.string().min(1, 'Password is required').max(120),
+});
+
+export const ProfileUpdateSchema = z.object({
+  full_name: z.string().trim().max(80).optional(),
+  avatar_url: z.string().trim().max(255).optional(),
+  rank: z.string().trim().max(80).optional(),
+});
+
+export const PasswordUpdateSchema = z.object({
+  new_password: z.string().min(6, 'New password must be at least 6 characters').max(120),
+});
+
+export const ForgotPasswordSchema = z.object({
+  email: z.string().trim().email('Invalid email address').max(120),
+});
+
+export const ResetPasswordWithTokenSchema = z.object({
+  token: z.string().trim().min(10, 'Invalid token').max(255),
+  new_password: z.string().min(6, 'New password must be at least 6 characters').max(120),
+});
+
+export const SyncProgressSchema = z.object({
+  experimentsCompleted: z.number().int().min(0).max(1000).optional().default(0),
+  challengesCompleted: z.number().int().min(0).max(1000).optional().default(0),
+  streakDays: z.number().int().min(0).max(10000).optional().default(0),
+  totalXp: z.number().int().min(0).max(10000000).optional().default(0),
+  rankTitle: z.string().trim().max(100).optional().default('Novice Alchemist'),
+  completedExperimentIds: z.array(z.string().trim().max(60)).max(200).optional().default([]),
+});
 
 function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization;
@@ -27,7 +70,55 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
-// GET /api/account/status - Check if backend is active and database configured (WITHOUT exposing credentials)
+// CSRF & Header protection for state-mutating requests
+function verifyCsrfHeader(req: Request, res: Response, next: NextFunction) {
+  // Allow safe methods
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  // 1. Bearer token in Authorization header is immune to standard browser CSRF
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  // 2. Custom header cannot be sent by cross-origin HTML forms
+  const customHeader = req.headers['x-requested-with'] || req.headers['x-chemora-client'];
+  if (customHeader) {
+    return next();
+  }
+
+  // 3. Strict Origin / Referer validation
+  const rawAllowed = process.env.ALLOWED_ORIGINS || '';
+  const configuredOrigins = rawAllowed.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const origin = (req.headers.origin || req.headers.referer || '').toLowerCase();
+
+  if (origin) {
+    const isAllowed =
+      !isProd ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      configuredOrigins.some((c) => origin.startsWith(c)) ||
+      origin.includes('.run.app') ||
+      origin.includes('.vercel.app') ||
+      origin.includes('chemora');
+
+    if (isAllowed) {
+      return next();
+    }
+  }
+
+  if (!isProd) {
+    return next();
+  }
+
+  return res.status(403).json({ error: 'CSRF verification rejected request.' });
+}
+
+router.use(verifyCsrfHeader);
+
+// GET /api/account/status - Check if backend is active and database configured
 router.get('/status', (_req: Request, res: Response) => {
   res.json({
     status: 'online',
@@ -61,7 +152,7 @@ router.get('/progress', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/account/sync - Sync researcher progress & laboratory data into Supabase database
+// POST /api/account/sync - Sync researcher progress & laboratory data into database
 router.post('/sync', async (req: Request, res: Response) => {
   try {
     const token = extractToken(req);
@@ -74,25 +165,14 @@ router.post('/sync', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Session expired' });
     }
 
-    const {
-      experimentsCompleted,
-      challengesCompleted,
-      streakDays,
-      totalXp,
-      rankTitle,
-      completedExperimentIds,
-    } = req.body || {};
+    const parsed = SyncProgressSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid progress data schema', details: parsed.error.issues });
+    }
 
     const syncResult = await backendSyncProgress(
       user.id,
-      {
-        experimentsCompleted: Number(experimentsCompleted || 0),
-        challengesCompleted: Number(challengesCompleted || 0),
-        streakDays: Number(streakDays || 0),
-        totalXp: Number(totalXp || 0),
-        rankTitle: rankTitle || 'Novice Alchemist',
-        completedExperimentIds: Array.isArray(completedExperimentIds) ? completedExperimentIds : [],
-      },
+      parsed.data,
       token
     );
 
@@ -140,22 +220,20 @@ router.get('/me', async (req: Request, res: Response) => {
 // POST /api/account/signup - Register new researcher
 router.post('/signup', async (req: Request, res: Response) => {
   try {
-    const { email, password, full_name } = req.body || {};
-
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return res.status(400).json({ error: 'A valid email address is required.' });
+    const parsed = SignUpSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message || 'Invalid registration details.';
+      return res.status(400).json({ error: message, details: parsed.error.issues });
     }
 
-    if (!password || typeof password !== 'string' || password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
-    }
-
+    const { email, password, full_name } = parsed.data;
     const result = await backendSignUp(email, password, full_name || '');
 
     if (result.token) {
       res.cookie('chemora_session', result.token, {
         httpOnly: true,
         sameSite: 'lax',
+        secure: isProd,
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       });
     }
@@ -182,18 +260,20 @@ router.post('/signup', async (req: Request, res: Response) => {
 // POST /api/account/login - Sign into researcher account
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body || {};
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Please enter both email and password.' });
+    const parsed = LoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message || 'Please enter both email and password.';
+      return res.status(400).json({ error: message, details: parsed.error.issues });
     }
 
+    const { email, password } = parsed.data;
     const result = await backendSignIn(email, password);
 
     if (result.token) {
       res.cookie('chemora_session', result.token, {
         httpOnly: true,
         sameSite: 'lax',
+        secure: isProd,
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
     }
@@ -216,7 +296,11 @@ router.post('/login', async (req: Request, res: Response) => {
 
 // POST /api/account/logout - Sign out
 router.post('/logout', (_req: Request, res: Response) => {
-  res.clearCookie('chemora_session');
+  res.clearCookie('chemora_session', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd,
+  });
   return res.json({ success: true, message: 'Logged out successfully.' });
 });
 
@@ -233,12 +317,15 @@ router.put('/profile', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Session expired' });
     }
 
-    const { full_name, avatar_url, rank } = req.body || {};
+    const parsed = ProfileUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid profile update format', details: parsed.error.issues });
+    }
 
     const updatedProfile = await backendUpdateProfile(
       user.id,
       user.email || '',
-      { full_name, avatar_url, rank },
+      parsed.data,
       token
     );
 
@@ -260,13 +347,13 @@ router.put('/password', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { new_password } = req.body || {};
-    if (!new_password || typeof new_password !== 'string' || new_password.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    const parsed = PasswordUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message || 'New password must be at least 6 characters.';
+      return res.status(400).json({ error: message });
     }
 
-    await backendUpdatePassword(token, new_password);
-
+    await backendUpdatePassword(token, parsed.data.new_password);
     return res.json({ success: true, message: 'Password updated successfully.' });
   } catch (err: any) {
     console.error('Password change error:', err);
@@ -274,19 +361,36 @@ router.put('/password', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/account/forgot-password - Send password reset email
+// POST /api/account/forgot-password - Send password reset email or generate token
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
-    const { email } = req.body || {};
-    if (!email || typeof email !== 'string') {
-      return res.status(400).json({ error: 'Email is required.' });
+    const parsed = ForgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'A valid email address is required.' });
     }
 
-    const result = await backendResetPasswordRequest(email);
+    const result = await backendResetPasswordRequest(parsed.data.email);
     return res.json(result);
   } catch (err: any) {
     console.error('Forgot password error:', err);
     return res.status(400).json({ error: err.message || 'Failed to request reset.' });
+  }
+});
+
+// POST /api/account/reset-password - Reset password using single-use expiring token
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const parsed = ResetPasswordWithTokenSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message || 'Valid reset token and password are required.';
+      return res.status(400).json({ error: message });
+    }
+
+    const result = await backendResetPasswordWithToken(parsed.data.token, parsed.data.new_password);
+    return res.json(result);
+  } catch (err: any) {
+    console.error('Reset password with token error:', err);
+    return res.status(400).json({ error: err.message || 'Failed to reset password.' });
   }
 });
 
