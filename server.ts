@@ -63,6 +63,15 @@ async function startServer() {
   // Mount assistant route handler if available
   app.all('/api/assistant', async (req: Request, res: Response) => {
     try {
+      // @ts-expect-error Import JS handler without declaration file
+      const assistantModule = await import('./api/assistant.js');
+      const handler = assistantModule.default;
+      return handler(req, res);
+    } catch (err: any) {
+      console.error('Error delegating to /api/assistant:', err);
+      return res.status(500).json({ error: 'AI Assistant service unavailable' });
+    }
+  });
 
   // Science intelligence proxy route for PubChem PUG REST
   app.get('/api/science/compound', async (req: Request, res: Response) => {
@@ -99,7 +108,11 @@ async function startServer() {
     const fs = await import('node:fs/promises');
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true, allowedHosts: true },
+      server: {
+        middlewareMode: true,
+        allowedHosts: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
 
