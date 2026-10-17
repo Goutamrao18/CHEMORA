@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/copy-dist-assets.mjs",
     "start": "node server.ts",
     "lint": "tsc -b",
     "preview": "node server.ts",

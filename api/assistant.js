@@ -97,9 +97,8 @@ export default async function handler(req, res) {
   const geminiKey = process.env.GEMINI_API_KEY;
 
   if (!geminiKey && !openRouterKey) {
-    return res.status(400).json({
-      error: "No AI API key found. To decode question pictures using free OpenRouter AI, please enter your free OpenRouter API key in the chat settings ⚙ (openrouter.ai gives free keys for :free models) or set OPENROUTER_API_KEY.",
-      requiresKey: true
+    return res.status(503).json({
+      error: "CHEMORA AI is temporarily unavailable.",
     });
   }
 
@@ -225,7 +224,7 @@ export default async function handler(req, res) {
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         contents,
         config: {
           systemInstruction: system,
@@ -238,7 +237,7 @@ export default async function handler(req, res) {
       if (typeof text === 'string' && text.trim()) {
         return res.status(200).json({
           answer: text.trim().slice(0, 16000),
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           provider: 'gemini',
           decodedImage: !!imageData
         });

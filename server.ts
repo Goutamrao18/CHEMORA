@@ -22,6 +22,14 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true, limit: '15mb' }));
   app.use(cookieParser());
 
+  // Static directory middleware for multimedia, apparatus graphics, chemistry SVGs, public, and challenge sets
+  app.use('/videos', express.static(path.resolve(__dirname, 'videos')));
+  app.use('/know', express.static(path.resolve(__dirname, 'know')));
+  app.use('/assets', express.static(path.resolve(__dirname, 'assets')));
+  app.use('/challenge/data', express.static(path.resolve(__dirname, 'challenge', 'data')));
+  app.use('/data', express.static(path.resolve(__dirname, 'data')));
+  app.use(express.static(path.resolve(__dirname, 'public')));
+
   // Mount backend API routes
   app.use('/api/account', accountRouter);
   app.use('/api/reviews', reviewsRouter);
