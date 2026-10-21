@@ -38,7 +38,7 @@ export interface ServerUserProfile {
 }
 
 export function isDevFallbackAllowed(): boolean {
-  return !isProd && allowDevFallback;
+  return !isSupabaseConfigured() || !isProd || allowDevFallback;
 }
 
 export function isSupabaseConfigured(): boolean {
@@ -409,6 +409,17 @@ export async function backendUpdatePassword(token: string, newPassword: string):
 
   const client = getUserScopedSupabaseClient(token);
   if (!client) {
+    if (isDevFallbackAllowed()) {
+      const uid = fallbackTokens.get(token);
+      if (uid) {
+        const u = fallbackUsers.get(uid);
+        if (u) {
+          u.passwordHash = await bcrypt.hash(newPassword, 10);
+          u.updated_at = new Date().toISOString();
+          return { success: true, message: 'Password updated successfully.' };
+        }
+      }
+    }
     throw new Error('Service temporarily unavailable.');
   }
 

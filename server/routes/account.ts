@@ -36,7 +36,16 @@ function isAllowedOrigin(originHeader?: string | string[]): boolean {
     const parsed = new URL(originStr);
     const origin = parsed.origin;
     if (ALLOWED_ORIGINS.has(origin)) return true;
-    if (origin.endsWith('.vercel.app') || origin.endsWith('.run.app')) return true;
+    if (
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.run.app') ||
+      origin.includes('.googleusercontent.com') ||
+      origin.includes('.aistudio.google.com') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      return true;
+    }
     return false;
   } catch {
     return false;

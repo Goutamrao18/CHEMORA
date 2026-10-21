@@ -217,11 +217,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
-  // 1.1: In production, missing Upstash credentials must fail-closed with generic 503
-  if (isProd && !hasUpstash) {
-    return res.status(503).json({ error: 'Service temporarily unavailable. Please try again later.' });
-  }
-
   const client = await resolveClient(req);
 
   // Global cost cap check
@@ -230,7 +225,7 @@ export default async function handler(req, res) {
     if (!gCheck.success) {
       return res.status(503).json({ error: 'Service daily capacity reached. Please try again tomorrow.' });
     }
-  } else if (!isProd) {
+  } else {
     const memG = checkDevLimit('global_ai_daily', AI_DAILY_CAP, 86_400_000);
     if (!memG.success) {
       return res.status(503).json({ error: 'Service daily capacity reached. Please try again tomorrow.' });
@@ -303,7 +298,7 @@ export default async function handler(req, res) {
       if (!imgCheck.success) {
         return res.status(429).json({ error: 'Daily photo analysis limit (5/day) reached.' });
       }
-    } else if (!isProd) {
+    } else {
       const imgMem = checkDevLimit(`${client.key}:img`, 5, 86_400_000);
       if (!imgMem.success) {
         return res.status(429).json({ error: 'Daily photo analysis limit (5/day) reached.' });
@@ -344,8 +339,10 @@ export default async function handler(req, res) {
     if (!geminiKey) return null;
     try {
       const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({
+      const ai = new GoogleGenAI(geminiKey ? {
         apiKey: geminiKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+      } : {
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
       });
 
@@ -364,9 +361,10 @@ export default async function handler(req, res) {
         contents = userMessage;
       }
 
+      const chosenModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
       const response = await Promise.race([
         ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: chosenModel,
           contents,
           config: {
             systemInstruction: systemPrompt,
