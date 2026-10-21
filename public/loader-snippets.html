@@ -1,0 +1,83 @@
+<!-- ==========================================================================
+     CHEMORA Chemistry Loaders: Plain-HTML Snippets
+     Include <link rel="stylesheet" href="/loaders.css"> in your <head>
+     Sizes: chem-size-sm (16px), chem-size-md (32px), chem-size-lg (64px)
+     ========================================================================== -->
+
+<!-- 1. AtomSpinner (Page & Section Loading) -->
+<div role="status" aria-live="polite" class="chem-loader chem-size-md">
+  <span class="chem-sr-only">Loading chamber...</span>
+  <svg viewBox="0 0 64 64" class="chem-atom" aria-hidden="true">
+    <ellipse cx="32" cy="32" rx="26" ry="10" class="chem-atom-ring chem-atom-orbit-1"></ellipse>
+    <ellipse cx="32" cy="32" rx="26" ry="10" class="chem-atom-ring chem-atom-orbit-2"></ellipse>
+    <ellipse cx="32" cy="32" rx="26" ry="10" class="chem-atom-ring chem-atom-orbit-3"></ellipse>
+    <g class="chem-atom-electrons">
+      <circle cx="58" cy="32" r="2.75" fill="var(--chem-loader-primary)"></circle>
+      <circle cx="19" cy="10" r="2.75" fill="var(--chem-loader-secondary)"></circle>
+      <circle cx="19" cy="54" r="2.75" fill="var(--chem-loader-accent)"></circle>
+    </g>
+    <circle cx="32" cy="32" r="4.5" class="chem-atom-nucleus"></circle>
+  </svg>
+</div>
+
+<!-- 2. FlaskBubbles (AI Assistant Thinking) -->
+<div role="status" aria-live="polite" class="chem-loader chem-size-md">
+  <span class="chem-sr-only">Analyzing chemistry solution...</span>
+  <svg viewBox="0 0 32 32" aria-hidden="true">
+    <line x1="12" y1="4" x2="20" y2="4" class="chem-flask-outline"></line>
+    <path d="M13 4v7L6.5 24.5C5.8 26 6.9 27.5 8.6 27.5h14.8c1.7 0 2.8-1.5 2.1-3L19 11V4" class="chem-flask-outline"></path>
+    <path d="M8.2 24.5L11 19c2 0.8 4-0.8 6-0.8s3.5 1.2 5 0.5l2.2 5.8c0.4 1-0.3 2-1.4 2H9.6c-1.1 0-1.8-1-1.4-2z" class="chem-flask-liquid"></path>
+    <circle cx="13" cy="23" r="1.5" class="chem-bubble chem-bubble-1"></circle>
+    <circle cx="17.5" cy="24" r="1.2" class="chem-bubble chem-bubble-2"></circle>
+    <circle cx="15" cy="21" r="1.3" class="chem-bubble chem-bubble-3"></circle>
+  </svg>
+</div>
+
+<!-- 3. PhRing (Saving, Login, Sign Up) -->
+<div role="status" aria-live="polite" class="chem-loader chem-size-md">
+  <span class="chem-sr-only">Synchronizing credentials...</span>
+  <svg viewBox="0 0 36 36" aria-hidden="true">
+    <circle cx="18" cy="18" r="14" class="chem-ph-track"></circle>
+    <circle cx="18" cy="18" r="14" class="chem-ph-ring"></circle>
+  </svg>
+</div>
+
+<!-- 4. BubbleDots (Inline Buttons, with aria-busy) -->
+<button disabled aria-busy="true" class="btn">
+  <span role="status" aria-live="polite" class="chem-bubble-dots">
+    <span class="chem-sr-only">Saving...</span>
+    <span class="chem-bubble-dot" aria-hidden="true"></span>
+    <span class="chem-bubble-dot" aria-hidden="true"></span>
+    <span class="chem-bubble-dot" aria-hidden="true"></span>
+  </span>
+</button>
+
+<!-- 5. BeakerFill (Video Buffering / Determinate Progress) -->
+<div role="status" aria-live="polite" class="chem-loader chem-size-md chem-beaker-indeterminate">
+  <span class="chem-sr-only">Buffering video demonstration...</span>
+  <svg viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M7 6h17v19a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6l-1.5-1" class="chem-beaker-contour"></path>
+    <line x1="9" y1="11" x2="13" y2="11" class="chem-beaker-ticks"></line>
+    <line x1="9" y1="16" x2="14" y2="16" class="chem-beaker-ticks"></line>
+    <line x1="9" y1="21" x2="13" y2="21" class="chem-beaker-ticks"></line>
+    <rect x="8" y="11" width="15" height="14" rx="1" class="chem-beaker-liquid"></rect>
+  </svg>
+</div>
+
+<!-- 6. Skeleton (Card / Poster Shimmer Placeholder) -->
+<div role="status" aria-live="polite" class="chem-skeleton" style="width: 100%; height: 220px;">
+  <span class="chem-sr-only">Loading card placeholder...</span>
+</div>
+
+<!-- 7. DropperDrip (Empty States) -->
+<div role="status" aria-live="polite" class="chem-loader chem-size-lg">
+  <span class="chem-sr-only">No laboratory records recorded</span>
+  <svg viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M13.5 3h5c1 0 1.5.8 1.5 1.5v2h-8v-2c0-.7.5-1.5 1.5-1.5z" class="chem-dropper-bulb"></path>
+    <rect x="11" y="6.5" width="10" height="1.5" rx="0.5" class="chem-dropper-pipette"></rect>
+    <path d="M13 8v9l2 4v2h2v-2l2-4V8" class="chem-dropper-pipette"></path>
+    <rect x="14" y="9" width="4" height="7" rx="0.5" class="chem-dropper-liquid-in"></rect>
+    <circle cx="16" cy="24" r="1.5" class="chem-dropper-drop"></circle>
+    <ellipse cx="16" cy="30" rx="6" ry="1.5" class="chem-dropper-ripple"></ellipse>
+  </svg>
+</div>

@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L004Q1",
+    "question": "Which is a mixture?",
+    "options": [
+      "Oxygen",
+      "Distilled water",
+      "Air",
+      "Sodium chloride"
+    ],
+    "answer": 2,
+    "explanation": "Air is a mixture of several gases.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q2",
+    "question": "What is the smallest unit of an element that retains its chemical identity?",
+    "options": [
+      "Atom",
+      "Cell",
+      "Molecule only",
+      "Crystal"
+    ],
+    "answer": 0,
+    "explanation": "An atom is the basic unit of an element.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q3",
+    "question": "Which symbol represents potassium?",
+    "options": [
+      "P",
+      "K",
+      "Pt",
+      "Po"
+    ],
+    "answer": 1,
+    "explanation": "Potassium has the chemical symbol K.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q4",
+    "question": "Which property can be observed without changing a substance's identity?",
+    "options": [
+      "Flammability",
+      "Density",
+      "Reactivity",
+      "Combustibility"
+    ],
+    "answer": 1,
+    "explanation": "Density is a physical property.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q5",
+    "question": "Which is a compound?",
+    "options": [
+      "Iron",
+      "Oxygen",
+      "Water",
+      "Copper"
+    ],
+    "answer": 2,
+    "explanation": "Water is a compound of hydrogen and oxygen.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q6",
+    "question": "Which instrument is commonly used to measure temperature?",
+    "options": [
+      "Burette",
+      "Thermometer",
+      "Balance",
+      "Pipette"
+    ],
+    "answer": 1,
+    "explanation": "A thermometer measures temperature.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q7",
+    "question": "Which process changes a liquid into a gas?",
+    "options": [
+      "Freezing",
+      "Condensation",
+      "Vaporization",
+      "Deposition"
+    ],
+    "answer": 2,
+    "explanation": "Vaporization converts a liquid into a gas.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q8",
+    "question": "Which state of matter has a fixed volume but no fixed shape?",
+    "options": [
+      "Solid",
+      "Liquid",
+      "Gas",
+      "Plasma"
+    ],
+    "answer": 1,
+    "explanation": "A liquid has a fixed volume but takes the shape of its container.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q9",
+    "question": "Which of these is a physical change?",
+    "options": [
+      "Burning paper",
+      "Rusting iron",
+      "Melting ice",
+      "Digesting food"
+    ],
+    "answer": 2,
+    "explanation": "Melting changes the state of water without forming a new substance.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  },
+  {
+    "id": "L004Q10",
+    "question": "Which substance is an element?",
+    "options": [
+      "Water",
+      "Oxygen",
+      "Sodium chloride",
+      "Carbon dioxide"
+    ],
+    "answer": 1,
+    "explanation": "Oxygen consists of only one type of atom.",
+    "difficulty": "Easy",
+    "points": 100,
+    "topic": "Chemistry Fundamentals"
+  }
+]

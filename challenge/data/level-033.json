@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L033Q1",
+    "question": "What is the usual valency of oxygen in simple compounds?",
+    "options": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "answer": 1,
+    "explanation": "Oxygen commonly forms two bonds or has valency 2.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q2",
+    "question": "Which compound is mainly ionic?",
+    "options": [
+      "NaCl",
+      "CH₄",
+      "CO₂",
+      "O₂"
+    ],
+    "answer": 0,
+    "explanation": "NaCl consists of oppositely charged ions.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q3",
+    "question": "Which molecule contains a triple bond?",
+    "options": [
+      "H₂",
+      "O₂",
+      "N₂",
+      "H₂O"
+    ],
+    "answer": 2,
+    "explanation": "N₂ contains a nitrogen-nitrogen triple bond.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q4",
+    "question": "The octet rule refers to achieving:",
+    "options": [
+      "8 valence electrons",
+      "8 protons",
+      "8 neutrons",
+      "8 atoms"
+    ],
+    "answer": 0,
+    "explanation": "Many atoms tend toward eight valence electrons.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q5",
+    "question": "Which molecule is nonpolar overall?",
+    "options": [
+      "H₂O",
+      "CO₂",
+      "NH₃",
+      "HCl"
+    ],
+    "answer": 1,
+    "explanation": "Linear CO₂ has bond dipoles that cancel.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q6",
+    "question": "What type of bond holds metal atoms together in a metal lattice?",
+    "options": [
+      "Metallic",
+      "Ionic only",
+      "Covalent only",
+      "Hydrogen"
+    ],
+    "answer": 0,
+    "explanation": "Metallic bonding involves delocalized electrons.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q7",
+    "question": "Which ion has a +1 charge?",
+    "options": [
+      "Cl⁻",
+      "O²⁻",
+      "Na⁺",
+      "Mg²⁺"
+    ],
+    "answer": 2,
+    "explanation": "Sodium commonly forms Na⁺.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q8",
+    "question": "Which compound contains covalent bonds?",
+    "options": [
+      "H₂O",
+      "NaCl",
+      "KBr",
+      "MgO"
+    ],
+    "answer": 0,
+    "explanation": "Water contains covalent O-H bonds.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q9",
+    "question": "A bond formed by transfer of electrons is usually:",
+    "options": [
+      "Ionic",
+      "Covalent",
+      "Metallic only",
+      "Hydrogen only"
+    ],
+    "answer": 0,
+    "explanation": "Ionic bonding involves electron transfer and electrostatic attraction.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L033Q10",
+    "question": "A covalent bond involves:",
+    "options": [
+      "Sharing electrons",
+      "Sharing protons",
+      "Transferring neutrons",
+      "Destroying atoms"
+    ],
+    "answer": 0,
+    "explanation": "Covalent bonds involve shared electron pairs.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  }
+]

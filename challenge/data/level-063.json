@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L063Q1",
+    "question": "The formula of methane is:",
+    "options": [
+      "CH₄",
+      "C₂H₆",
+      "C₂H₄",
+      "CO₂"
+    ],
+    "answer": 0,
+    "explanation": "Methane contains one carbon and four hydrogen atoms.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q2",
+    "question": "Ethene contains a:",
+    "options": [
+      "Single C-C bond only",
+      "Double C=C bond",
+      "Triple C≡C bond",
+      "Metallic bond"
+    ],
+    "answer": 1,
+    "explanation": "Ethene is an alkene with a carbon-carbon double bond.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q3",
+    "question": "Which compound is an alcohol?",
+    "options": [
+      "Ethanol",
+      "Ethene",
+      "Ethane",
+      "Ethanoic acid"
+    ],
+    "answer": 0,
+    "explanation": "Ethanol contains the -OH functional group.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q4",
+    "question": "The general formula of alkanes is:",
+    "options": [
+      "CₙH₂ₙ₊₂",
+      "CₙH₂ₙ",
+      "CₙH₂ₙ₋₂",
+      "CₙHₙ"
+    ],
+    "answer": 0,
+    "explanation": "Acyclic saturated alkanes follow CₙH₂ₙ₊₂.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q5",
+    "question": "Which is a carboxylic acid?",
+    "options": [
+      "Ethanoic acid",
+      "Ethanol",
+      "Ethene",
+      "Methane"
+    ],
+    "answer": 0,
+    "explanation": "Ethanoic acid contains the -COOH group.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q6",
+    "question": "Benzene has the molecular formula:",
+    "options": [
+      "C₆H₆",
+      "C₆H₁₂",
+      "C₂H₆",
+      "CH₄"
+    ],
+    "answer": 0,
+    "explanation": "Benzene is C₆H₆.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q7",
+    "question": "Hydrocarbons contain only:",
+    "options": [
+      "C and H",
+      "C and O",
+      "H and O",
+      "N and H"
+    ],
+    "answer": 0,
+    "explanation": "Hydrocarbons consist only of carbon and hydrogen.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q8",
+    "question": "A saturated hydrocarbon contains:",
+    "options": [
+      "Only single C-C bonds",
+      "At least one C=C",
+      "At least one C≡C",
+      "No carbon"
+    ],
+    "answer": 0,
+    "explanation": "Saturated hydrocarbons have only single carbon-carbon bonds.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q9",
+    "question": "The simplest hydrocarbon is:",
+    "options": [
+      "Methane",
+      "Ethene",
+      "Ethanol",
+      "Benzene"
+    ],
+    "answer": 0,
+    "explanation": "Methane, CH₄, is the simplest hydrocarbon.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  },
+  {
+    "id": "L063Q10",
+    "question": "The functional group of alcohols is:",
+    "options": [
+      "-OH",
+      "-COOH",
+      "-CHO",
+      "-CO-"
+    ],
+    "answer": 0,
+    "explanation": "Alcohols contain a hydroxyl group, -OH.",
+    "difficulty": "Hard",
+    "points": 250,
+    "topic": "Organic Chemistry"
+  }
+]

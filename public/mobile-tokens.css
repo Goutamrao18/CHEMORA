@@ -1,0 +1,104 @@
+:root {
+  --chemora-bg: #040a17;
+  --chemora-bg-elevated: #071226;
+  --chemora-glass-surface: rgba(255, 255, 255, 0.08);
+  --chemora-glass-surface-pressed: rgba(255, 255, 255, 0.12);
+  --chemora-glass-border: rgba(255, 255, 255, 0.12);
+  --chemora-glass-border-focus: rgba(56, 189, 248, 0.6);
+  --chemora-dock-bg: rgba(6, 14, 28, 0.82);
+  --chemora-dock-border: rgba(255, 255, 255, 0.14);
+  --chemora-accent-cyan: #38bdf8;
+  --chemora-accent-cyan-glow: rgba(56, 189, 248, 0.35);
+  --chemora-accent-violet: #818cf8;
+  --chemora-accent-violet-glow: rgba(129, 140, 248, 0.3);
+  --chemora-accent-amber: #f59e0b;
+  --chemora-accent-emerald: #10b981;
+  --chemora-text-primary: #f8fafc;       
+  --chemora-text-secondary: #94a3b8;     
+  --chemora-text-muted: #64748b;         
+  --chemora-text-accent: #38bdf8;
+  --chemora-radius-sm: 16px;
+  --chemora-radius-md: 24px;
+  --chemora-radius-lg: 32px;
+  --chemora-radius-pill: 9999px;
+  --chemora-space-xs: 4px;
+  --chemora-space-sm: 8px;
+  --chemora-space-md: 12px;
+  --chemora-space-lg: 16px;
+  --chemora-space-xl: 20px;
+  --chemora-space-2xl: 24px;
+  --chemora-shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.35);
+  --chemora-shadow-dock: 0 12px 32px -4px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  --chemora-shadow-pill: 0 6px 20px -2px rgba(6, 182, 212, 0.4);
+  --chemora-shadow-glow: 0 0 18px rgba(56, 189, 248, 0.35);
+  --chemora-glass-blur: 12px;
+  --chemora-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --chemora-dur-fast: 200ms;
+  --chemora-dur-normal: 260ms;
+  --chemora-dur-enter: 320ms;
+  --chemora-dock-height: 64px;
+  --chemora-dock-bottom-offset: calc(14px + env(safe-area-inset-bottom, 0px));
+  --chemora-content-padding-bottom: calc(var(--chemora-dock-height) + var(--chemora-dock-bottom-offset) + 24px);
+}
+html.light,
+body.light {
+  --chemora-bg: #f4f7f4;
+  --chemora-bg-elevated: #ffffff;
+  --chemora-glass-surface: rgba(255, 255, 255, 0.88);
+  --chemora-glass-surface-pressed: rgba(230, 237, 230, 0.95);
+  --chemora-glass-border: rgba(13, 110, 82, 0.14);
+  --chemora-glass-border-focus: rgba(13, 110, 82, 0.55);
+  --chemora-dock-bg: rgba(244, 248, 244, 0.9);
+  --chemora-dock-border: rgba(13, 110, 82, 0.18);
+  --chemora-accent-cyan: #0d6e52;
+  --chemora-accent-cyan-glow: rgba(13, 110, 82, 0.25);
+  --chemora-accent-violet: #4f46e5;
+  --chemora-accent-violet-glow: rgba(79, 70, 229, 0.2);
+  --chemora-accent-amber: #d97706;
+  --chemora-accent-emerald: #059669;
+  --chemora-text-primary: #0f172a;       
+  --chemora-text-secondary: #334155;     
+  --chemora-text-muted: #64748b;         
+  --chemora-text-accent: #0d6e52;
+  --chemora-shadow-card: 0 4px 16px -2px rgba(13, 110, 82, 0.08);
+  --chemora-shadow-dock: 0 10px 28px -4px rgba(13, 110, 82, 0.14), 0 0 0 1px rgba(13, 110, 82, 0.12);
+  --chemora-shadow-pill: 0 6px 18px -2px rgba(13, 110, 82, 0.25);
+  --chemora-shadow-glow: 0 0 16px rgba(13, 110, 82, 0.2);
+}
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    --chemora-bg: #f4f7f4;
+    --chemora-bg-elevated: #ffffff;
+    --chemora-glass-surface: rgba(255, 255, 255, 0.88);
+    --chemora-glass-surface-pressed: rgba(230, 237, 230, 0.95);
+    --chemora-glass-border: rgba(13, 110, 82, 0.14);
+    --chemora-glass-border-focus: rgba(13, 110, 82, 0.55);
+    --chemora-dock-bg: rgba(244, 248, 244, 0.9);
+    --chemora-dock-border: rgba(13, 110, 82, 0.18);
+    --chemora-accent-cyan: #0d6e52;
+    --chemora-accent-cyan-glow: rgba(13, 110, 82, 0.25);
+    --chemora-text-primary: #0f172a;
+    --chemora-text-secondary: #334155;
+    --chemora-text-muted: #64748b;
+    --chemora-text-accent: #0d6e52;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --chemora-glass-surface: #0a1424;
+    --chemora-dock-bg: #07101f;
+    --chemora-glass-blur: 0px;
+  }
+  html.light, body.light {
+    --chemora-glass-surface: #ffffff;
+    --chemora-dock-bg: #f0f4f0;
+    --chemora-glass-blur: 0px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --chemora-dur-fast: 0ms;
+    --chemora-dur-normal: 0ms;
+    --chemora-dur-enter: 0ms;
+  }
+}

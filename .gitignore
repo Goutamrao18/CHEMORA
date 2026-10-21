@@ -1,0 +1,13 @@
+node_modules/
+.vercel/
+dist/
+dist-site/
+*.tsbuildinfo
+.env*
+!.env.example
+.DS_Store
+.github/
+videos-compressed/
+data/*.tmp*
+data/reviews.json.tmp*
+*.tmp

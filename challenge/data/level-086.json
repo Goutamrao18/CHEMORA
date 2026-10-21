@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L086Q1",
+    "question": "For an exothermic reaction, the enthalpy change ΔH is:",
+    "options": [
+      "Positive",
+      "Negative",
+      "Always zero",
+      "Equal to activation energy"
+    ],
+    "answer": 1,
+    "explanation": "An exothermic reaction releases heat, so ΔH is negative.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q2",
+    "question": "What happens to equilibrium when pressure increases for a gaseous system?",
+    "options": [
+      "It always shifts right",
+      "It shifts toward fewer gas molecules if possible",
+      "It never changes",
+      "It shifts toward more gas molecules"
+    ],
+    "answer": 1,
+    "explanation": "Le Chatelier's principle predicts a shift toward the side with fewer gas molecules, when the numbers differ.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q3",
+    "question": "What is the pH of a neutral solution at 25 °C?",
+    "options": [
+      "0",
+      "7",
+      "10",
+      "14"
+    ],
+    "answer": 1,
+    "explanation": "At 25 °C, a neutral solution has equal H⁺ and OH⁻ concentrations and pH 7.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q4",
+    "question": "A catalyst increases reaction rate mainly by:",
+    "options": [
+      "Increasing ΔH",
+      "Providing an alternative pathway with lower activation energy",
+      "Increasing product energy",
+      "Being consumed stoichiometrically"
+    ],
+    "answer": 1,
+    "explanation": "Catalysts provide a lower-activation-energy pathway and are regenerated.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q5",
+    "question": "For a first-order reaction, the rate is proportional to:",
+    "options": [
+      "Concentration squared",
+      "Concentration",
+      "The square root of concentration",
+      "The inverse of time only"
+    ],
+    "answer": 1,
+    "explanation": "A first-order rate law has rate = k[A].",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q6",
+    "question": "Which expression represents the equilibrium constant Kc for N₂ + 3H₂ ⇌ 2NH₃?",
+    "options": [
+      "[NH₃]²/([N₂][H₂]³)",
+      "[N₂][H₂]³/[NH₃]²",
+      "[NH₃]/([N₂][H₂])",
+      "[NH₃]²/[N₂]"
+    ],
+    "answer": 0,
+    "explanation": "Product concentrations are raised to stoichiometric powers and divided by reactant concentrations.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q7",
+    "question": "What is the oxidation number of sulfur in sulfate, SO₄²⁻?",
+    "options": [
+      "+2",
+      "+4",
+      "+6",
+      "−2"
+    ],
+    "answer": 2,
+    "explanation": "Four oxygen atoms total −8; the ion is −2 overall, so sulfur is +6.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q8",
+    "question": "Which change generally increases the rate of a reaction between solutions?",
+    "options": [
+      "Lower temperature",
+      "Lower concentration",
+      "Higher temperature",
+      "Removing all reactants"
+    ],
+    "answer": 2,
+    "explanation": "Higher temperature usually increases particle kinetic energy and the frequency of successful collisions.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q9",
+    "question": "What is the role of a salt bridge in a galvanic cell?",
+    "options": [
+      "Supply electrons to the wire",
+      "Maintain electrical neutrality by ion movement",
+      "Stop all ion movement",
+      "Increase electrode mass only"
+    ],
+    "answer": 1,
+    "explanation": "Ions move through the salt bridge to maintain charge balance and complete the circuit.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L086Q10",
+    "question": "At equilibrium, which statement is correct?",
+    "options": [
+      "Forward reaction stops",
+      "Reverse reaction stops",
+      "Forward and reverse rates are equal",
+      "Reactant and product concentrations must be equal"
+    ],
+    "answer": 2,
+    "explanation": "Dynamic equilibrium has equal forward and reverse reaction rates.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  }
+]

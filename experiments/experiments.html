@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practical Chemistry Experiments | CHEMORA</title>
+  <meta name="description" content="Explore 20 interactive guided practical chemistry experiments with video guides, chemical equations, observation analysis, and laboratory safety protocols." />
+  <link rel="icon" type="image/png" href="../favicon.png" />
+  <link rel="canonical" href="https://chemora.work.gd/experiments/experiments.html" />
+  <meta property="og:title" content="Practical Chemistry Experiments | CHEMORA" />
+  <meta property="og:description" content="Explore 20 interactive guided practical chemistry experiments with video guides, chemical equations, observation analysis, and laboratory safety protocols." />
+  <meta property="og:url" content="https://chemora.work.gd/experiments/experiments.html" />
+  <link rel="stylesheet" href="experiments.css" />
+  <link rel="stylesheet" href="/loaders.css" />
+  <link rel="stylesheet" href="/mobile-tokens.css" />
+  <link rel="stylesheet" href="/mobile-dock.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="../index.html" class="brand">
+      <span>CHEM<span>ORA</span></span>
+    </a>
+    <nav class="main-nav">
+      <a href="../index.html">Home</a>
+      <a href="../know/know.html">Knowledge</a>
+      <a href="../challenge/challenge.html">Challenges</a>
+      <a href="experiments.html" class="active">Experiments</a>
+      <a href="../progress.html">Progress</a>
+      <a href="../account.html">Account</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <span class="eyebrow">PRACTICAL LABORATORY REPOSITORY</span>
+    <h1>Guided Chemistry <span>Experiments</span></h1>
+    <p>Step-by-step experimental procedures, video visual guides, observations, and safety checklists across organic, inorganic, and physical chemistry.</p>
+    
+    <div class="filters">
+      <button type="button" class="active" data-filter="all">All Experiments (20)</button>
+      <button type="button" data-filter="Beginner">Beginner (11)</button>
+      <button type="button" data-filter="Intermediate">Intermediate (8)</button>
+      <button type="button" data-filter="Advanced">Advanced (1)</button>
+    </div>
+
+    <section id="grid" class="grid" aria-label="Chemistry Experiments"></section>
+  </main>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="modal-box">
+      <button type="button" id="close" aria-label="Close dialog">&times;</button>
+      <div id="modalContent" class="detail">
+        <h1 id="modalTitle">Experiment Procedure</h1>
+        <div id="videoWrap" class="real-video-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Capsule Bottom Dock (Mobile screens <= 768px) -->
+  <nav class="chemora-mobile-dock" aria-label="Main">
+    <div class="chemora-dock-track">
+      <div class="chemora-dock-blob" aria-hidden="true"></div>
+      <a href="/#home" class="chemora-dock-item" aria-label="Home">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+        <span class="chemora-dock-label">Home</span>
+      </a>
+      <a href="/know/know.html" class="chemora-dock-item" aria-label="Know">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+        <span class="chemora-dock-label">Know</span>
+      </a>
+      <a href="/experiments/experiments.html" class="chemora-dock-item" aria-current="page" aria-label="Labs">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="M10 2v7.31L4.75 18.1a2 2 0 0 0 1.66 2.9h11.18a2 2 0 0 0 1.66-2.9L14 9.31V2"/><path d="M8.5 2h7"/></svg></span>
+        <span class="chemora-dock-label">Labs</span>
+      </a>
+      <a href="/challenge/challenge.html" class="chemora-dock-item" aria-label="Arena">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+        <span class="chemora-dock-label">Arena</span>
+      </a>
+      <a href="/#account" class="chemora-dock-item" aria-label="Profile">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg></span>
+        <span class="chemora-dock-label">Profile</span>
+      </a>
+    </div>
+  </nav>
+  <script src="/config.js"></script>
+  <script src="experiments.js"></script>
+  <script src="/mobile-dock.js" defer></script>
+</body>
+</html>

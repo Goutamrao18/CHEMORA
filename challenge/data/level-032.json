@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L032Q1",
+    "question": "What type of bond forms when atoms share pairs of electrons?",
+    "options": [
+      "Ionic",
+      "Covalent",
+      "Metallic",
+      "Hydrogen only"
+    ],
+    "answer": 1,
+    "explanation": "Covalent bonds involve shared electron pairs.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q2",
+    "question": "Which pair is most likely to form an ionic compound?",
+    "options": [
+      "Sodium and chlorine",
+      "Carbon and hydrogen",
+      "Oxygen and oxygen",
+      "Nitrogen and hydrogen"
+    ],
+    "answer": 0,
+    "explanation": "Sodium can transfer an electron to chlorine, forming oppositely charged ions.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q3",
+    "question": "Why do metals conduct electricity?",
+    "options": [
+      "Their nuclei move freely",
+      "They contain mobile, delocalised electrons",
+      "They dissolve in water",
+      "Their atoms have no electrons"
+    ],
+    "answer": 1,
+    "explanation": "Delocalised electrons can move through the metallic structure.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q4",
+    "question": "What is the formula of magnesium chloride?",
+    "options": [
+      "MgCl",
+      "MgCl₂",
+      "Mg₂Cl",
+      "Mg₂Cl₃"
+    ],
+    "answer": 1,
+    "explanation": "Mg²⁺ requires two Cl⁻ ions to balance the charge.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q5",
+    "question": "Which substance contains covalent molecules?",
+    "options": [
+      "Methane",
+      "Sodium oxide",
+      "Magnesium",
+      "Copper"
+    ],
+    "answer": 0,
+    "explanation": "Methane consists of molecules with covalent bonds.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q6",
+    "question": "What holds oppositely charged ions together in an ionic lattice?",
+    "options": [
+      "Magnetic attraction",
+      "Electrostatic attraction",
+      "Shared nuclei",
+      "Gravity alone"
+    ],
+    "answer": 1,
+    "explanation": "Ionic bonding is electrostatic attraction between oppositely charged ions.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q7",
+    "question": "Which property is typical of many simple molecular substances?",
+    "options": [
+      "Very high melting point",
+      "Low melting and boiling points",
+      "Always conducts as a solid",
+      "Always forms giant lattices"
+    ],
+    "answer": 1,
+    "explanation": "Weak intermolecular forces often give simple molecular substances low melting and boiling points.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q8",
+    "question": "What is the usual charge on an oxide ion?",
+    "options": [
+      "+2",
+      "+1",
+      "−1",
+      "−2"
+    ],
+    "answer": 3,
+    "explanation": "Oxygen gains two electrons to form O²⁻.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q9",
+    "question": "Which bond is present in a copper metal lattice?",
+    "options": [
+      "Covalent network",
+      "Metallic",
+      "Ionic",
+      "Peptide"
+    ],
+    "answer": 1,
+    "explanation": "Metal atoms are held together by attraction between positive ions and delocalised electrons.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L032Q10",
+    "question": "Why is solid sodium chloride a poor electrical conductor?",
+    "options": [
+      "It has no charged particles",
+      "Its ions cannot move freely in the solid lattice",
+      "It contains only electrons",
+      "It is a covalent gas"
+    ],
+    "answer": 1,
+    "explanation": "In the solid, ions are fixed in place; molten or dissolved salt can conduct.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  }
+]

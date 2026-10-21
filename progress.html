@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learner Progress Dashboard | CHEMORA</title>
+  <meta name="description" content="Track your chemistry learning journey, challenge completions, accuracy rates, and laboratory masteries on CHEMORA." />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="canonical" href="https://chemora.work.gd/progress.html" />
+  <meta property="og:title" content="Learner Progress Dashboard | CHEMORA" />
+  <meta property="og:description" content="Track your chemistry learning journey, challenge completions, accuracy rates, and laboratory masteries on CHEMORA." />
+  <meta property="og:url" content="https://chemora.work.gd/progress.html" />
+  <link rel="stylesheet" href="progress.css" />
+  <link rel="stylesheet" href="/loaders.css" />
+  <link rel="stylesheet" href="/mobile-tokens.css" />
+  <link rel="stylesheet" href="/mobile-dock.css" />
+</head>
+<body class="progress-page">
+  <header class="progress-hero">
+    <p class="progress-eyebrow">CHEMORA MASTERY TRACKER</p>
+    <h1>Chemistry Learning <span>Progress</span></h1>
+    <p>Real-time analytics on your quiz accuracy, challenge milestones, experiment logs, and active learning streaks.</p>
+    
+    <div class="progress-hero-actions">
+      <a href="/#challenge" class="progress-primary">Continue Challenges</a>
+      <a href="account.html" class="progress-secondary">Account Profile</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="progress-stats" aria-label="Learning Metrics">
+      <div class="progress-stat">
+        <span>Challenges Completed</span>
+        <strong id="statCompleted">0 / 100</strong>
+        <small id="statCompletedSub">Start level 1 to begin</small>
+        <div class="mini-track"><i id="barCompleted" style="width: 0%"></i></div>
+      </div>
+      <div class="progress-stat">
+        <span>Accuracy Rate</span>
+        <strong id="statAccuracy">0%</strong>
+        <small id="statAccuracySub">Across all submitted answers</small>
+        <div class="mini-track"><i id="barAccuracy" style="width: 0%"></i></div>
+      </div>
+      <div class="progress-stat">
+        <span>Experiments Done</span>
+        <strong id="statExperiments">0 / 20</strong>
+        <small>Interactive practicals</small>
+        <div class="mini-track"><i id="barExperiments" style="width: 0%"></i></div>
+      </div>
+      <div class="progress-stat">
+        <span>Current Streak</span>
+        <strong id="statStreak">0 Days</strong>
+        <small>Daily chemistry habit</small>
+        <div class="mini-track"><i id="barStreak" style="width: 0%"></i></div>
+      </div>
+    </section>
+
+    <div class="progress-columns">
+      <section class="progress-panel">
+        <div class="panel-heading">
+          <h2>Topic Breakdown</h2>
+          <div class="panel-symbol">🧪</div>
+        </div>
+        <p class="panel-intro">Mastery distribution across core chemistry domains.</p>
+        <div class="topic-list" id="topicList">
+          <div class="topic-row">
+            <div class="topic-row-top">
+              <strong>Atomic Structure &amp; Periodic Trends</strong>
+              <span id="topicPct1">0%</span>
+            </div>
+            <div class="topic-track"><i id="topicBar1" style="width: 0%"></i></div>
+          </div>
+          <div class="topic-row">
+            <div class="topic-row-top">
+              <strong>Bonding &amp; Stoichiometry</strong>
+              <span id="topicPct2">0%</span>
+            </div>
+            <div class="topic-track"><i id="topicBar2" style="width: 0%"></i></div>
+          </div>
+          <div class="topic-row">
+            <div class="topic-row-top">
+              <strong>Acids, Bases &amp; Equilibrium</strong>
+              <span id="topicPct3">0%</span>
+            </div>
+            <div class="topic-track"><i id="topicBar3" style="width: 0%"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="progress-panel">
+        <div class="panel-heading">
+          <h2>Recommendations</h2>
+          <div class="panel-symbol">💡</div>
+        </div>
+        <p class="panel-intro">Suggested exercises based on your performance.</p>
+        <div class="recommendation-list">
+          <div class="recommendation">
+            <div class="recommendation-icon">⚡</div>
+            <div>
+              <h3>Titration Practice</h3>
+              <p>Reinforce neutralization stoichiometry in the virtual laboratory.</p>
+            </div>
+          </div>
+          <div class="recommendation">
+            <div class="recommendation-icon">🔥</div>
+            <div>
+              <h3>Spectroscopy Analysis</h3>
+              <p>Explore emission wavelengths and electron orbital transitions.</p>
+            </div>
+          </div>
+        </div>
+        <a href="index.html" class="panel-link">Back to Chemistry Workspace &rarr;</a>
+      </section>
+    </div>
+  </main>
+
+  <script src="progress.js"></script>
+
+  <!-- Floating Capsule Bottom Dock (Mobile screens <= 768px) -->
+  <nav class="chemora-mobile-dock" aria-label="Main">
+    <div class="chemora-dock-track">
+      <div class="chemora-dock-blob" aria-hidden="true"></div>
+      <a href="/#home" class="chemora-dock-item" aria-label="Home">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+        <span class="chemora-dock-label">Home</span>
+      </a>
+      <a href="/know/know.html" class="chemora-dock-item" aria-label="Know">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+        <span class="chemora-dock-label">Know</span>
+      </a>
+      <a href="/experiments/experiments.html" class="chemora-dock-item" aria-label="Labs">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="M10 2v7.31L4.75 18.1a2 2 0 0 0 1.66 2.9h11.18a2 2 0 0 0 1.66-2.9L14 9.31V2"/><path d="M8.5 2h7"/></svg></span>
+        <span class="chemora-dock-label">Labs</span>
+      </a>
+      <a href="/challenge/challenge.html" class="chemora-dock-item" aria-label="Arena">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+        <span class="chemora-dock-label">Arena</span>
+      </a>
+      <a href="/progress.html" class="chemora-dock-item" aria-current="page" aria-label="Profile">
+        <span class="chemora-dock-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg></span>
+        <span class="chemora-dock-label">Profile</span>
+      </a>
+    </div>
+  </nav>
+  <script src="/mobile-dock.js" defer></script>
+</body>
+</html>

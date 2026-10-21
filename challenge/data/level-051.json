@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L051Q1",
+    "question": "How many moles are in 18 g of water? (Mᵣ = 18)",
+    "options": [
+      "0.5 mol",
+      "1 mol",
+      "2 mol",
+      "18 mol"
+    ],
+    "answer": 1,
+    "explanation": "Amount in moles = mass ÷ molar mass = 18 ÷ 18 = 1 mol.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q2",
+    "question": "What is the molar mass of CO₂? (C = 12, O = 16)",
+    "options": [
+      "28 g mol⁻¹",
+      "32 g mol⁻¹",
+      "44 g mol⁻¹",
+      "48 g mol⁻¹"
+    ],
+    "answer": 2,
+    "explanation": "12 + (2 × 16) = 44 g mol⁻¹.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q3",
+    "question": "How many particles are in one mole of a substance?",
+    "options": [
+      "6.02 × 10²³",
+      "3.00 × 10⁸",
+      "1.00 × 10³",
+      "9.81"
+    ],
+    "answer": 0,
+    "explanation": "One mole contains approximately 6.02 × 10²³ specified particles.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q4",
+    "question": "What is the mass of 2 mol of NaCl? (Mᵣ = 58.5)",
+    "options": [
+      "29.25 g",
+      "58.5 g",
+      "117 g",
+      "120 g"
+    ],
+    "answer": 2,
+    "explanation": "Mass = moles × molar mass = 2 × 58.5 = 117 g.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q5",
+    "question": "How many moles are in 4 g of helium? (Mᵣ = 4)",
+    "options": [
+      "0.25 mol",
+      "1 mol",
+      "2 mol",
+      "4 mol"
+    ],
+    "answer": 1,
+    "explanation": "4 g ÷ 4 g mol⁻¹ = 1 mol.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q6",
+    "question": "What is the empirical formula of a compound with the simplest atom ratio C:H = 1:2?",
+    "options": [
+      "CH",
+      "CH₂",
+      "C₂H",
+      "C₂H₄"
+    ],
+    "answer": 1,
+    "explanation": "The empirical formula gives the simplest whole-number ratio.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q7",
+    "question": "At the same temperature and pressure, equal gas volumes contain equal numbers of:",
+    "options": [
+      "Atoms only",
+      "Molecules",
+      "Grams",
+      "Neutrons"
+    ],
+    "answer": 1,
+    "explanation": "Avogadro's law relates equal gas volumes to equal molecule counts under the same conditions.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q8",
+    "question": "What volume does 0.5 mol of an ideal gas occupy at 24 dm³ mol⁻¹?",
+    "options": [
+      "6 dm³",
+      "12 dm³",
+      "24 dm³",
+      "48 dm³"
+    ],
+    "answer": 1,
+    "explanation": "Volume = amount × molar gas volume = 0.5 × 24 = 12 dm³.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q9",
+    "question": "How many moles are present in 0.2 mol dm⁻³ of solution in 0.5 dm³?",
+    "options": [
+      "0.1 mol",
+      "0.2 mol",
+      "0.4 mol",
+      "2.5 mol"
+    ],
+    "answer": 0,
+    "explanation": "Amount = concentration × volume = 0.2 × 0.5 = 0.1 mol.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  },
+  {
+    "id": "L051Q10",
+    "question": "What is the percentage by mass of oxygen in water? (H = 1, O = 16)",
+    "options": [
+      "11.1%",
+      "50.0%",
+      "88.9%",
+      "94.1%"
+    ],
+    "answer": 2,
+    "explanation": "Oxygen contributes 16 of the total 18 relative mass units: 16/18 × 100 ≈ 88.9%.",
+    "difficulty": "Medium",
+    "points": 200,
+    "topic": "Mole Concept"
+  }
+]

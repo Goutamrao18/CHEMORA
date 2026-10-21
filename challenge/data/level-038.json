@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L038Q1",
+    "question": "Which compound contains polyatomic ions?",
+    "options": [
+      "Sodium nitrate",
+      "Methane",
+      "Oxygen",
+      "Copper"
+    ],
+    "answer": 0,
+    "explanation": "Sodium nitrate contains Na⁺ and the nitrate ion NO₃⁻.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q2",
+    "question": "What is the formula of ammonium sulfate?",
+    "options": [
+      "NH₄SO₄",
+      "(NH₄)₂SO₄",
+      "NH₄(SO₄)₂",
+      "N₂H₄SO₄"
+    ],
+    "answer": 1,
+    "explanation": "Two NH₄⁺ ions balance the 2− charge of sulfate.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q3",
+    "question": "What does electronegativity describe?",
+    "options": [
+      "An atom's ability to attract bonding electrons",
+      "The mass of a neutron",
+      "The number of isotopes",
+      "The speed of a reaction"
+    ],
+    "answer": 0,
+    "explanation": "Electronegativity is an atom's tendency to attract shared electrons.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q4",
+    "question": "Which substance is likely to have the strongest intermolecular hydrogen bonding?",
+    "options": [
+      "Methane",
+      "Water",
+      "Carbon dioxide",
+      "Neon"
+    ],
+    "answer": 1,
+    "explanation": "Water molecules can form extensive hydrogen bonds.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q5",
+    "question": "What is the usual oxidation state of oxygen in water?",
+    "options": [
+      "+1",
+      "−1",
+      "−2",
+      "+2"
+    ],
+    "answer": 2,
+    "explanation": "Oxygen is normally −2 in water.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q6",
+    "question": "Which pair has a metallic bond?",
+    "options": [
+      "Iron atoms in iron",
+      "Sodium and chloride ions",
+      "Two water molecules",
+      "Hydrogen and oxygen in water"
+    ],
+    "answer": 0,
+    "explanation": "Metallic bonding holds the iron structure together.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q7",
+    "question": "Why is an ionic compound often brittle?",
+    "options": [
+      "Its ions are neutral",
+      "A shift can align like charges and cause repulsion",
+      "Its electrons are all shared",
+      "It has no lattice"
+    ],
+    "answer": 1,
+    "explanation": "Shifting ionic layers can bring like charges together, causing repulsion and fracture.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q8",
+    "question": "Which compound has a 1:2 ratio of magnesium to chloride ions?",
+    "options": [
+      "MgCl₂",
+      "Mg₂Cl",
+      "MgCl",
+      "Mg₂Cl₃"
+    ],
+    "answer": 0,
+    "explanation": "Mg²⁺ requires two chloride ions, each with a −1 charge.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q9",
+    "question": "Which molecule is nonpolar overall due to its symmetrical shape?",
+    "options": [
+      "H₂O",
+      "NH₃",
+      "CO₂",
+      "HCl"
+    ],
+    "answer": 2,
+    "explanation": "The two C=O bond dipoles in linear CO₂ cancel.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  },
+  {
+    "id": "L038Q10",
+    "question": "What is the main attraction in a hydrogen bond?",
+    "options": [
+      "Between a hydrogen attached to N, O or F and a lone pair nearby",
+      "Between two nuclei",
+      "Between all metal ions",
+      "Between protons in one nucleus"
+    ],
+    "answer": 0,
+    "explanation": "Hydrogen bonding is an attraction involving hydrogen bonded to a highly electronegative atom and a lone pair.",
+    "difficulty": "Medium",
+    "points": 175,
+    "topic": "Chemical Bonding"
+  }
+]

@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L027Q1",
+    "question": "Across a period, atomic radius generally:",
+    "options": [
+      "Increases strongly",
+      "Decreases",
+      "Stays exactly constant",
+      "Becomes zero"
+    ],
+    "answer": 1,
+    "explanation": "Effective nuclear charge generally increases across a period.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q2",
+    "question": "Which is a metal?",
+    "options": [
+      "Sulfur",
+      "Chlorine",
+      "Sodium",
+      "Oxygen"
+    ],
+    "answer": 2,
+    "explanation": "Sodium is an alkali metal.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q3",
+    "question": "Which element has atomic number 8?",
+    "options": [
+      "Carbon",
+      "Nitrogen",
+      "Oxygen",
+      "Fluorine"
+    ],
+    "answer": 2,
+    "explanation": "Oxygen has eight protons.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q4",
+    "question": "The elements in Group 18 are commonly known as:",
+    "options": [
+      "Alkali metals",
+      "Halogens",
+      "Noble gases",
+      "Transition metals"
+    ],
+    "answer": 2,
+    "explanation": "Group 18 contains the noble gases.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q5",
+    "question": "How are elements arranged in the modern periodic table?",
+    "options": [
+      "Increasing atomic number",
+      "Increasing mass only",
+      "Alphabetically",
+      "By density"
+    ],
+    "answer": 0,
+    "explanation": "The modern periodic table is arranged by increasing atomic number.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q6",
+    "question": "Vertical columns in the periodic table are called:",
+    "options": [
+      "Periods",
+      "Groups",
+      "Blocks only",
+      "Series"
+    ],
+    "answer": 1,
+    "explanation": "Vertical columns are groups.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q7",
+    "question": "Horizontal rows are called:",
+    "options": [
+      "Groups",
+      "Periods",
+      "Families",
+      "Shells"
+    ],
+    "answer": 1,
+    "explanation": "Horizontal rows are periods.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q8",
+    "question": "Which element is a noble gas?",
+    "options": [
+      "Sodium",
+      "Chlorine",
+      "Neon",
+      "Calcium"
+    ],
+    "answer": 2,
+    "explanation": "Neon is a noble gas in Group 18.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q9",
+    "question": "Which group contains the alkali metals?",
+    "options": [
+      "Group 1",
+      "Group 2",
+      "Group 17",
+      "Group 18"
+    ],
+    "answer": 0,
+    "explanation": "Alkali metals occupy Group 1.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  },
+  {
+    "id": "L027Q10",
+    "question": "Which element is a halogen?",
+    "options": [
+      "Helium",
+      "Chlorine",
+      "Sodium",
+      "Magnesium"
+    ],
+    "answer": 1,
+    "explanation": "Chlorine belongs to Group 17, the halogens.",
+    "difficulty": "Medium",
+    "points": 150,
+    "topic": "Periodic Table"
+  }
+]

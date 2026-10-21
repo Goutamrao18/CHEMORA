@@ -1,0 +1,152 @@
+[
+  {
+    "id": "L085Q1",
+    "question": "An exothermic reaction:",
+    "options": [
+      "Releases heat",
+      "Always absorbs heat",
+      "Cannot occur in water",
+      "Has zero energy change"
+    ],
+    "answer": 0,
+    "explanation": "Exothermic processes release heat to the surroundings.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q2",
+    "question": "An endothermic process:",
+    "options": [
+      "Absorbs heat",
+      "Always releases heat",
+      "Has no energy transfer",
+      "Must be explosive"
+    ],
+    "answer": 0,
+    "explanation": "Endothermic processes absorb heat.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q3",
+    "question": "Electrical energy from a spontaneous redox reaction is produced in a:",
+    "options": [
+      "Galvanic cell",
+      "Volumetric flask",
+      "Burette",
+      "Crucible"
+    ],
+    "answer": 0,
+    "explanation": "A galvanic cell converts chemical energy into electrical energy.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q4",
+    "question": "Oxidation is commonly defined as:",
+    "options": [
+      "Loss of electrons",
+      "Gain of electrons",
+      "Gain of neutrons",
+      "Loss of protons"
+    ],
+    "answer": 0,
+    "explanation": "Oxidation is loss of electrons (OIL).",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q5",
+    "question": "Reduction is commonly defined as:",
+    "options": [
+      "Gain of electrons",
+      "Loss of electrons",
+      "Gain of protons only",
+      "Loss of neutrons"
+    ],
+    "answer": 0,
+    "explanation": "Reduction is gain of electrons (RIG).",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q6",
+    "question": "At equilibrium, forward and reverse reactions occur at:",
+    "options": [
+      "Equal rates",
+      "Zero rates",
+      "Different temperatures",
+      "Only one direction"
+    ],
+    "answer": 0,
+    "explanation": "Dynamic equilibrium has equal forward and reverse rates.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q7",
+    "question": "Which factor generally increases the rate of a reaction?",
+    "options": [
+      "Higher temperature",
+      "Lower contact",
+      "Removing reactants",
+      "Freezing everything"
+    ],
+    "answer": 0,
+    "explanation": "Higher temperature often increases particle collisions and reaction rate.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q8",
+    "question": "A catalyst generally:",
+    "options": [
+      "Speeds a reaction without being consumed overall",
+      "Stops all reactions",
+      "Changes equilibrium constant",
+      "Becomes the main product"
+    ],
+    "answer": 0,
+    "explanation": "A catalyst provides an alternative pathway and is regenerated.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q9",
+    "question": "Pressure has the strongest direct effect on equilibrium involving:",
+    "options": [
+      "Gases",
+      "Pure solids only",
+      "Metals only",
+      "No substances"
+    ],
+    "answer": 0,
+    "explanation": "Changing pressure can shift equilibria involving gases.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  },
+  {
+    "id": "L085Q10",
+    "question": "The energy required to start a reaction is called:",
+    "options": [
+      "Activation energy",
+      "Molar mass",
+      "Ionization only",
+      "Density"
+    ],
+    "answer": 0,
+    "explanation": "Activation energy is the minimum energy barrier for a reaction.",
+    "difficulty": "Advanced",
+    "points": 300,
+    "topic": "Physical Chemistry"
+  }
+]

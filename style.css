@@ -1,0 +1,1915 @@
+/* =========================================================
+   CHEMORA
+   HOME PAGE
+   RADIAL ORBIT ONLY
+========================================================= */
+
+:root {
+    --bg: #020817;
+    --text: #f4f8ff;
+    --muted: #91a6ca;
+
+    --cyan: #58d6ff;
+    --blue: #4d7cff;
+    --purple: #a66cff;
+
+    --line: rgba(76, 137, 255, 0.28);
+}
+
+
+/* ================= RESET ================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+
+    min-height: 100vh;
+
+    background:
+        radial-gradient(
+            circle at 15% 15%,
+            rgba(45,115,255,.14),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 85% 25%,
+            rgba(140,70,255,.10),
+            transparent 28%
+        ),
+        #020817;
+
+    color: var(--text);
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    overflow-x: hidden;
+}
+
+a {
+    color: inherit;
+}
+
+
+/* =========================================================
+   NAVBAR
+========================================================= */
+
+.navbar {
+
+    min-height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 15px 6%;
+
+    position: sticky;
+    top: 0;
+
+    z-index: 1000;
+
+    background:
+        rgba(2,8,23,.86);
+
+    border-bottom:
+        1px solid rgba(76,137,255,.18);
+
+    backdrop-filter:
+        blur(18px);
+
+    -webkit-backdrop-filter:
+        blur(18px);
+}
+
+
+/* ================= LOGO ================= */
+
+.logo {
+
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    text-decoration: none;
+
+    color: white;
+
+    font-size: 22px;
+
+    font-weight: 800;
+
+    letter-spacing: 1.5px;
+}
+
+.logo-flask {
+
+    color: var(--cyan);
+
+    font-size: 27px;
+
+    filter:
+        drop-shadow(
+            0 0 8px
+            rgba(88,214,255,.7)
+        );
+}
+
+.logo-o {
+
+    color: var(--cyan);
+
+    text-shadow:
+        0 0 10px
+        rgba(88,214,255,.7);
+}
+
+
+/* ================= NAV ================= */
+
+.navbar nav {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+}
+
+.navbar nav a {
+
+    position: relative;
+
+    padding: 9px 14px;
+
+    text-decoration: none;
+
+    color: #aebfdf;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    border-radius: 8px;
+
+    transition: .25s;
+}
+
+.navbar nav a:hover {
+
+    color: white;
+
+    background:
+        rgba(88,214,255,.08);
+}
+
+.navbar nav a.active {
+
+    color: var(--cyan);
+}
+
+.navbar nav a.active::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 14px;
+    right: 14px;
+    bottom: 3px;
+
+    height: 2px;
+
+    border-radius: 10px;
+
+    background: var(--cyan);
+
+    box-shadow:
+        0 0 10px
+        rgba(88,214,255,.8);
+}
+
+
+/* ================= NAV BUTTONS ================= */
+
+.nav-tools {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+.nav-tools button,
+.profile-link {
+
+    width: 40px;
+    height: 40px;
+
+    border:
+        1px solid var(--line);
+
+    border-radius: 50%;
+
+    display: grid;
+
+    place-items: center;
+
+    background:
+        rgba(7,19,45,.7);
+
+    color: #d8e5ff;
+
+    text-decoration: none;
+
+    font-size: 20px;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.hero {
+
+    min-height: 620px;
+
+    position: relative;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    text-align: center;
+
+    padding:
+        90px 20px
+        100px;
+
+    overflow: hidden;
+}
+
+.hero::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 520px;
+    height: 520px;
+
+    top: 50%;
+    left: 50%;
+
+    transform:
+        translate(-50%,-50%);
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(50,143,255,.13),
+            transparent 68%
+        );
+
+    pointer-events: none;
+}
+
+.hero::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 100%;
+
+    height: 1px;
+
+    bottom: 0;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(88,214,255,.35),
+            transparent
+        );
+}
+
+
+/* ================= MOLECULES ================= */
+
+.molecule {
+
+    position: absolute;
+
+    color:
+        rgba(88,214,255,.18);
+
+    font-size: 90px;
+
+    pointer-events: none;
+
+    animation:
+        floatMolecule 5s
+        ease-in-out infinite;
+}
+
+.molecule-left {
+
+    left: 7%;
+    top: 28%;
+}
+
+.molecule-right {
+
+    right: 7%;
+    bottom: 22%;
+
+    color:
+        rgba(166,108,255,.18);
+}
+
+@keyframes floatMolecule {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-18px);
+    }
+}
+
+
+/* ================= HERO TEXT ================= */
+
+.eyebrow {
+
+    color: var(--cyan);
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    letter-spacing: 4px;
+
+    margin-bottom: 18px;
+}
+
+.hero h1 {
+
+    font-size:
+        clamp(64px,10vw,110px);
+
+    line-height: 1;
+
+    letter-spacing: 5px;
+
+    font-weight: 900;
+
+    color: white;
+
+    text-shadow:
+        0 0 25px
+        rgba(255,255,255,.08);
+}
+
+.hero h1 span {
+
+    color: var(--cyan);
+
+    text-shadow:
+        0 0 22px
+        rgba(88,214,255,.8);
+}
+
+.hero h2 {
+
+    margin-top: 25px;
+
+    font-size:
+        clamp(24px,4vw,34px);
+
+    color: #b9caf0;
+}
+
+.hero p {
+
+    max-width: 800px;
+
+    margin-top: 25px;
+
+    color: #91a6ca;
+
+    font-size: 17px;
+
+    line-height: 1.9;
+}
+
+
+/* ================= HERO BUTTONS ================= */
+
+.hero-actions {
+
+    display: flex;
+
+    gap: 16px;
+
+    margin-top: 38px;
+}
+
+.primary-btn,
+.secondary-btn {
+
+    padding:
+        15px 27px;
+
+    border-radius: 11px;
+
+    text-decoration: none;
+
+    font-weight: 700;
+
+    transition: .25s;
+}
+
+.primary-btn {
+
+    background:
+        linear-gradient(
+            135deg,
+            #58d6ff,
+            #4d7cff
+        );
+
+    color: #04101f;
+
+    box-shadow:
+        0 10px 35px
+        rgba(77,124,255,.25);
+}
+
+.secondary-btn {
+
+    border:
+        1px solid
+        rgba(88,214,255,.35);
+
+    color: #cfe1ff;
+
+    background:
+        rgba(5,18,40,.4);
+}
+
+.primary-btn:hover,
+.secondary-btn:hover {
+
+    transform:
+        translateY(-3px);
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+footer {
+
+    padding: 45px 20px;
+
+    text-align: center;
+
+    background: #020914;
+
+    border-top:
+        1px solid
+        rgba(76,137,255,.12);
+
+    color: #8195b4;
+}
+
+.footer-brand {
+
+    color: white;
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    letter-spacing: 2px;
+
+    margin-bottom: 10px;
+}
+
+footer span {
+
+    color: var(--cyan);
+
+    margin: 0 6px;
+}
+
+footer small {
+
+    display: block;
+
+    margin-top: 10px;
+
+    font-size: 11px;
+
+    letter-spacing: 1px;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .navbar {
+
+        padding:
+            12px 20px;
+    }
+
+    .logo {
+
+        font-size: 18px;
+    }
+
+    .navbar nav {
+
+        gap: 1px;
+    }
+
+    .navbar nav a {
+
+        padding:
+            7px 6px;
+
+        font-size: 10px;
+    }
+
+    .nav-tools {
+
+        gap: 5px;
+    }
+
+    .nav-tools button,
+    .profile-link {
+
+        width: 34px;
+        height: 34px;
+
+        font-size: 16px;
+    }
+
+
+    /* HERO */
+
+    .hero {
+
+        min-height: 540px;
+
+        padding:
+            70px 18px
+            80px;
+    }
+
+    .hero h1 {
+
+        font-size:
+            clamp(55px,16vw,85px);
+    }
+
+    .hero p {
+
+        font-size: 14px;
+    }
+
+    .hero-actions {
+
+        flex-direction: column;
+
+        width: 100%;
+
+        max-width: 240px;
+    }
+
+
+    /* ORBIT */
+
+    .chemora-orbit {
+
+        min-height: 600px;
+    }
+
+    .orbit-stage {
+
+        width: 100%;
+
+        height: 520px;
+    }
+
+    .ring-outer {
+
+        width: 350px;
+        height: 350px;
+    }
+
+    .ring-inner {
+
+        width: 235px;
+        height: 235px;
+    }
+
+    .orbit-center {
+
+        width: 112px;
+        height: 112px;
+    }
+
+    .orbit-center img {
+
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .orbit-center strong {
+
+        font-size: 11px;
+    }
+
+    .orbit-center small {
+
+        font-size: 6px;
+    }
+
+    .orbit-node {
+
+        --radius: 175px;
+
+        width: 68px;
+        height: 68px;
+
+        margin-left: -34px;
+        margin-top: -34px;
+    }
+
+    .orbit-node span {
+
+        font-size: 19px;
+    }
+
+    .orbit-node b {
+
+        font-size: 6px;
+    }
+
+}
+
+
+/* =========================================================
+   LIGHT MODE
+========================================================= */
+
+body.light {
+
+    background:
+        #eef6ff;
+
+    color:
+        #10213d;
+}
+
+body.light .navbar {
+
+    background:
+        rgba(255,255,255,.88);
+}
+
+body.light .navbar nav a {
+
+    color:
+        #52627c;
+}
+
+body.light .hero h1 {
+
+    color:
+        #10213d;
+}
+
+body.light .hero h2 {
+
+    color:
+        #385274;
+}
+
+body.light .hero p {
+
+    color:
+        #607493;
+}
+
+
+/* =========================================
+   CHEMORA UNIVERSAL NAVBAR
+   ========================================= */
+
+.topbar {
+  height: 82px;
+  width: 100%;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+
+  background: rgba(2, 8, 23, 0.92);
+  border-bottom: 1px solid rgba(70, 170, 255, 0.16);
+
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+
+/* CHEMORA LOGO */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: #f4f8ff;
+  text-decoration: none;
+
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+
+  margin-right: auto;
+}
+
+.brand img {
+  width: 38px;
+  height: 38px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(0 0 7px rgba(50, 210, 255, .8))
+    drop-shadow(0 0 18px rgba(50, 210, 255, .35));
+}
+
+
+/* NAVIGATION */
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 6px;
+
+  border-radius: 18px;
+
+  background: rgba(5, 16, 38, .65);
+}
+
+
+/* NAV LINKS */
+
+.main-nav a {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 13px 21px;
+
+  border-radius: 16px;
+
+  color: #9baed0;
+
+  text-decoration: none;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  transition:
+    color .25s ease,
+    background .25s ease,
+    box-shadow .25s ease,
+    transform .25s ease;
+}
+
+
+/* HOVER */
+
+.main-nav a:hover {
+  color: #eaf9ff;
+
+  background: rgba(40, 100, 180, .18);
+
+  box-shadow:
+    inset 0 0 0 1px rgba(55, 150, 255, .18),
+    0 0 20px rgba(20, 130, 255, .08);
+}
+
+
+/* ACTIVE TAB
+   Add class="active" to the current page */
+
+.main-nav a.active {
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(38, 84, 180, .55),
+      rgba(30, 62, 140, .55)
+    );
+
+  box-shadow:
+    inset 0 0 0 1px rgba(55, 130, 255, .55),
+    0 0 22px rgba(35, 110, 255, .18);
+}
+
+
+/* BLUE GLOW UNDER ACTIVE TAB */
+
+.main-nav a.active::after {
+  content: "";
+
+  position: absolute;
+
+  left: 20%;
+  right: 20%;
+  bottom: -7px;
+
+  height: 3px;
+
+  border-radius: 10px;
+
+  background: #42d9ff;
+
+  box-shadow:
+    0 0 8px #42d9ff,
+    0 0 18px #159dff;
+}
+
+
+/* ACCOUNT BUTTON */
+
+.account-btn {
+  width: 43px;
+  height: 43px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  border: 1px solid rgba(65, 150, 220, .35);
+
+  color: #d7e7ff;
+
+  text-decoration: none;
+
+  font-size: 20px;
+
+  background: rgba(5, 17, 38, .65);
+
+  transition: .25s ease;
+}
+
+.account-btn:hover {
+  border-color: #40d8ff;
+
+  color: #ffffff;
+
+  box-shadow:
+    0 0 20px rgba(45, 210, 255, .25);
+
+  transform: translateY(-1px);
+}
+
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+
+  .topbar {
+    height: 70px;
+    padding: 0 14px;
+    gap: 8px;
+  }
+
+  .brand span {
+    display: none;
+  }
+
+  .brand img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .main-nav {
+    gap: 2px;
+    padding: 4px;
+    overflow-x: auto;
+  }
+
+  .main-nav a {
+    padding: 11px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .account-btn {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+  }
+}
+/* =========================================
+   CHEMORA CONTINUOUS RADIAL ORBIT
+   ========================================= */
+
+.chemora-orbit {
+  width: 100%;
+  min-height: 760px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(0, 190, 255, 0.13),
+      transparent 42%
+    );
+}
+
+
+/* ORBIT AREA */
+
+.orbit-stage {
+  width: 720px;
+  height: 720px;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* GLOW */
+
+.orbit-glow {
+  position: absolute;
+
+  width: 430px;
+  height: 430px;
+
+  border-radius: 50%;
+
+  background: rgba(0, 190, 255, 0.10);
+
+  filter: blur(70px);
+
+  pointer-events: none;
+}
+
+
+/* RINGS */
+
+.orbit-ring {
+  position: absolute;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+.ring-outer {
+  width: 650px;
+  height: 650px;
+
+  border: 1px solid rgba(38, 195, 255, 0.28);
+
+  box-shadow:
+    0 0 25px rgba(0, 190, 255, 0.05);
+}
+
+.ring-inner {
+  width: 430px;
+  height: 430px;
+
+  border: 1px dashed rgba(38, 195, 255, 0.16);
+}
+
+
+/* CENTER */
+
+.orbit-center {
+  position: absolute;
+
+  width: 250px;
+  height: 250px;
+
+  border-radius: 50%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(18, 68, 105, .9),
+      rgba(2, 12, 27, .98)
+    );
+
+  border: 1px solid #14cfff;
+
+  box-shadow:
+    0 0 25px rgba(0, 205, 255, .25),
+    0 0 70px rgba(0, 160, 255, .12);
+
+  z-index: 5;
+}
+
+.orbit-center img {
+  width: 75px;
+  height: 75px;
+
+  object-fit: contain;
+
+  margin-bottom: 10px;
+
+  filter:
+    drop-shadow(0 0 12px rgba(30, 210, 255, .8));
+}
+
+.orbit-center strong {
+  font-size: 25px;
+
+  letter-spacing: 4px;
+
+  color: #ffffff;
+}
+
+.orbit-center small {
+  margin-top: 8px;
+
+  color: #7188a7;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   ROTATING SYSTEM
+   ========================================= */
+
+.orbit-spinner {
+
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  left: 50%;
+  top: 50%;
+
+  animation:
+    chemoraOrbitSpin
+    28s
+    linear
+    infinite;
+
+  transform-origin: center;
+
+  z-index: 10;
+}
+
+
+/* EACH NODE */
+
+.orbit-node {
+
+  --radius: 325px;
+
+  position: absolute;
+
+  width: 155px;
+  height: 155px;
+
+  left: -77.5px;
+  top: -77.5px;
+
+  border-radius: 50%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-decoration: none;
+
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(20, 55, 82, .8),
+      rgba(2, 12, 25, .96)
+    );
+
+  border: 1px solid rgba(91, 171, 215, .35);
+
+  box-shadow:
+    inset 0 0 25px rgba(0, 180, 255, .08),
+    0 0 18px rgba(0, 180, 255, .06);
+
+  transform:
+    rotate(var(--angle))
+    translateX(var(--radius));
+
+  transition:
+    border-color .25s ease,
+    box-shadow .25s ease,
+    scale .25s ease;
+
+}
+
+
+/* KEEP NODE CONTENT UPRIGHT */
+
+.orbit-node span,
+.orbit-node b {
+
+  animation:
+    chemoraNodeCounterSpin
+    28s
+    linear
+    infinite;
+
+}
+
+
+.orbit-node span {
+
+  font-size: 39px;
+
+  margin-bottom: 9px;
+
+  display: block;
+
+}
+
+
+.orbit-node b {
+
+  color: #d7e8f5;
+
+  font-size: 12px;
+
+  letter-spacing: 2px;
+
+}
+
+
+/* HOVER */
+
+.orbit-node:hover {
+
+  border-color: #35d9ff;
+
+  box-shadow:
+    0 0 25px rgba(0, 205, 255, .3),
+    inset 0 0 25px rgba(0, 180, 255, .12);
+
+  scale: 1.08;
+
+}
+
+
+/* ROTATION */
+
+@keyframes chemoraOrbitSpin {
+
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+
+}
+
+
+/* COUNTER ROTATION
+   Keeps text/icons facing the user */
+
+@keyframes chemoraNodeCounterSpin {
+
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+
+}
+
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+
+  .chemora-orbit {
+    min-height: 600px;
+  }
+
+  .orbit-stage {
+    width: 520px;
+    height: 520px;
+  }
+
+  .ring-outer {
+    width: 470px;
+    height: 470px;
+  }
+
+  .ring-inner {
+    width: 300px;
+    height: 300px;
+  }
+
+  .orbit-center {
+    width: 175px;
+    height: 175px;
+  }
+
+  .orbit-center img {
+    width: 52px;
+    height: 52px;
+  }
+
+  .orbit-center strong {
+    font-size: 18px;
+  }
+
+  .orbit-center small {
+    font-size: 10px;
+  }
+
+  .orbit-node {
+    --radius: 235px;
+
+    width: 105px;
+    height: 105px;
+
+    left: -52.5px;
+    top: -52.5px;
+  }
+
+  .orbit-node span {
+    font-size: 28px;
+  }
+
+  .orbit-node b {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+}
+
+
+/* =========================================================
+   CHEMORA CONTINUOUS RADIAL ORBIT — FIXED
+   CSS animation only: no JavaScript required.
+========================================================= */
+
+.chemora-orbit{
+  width:100%;
+  min-height:760px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  position:relative;
+  background:
+    radial-gradient(circle at center,rgba(0,190,255,.13),transparent 42%),
+    radial-gradient(circle at center,rgba(20,80,180,.08),transparent 65%);
+  border-top:1px solid rgba(70,140,255,.10);
+  border-bottom:1px solid rgba(70,140,255,.10);
+}
+
+.orbit-stage{
+  width:720px;
+  height:720px;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.orbit-glow{
+  position:absolute;
+  width:430px;
+  height:430px;
+  border-radius:50%;
+  background:rgba(0,190,255,.10);
+  filter:blur(70px);
+  pointer-events:none;
+}
+
+.orbit-ring{
+  position:absolute;
+  border-radius:50%;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+
+.ring-outer{
+  width:650px;
+  height:650px;
+  border:1px solid rgba(38,195,255,.28);
+  box-shadow:0 0 25px rgba(0,190,255,.05);
+}
+
+.ring-inner{
+  width:430px;
+  height:430px;
+  border:1px dashed rgba(38,195,255,.16);
+}
+
+.orbit-center{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:250px;
+  height:250px;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background:radial-gradient(circle at 50% 35%,rgba(18,68,105,.92),rgba(2,12,27,.98) 70%);
+  border:1px solid #14cfff;
+  box-shadow:0 0 25px rgba(0,205,255,.25),0 0 70px rgba(0,160,255,.12),inset 0 0 35px rgba(0,190,255,.08);
+  z-index:5;
+}
+
+.orbit-center img{
+  width:75px !important;
+  height:75px !important;
+  object-fit:contain;
+  margin-bottom:10px;
+  filter:drop-shadow(0 0 12px rgba(30,210,255,.8));
+}
+
+.orbit-center strong{
+  color:#fff;
+  font-size:25px;
+  letter-spacing:4px;
+}
+
+.orbit-center small{
+  margin-top:8px;
+  color:#7188a7;
+  font-size:13px;
+}
+
+/* The complete orbit rotates forever. */
+.orbit-spinner{
+  position:absolute;
+  width:1px;
+  height:1px;
+  left:50%;
+  top:50%;
+  z-index:10;
+  transform-origin:center;
+  animation:chemoraOrbitSpin 28s linear infinite;
+}
+
+.orbit-node{
+  --radius:325px;
+  position:absolute;
+  left:-77.5px;
+  top:-77.5px;
+  width:155px;
+  height:155px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  color:#d7e8f5;
+  background:radial-gradient(circle at 50% 35%,rgba(20,55,82,.88),rgba(2,12,25,.97));
+  border:1px solid rgba(91,171,215,.35);
+  box-shadow:inset 0 0 25px rgba(0,180,255,.08),0 0 18px rgba(0,180,255,.06);
+  transform:rotate(var(--angle)) translateX(var(--radius));
+  transition:border-color .25s ease,box-shadow .25s ease,scale .25s ease;
+}
+
+/* This wrapper cancels both the node's fixed angle and the moving orbit angle. */
+.orbit-content{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  transform:rotate(calc(-1 * var(--angle)));
+  animation:chemoraNodeCounterSpin 28s linear infinite;
+}
+
+.orbit-content span{
+  display:block;
+  font-size:39px;
+  line-height:1;
+  margin-bottom:9px;
+}
+
+.orbit-content b{
+  display:block;
+  color:#d7e8f5;
+  font-size:12px;
+  line-height:1;
+  letter-spacing:2px;
+  white-space:nowrap;
+}
+
+.orbit-node:hover{
+  border-color:#35d9ff;
+  box-shadow:0 0 25px rgba(0,205,255,.30),inset 0 0 25px rgba(0,180,255,.12);
+  scale:1.08;
+}
+
+@keyframes chemoraOrbitSpin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+
+@keyframes chemoraNodeCounterSpin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(-360deg)}
+}
+
+@media(max-width:800px){
+  .chemora-orbit{min-height:620px}
+  .orbit-stage{width:520px;height:520px}
+  .ring-outer{width:470px;height:470px}
+  .ring-inner{width:300px;height:300px}
+  .orbit-center{width:175px;height:175px}
+  .orbit-center img{width:52px !important;height:52px !important}
+  .orbit-center strong{font-size:18px}
+  .orbit-center small{font-size:10px}
+  .orbit-node{--radius:235px;width:105px;height:105px;left:-52.5px;top:-52.5px}
+  .orbit-content span{font-size:28px}
+  .orbit-content b{font-size:8px;letter-spacing:1px}
+}
+
+@media(max-width:500px){
+  .chemora-orbit{min-height:520px}
+  .orbit-stage{width:100vw;height:100vw;max-height:560px}
+  .ring-outer{width:88vw;height:88vw}
+  .ring-inner{width:58vw;height:58vw}
+  .orbit-center{width:145px;height:145px}
+  .orbit-center img{width:45px !important;height:45px !important}
+  .orbit-center strong{font-size:16px}
+  .orbit-center small{font-size:8px}
+  .orbit-node{--radius:37vw;width:88px;height:88px;left:-44px;top:-44px}
+  .orbit-content span{font-size:23px;margin-bottom:5px}
+  .orbit-content b{font-size:7px;letter-spacing:.8px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .orbit-spinner,.orbit-content{animation:none}
+}
+
+body.light .chemora-orbit{
+  background:radial-gradient(circle at center,rgba(0,150,220,.12),transparent 45%),#eef6ff;
+}
+
+body.light .orbit-center,
+body.light .orbit-node{
+  background:radial-gradient(circle at 35% 25%,#dff7ff,#f4f9ff);
+  color:#10213d;
+}
+
+body.light .orbit-center strong,
+body.light .orbit-content b{color:#10213d}
+
+
+/* =========================================================
+   CHEMORA HOME ORBIT — FINAL ORIENTATION FIX
+   The orbit rotates, while each node's icon/text stays upright.
+   This fixes the conflict caused by multiple earlier orbit rules.
+   ========================================================= */
+
+.orbit-node > .orbit-content{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  transform:none;
+  animation:chemoraNodeCounterSpinFinal 28s linear infinite !important;
+  transform-origin:center center;
+  width:100%;
+  height:100%;
+}
+
+.orbit-node > .orbit-content > span,
+.orbit-node > .orbit-content > b{
+  animation:none !important;
+  transform:none !important;
+}
+
+.orbit-node > .orbit-content > span{
+  display:block;
+  font-size:39px;
+  line-height:1;
+  margin-bottom:9px;
+}
+
+.orbit-node > .orbit-content > b{
+  display:block;
+  color:#d7e8f5;
+  font-size:12px;
+  line-height:1;
+  letter-spacing:2px;
+  white-space:nowrap;
+}
+
+@keyframes chemoraNodeCounterSpinFinal{
+  from{
+    transform:rotate(calc(-1 * var(--angle)));
+  }
+  to{
+    transform:rotate(calc(-1 * var(--angle) - 360deg));
+  }
+}
+
+@media(max-width:800px){
+  .orbit-node > .orbit-content > span{
+    font-size:28px;
+  }
+  .orbit-node > .orbit-content > b{
+    font-size:8px;
+    letter-spacing:1px;
+  }
+}
+
+@media(max-width:500px){
+  .orbit-node > .orbit-content > span{
+    font-size:23px;
+    margin-bottom:5px;
+  }
+  .orbit-node > .orbit-content > b{
+    font-size:7px;
+    letter-spacing:.8px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .orbit-node > .orbit-content{
+    animation:none !important;
+    transform:rotate(calc(-1 * var(--angle))) !important;
+  }
+}
+
+
+/* =========================================================
+   EXPLORE THE LAB
+========================================================= */
+
+.explore-lab {
+    position: relative;
+    padding: 95px 6% 105px;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            circle at 50% 35%,
+            rgba(38, 121, 255, .07),
+            transparent 42%
+        );
+}
+
+.explore-lab::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(76, 137, 255, .08),
+            transparent
+        );
+    opacity: .55;
+}
+
+.section-heading {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto 45px;
+    text-align: center;
+}
+
+.section-heading > span {
+    display: inline-block;
+    color: var(--cyan);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    margin-bottom: 13px;
+}
+
+.section-heading h2 {
+    color: #eef5ff;
+    font-size: clamp(30px, 4vw, 46px);
+    line-height: 1.12;
+    letter-spacing: -.8px;
+}
+
+.section-heading p {
+    margin-top: 13px;
+    color: #8298bd;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+.explore-grid {
+    position: relative;
+    z-index: 1;
+    max-width: 1180px;
+    margin: 0 auto;
+
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+}
+
+.explore-card {
+    min-height: 270px;
+    grid-column: span 2;
+
+    position: relative;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    padding: 25px 23px 22px;
+
+    text-decoration: none;
+
+    border: 1px solid rgba(78, 151, 255, .20);
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(8, 26, 58, .88),
+            rgba(3, 13, 32, .94)
+        );
+
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.035),
+        0 14px 40px rgba(0,0,0,.18);
+
+    transition:
+        transform .25s ease,
+        border-color .25s ease,
+        box-shadow .25s ease;
+}
+
+.explore-card:nth-child(4) {
+    grid-column: 2 / span 2;
+}
+
+.explore-card:nth-child(5) {
+    grid-column: 4 / span 2;
+}
+
+.explore-card::before {
+    content: "";
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    right: -70px;
+    top: -70px;
+    border-radius: 50%;
+    background: rgba(65, 139, 255, .09);
+    filter: blur(2px);
+}
+
+.explore-card::after {
+    content: "";
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    bottom: 0;
+    height: 1px;
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(88,214,255,.32),
+            transparent
+        );
+}
+
+.explore-card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(88,214,255,.48);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.045),
+        0 18px 50px rgba(23, 99, 205, .16),
+        0 0 30px rgba(45, 125, 255, .06);
+}
+
+.explore-icon {
+    position: relative;
+    z-index: 1;
+
+    width: 58px;
+    height: 58px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 17px;
+
+    font-size: 27px;
+
+    background:
+        rgba(21, 59, 106, .42);
+
+    border:
+        1px solid rgba(88,214,255,.20);
+
+    box-shadow:
+        0 0 22px rgba(35,137,255,.08);
+}
+
+.explore-card-body {
+    position: relative;
+    z-index: 1;
+}
+
+.explore-label {
+    display: block;
+    margin-bottom: 7px;
+
+    color: #5b83ba;
+
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.explore-card h3 {
+    color: #f3f8ff;
+    font-size: 22px;
+    margin-bottom: 8px;
+}
+
+.explore-card p {
+    max-width: 280px;
+
+    color: #8fa5c7;
+
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.explore-link {
+    display: inline-block;
+    margin-top: 16px;
+
+    color: #62d9ff;
+
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+
+.card-chemicals .explore-icon {
+    box-shadow: 0 0 25px rgba(166,108,255,.08);
+}
+
+
+
+.card-challenge .explore-icon {
+    box-shadow: 0 0 25px rgba(88,214,255,.10);
+}
+
+@media (max-width: 900px) {
+    .explore-lab {
+        padding: 75px 20px 85px;
+    }
+
+    .explore-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .explore-card,
+    .explore-card:nth-child(4),
+    .explore-card:nth-child(5) {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 560px) {
+    .explore-lab {
+        padding: 62px 16px 70px;
+    }
+
+    .section-heading {
+        margin-bottom: 30px;
+    }
+
+    .section-heading h2 {
+        font-size: 28px;
+    }
+
+    .section-heading p {
+        font-size: 13px;
+    }
+
+    .explore-grid {
+        grid-template-columns: 1fr;
+        gap: 13px;
+    }
+
+    .explore-card,
+    .explore-card:nth-child(4),
+    .explore-card:nth-child(5) {
+        grid-column: 1;
+        min-height: 215px;
+        padding: 20px;
+        border-radius: 17px;
+    }
+
+    .explore-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 15px;
+        font-size: 23px;
+    }
+
+    .explore-card h3 {
+        font-size: 20px;
+    }
+
+    .explore-card p {
+        font-size: 12px;
+    }
+}
+
+
+.new-lab-features{max-width:1200px;margin:20px auto 80px;padding:0 20px}.new-lab-features .explore-grid{margin-top:24px;display:grid;grid-template-columns:repeat(2,1fr);gap:18px}@media(max-width:700px){.new-lab-features .explore-grid{grid-template-columns:1fr}}

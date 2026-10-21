@@ -1,0 +1,65 @@
+
+/* CHEMORA v2 shared enhancements */
+.nav-toggle{display:none;border:1px solid rgba(90,150,255,.2);background:rgba(8,25,58,.9);color:#dceaff;border-radius:10px;width:40px;height:40px;font-size:20px;cursor:pointer}
+.chemora-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:20000;padding:11px 16px;border-radius:12px;background:rgba(7,18,40,.96);border:1px solid rgba(80,160,255,.25);color:#eaf3ff;box-shadow:0 12px 35px rgba(0,0,0,.35);font-size:14px;transition:.2s ease}
+.chemora-toast.show{opacity:1;transform:translate(-50%,0)}
+.chemora-toast[data-type="success"]{border-color:rgba(65,220,150,.45)}
+@media (max-width:700px){
+  .topbar{height:56px!important;min-height:56px!important;padding:5px 10px!important;justify-content:flex-end!important}
+  .nav-toggle{display:block;order:1}
+  .main-nav{display:none!important;position:absolute!important;right:10px;top:61px;width:min(300px,calc(100vw - 20px))!important;max-width:none!important;height:auto!important;flex-direction:column!important;padding:8px!important;gap:4px!important;border-radius:14px!important;overflow:visible!important}
+  .topbar.nav-open .main-nav{display:flex!important}
+  .main-nav>a{width:100%!important;height:42px!important;justify-content:flex-start!important;padding:0 14px!important;border-radius:10px!important}
+  .account-btn{order:2}
+}
+
+/* ===== CHEMORA AI VOICE ASSISTANT ===== */
+.chemora-assistant-launcher{position:fixed;right:22px;bottom:22px;z-index:1200;width:58px;height:58px;border:0;border-radius:50%;cursor:pointer;background:linear-gradient(135deg,#39d7ff,#6d5dfc);color:#fff;box-shadow:0 12px 34px rgba(0,0,0,.35);font-size:25px;display:grid;place-items:center;transition:.2s transform,.2s box-shadow}.chemora-assistant-launcher:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(57,215,255,.3)}
+.chemora-assistant-panel{position:fixed;right:22px;bottom:92px;z-index:1199;width:min(390px,calc(100vw - 28px));height:min(570px,calc(100vh - 120px));display:none;flex-direction:column;overflow:hidden;border:1px solid rgba(120,210,255,.25);border-radius:22px;background:rgba(10,18,31,.96);backdrop-filter:blur(18px);box-shadow:0 24px 70px rgba(0,0,0,.5);color:#eef7ff}.chemora-assistant-panel.open{display:flex}.chemora-assistant-head{padding:15px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)}.chemora-assistant-title{display:flex;gap:10px;align-items:center}.chemora-assistant-orb{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#39d7ff,#6d5dfc);box-shadow:0 0 24px rgba(57,215,255,.25)}.chemora-assistant-title strong{display:block}.chemora-assistant-title small{opacity:.65}.chemora-assistant-close{border:0;background:transparent;color:inherit;font-size:23px;cursor:pointer}.chemora-assistant-messages{flex:1;overflow:auto;padding:14px}.chemora-msg{max-width:88%;padding:10px 12px;margin:7px 0;border-radius:15px;line-height:1.45;font-size:14px;white-space:pre-wrap}.chemora-msg.ai{background:rgba(255,255,255,.08);margin-right:auto}.chemora-msg.user{background:linear-gradient(135deg,#216d9b,#4b3eb5);margin-left:auto}.chemora-assistant-status{min-height:22px;padding:0 14px;color:#8edfff;font-size:12px}.chemora-assistant-controls{padding:12px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px}.chemora-assistant-input{flex:1;min-width:0;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:rgba(255,255,255,.06);color:inherit;padding:11px 12px;outline:none}.chemora-assistant-btn{width:44px;border:0;border-radius:13px;cursor:pointer;background:rgba(255,255,255,.09);color:#fff;font-size:18px}.chemora-assistant-btn.mic.active{background:#e64c62;box-shadow:0 0 22px rgba(230,76,98,.35)}.chemora-assistant-btn.send{background:linear-gradient(135deg,#39d7ff,#6d5dfc)}
+/* ===== HOME HERO VIDEO BACKGROUND ===== */
+.hero{isolation:isolate;background:#020713}
+.hero-video-bg{position:absolute;inset:0;z-index:-3;overflow:hidden;pointer-events:none}
+.hero-video-bg video{width:100%;height:100%;display:block;object-fit:cover;object-position:center center;filter:saturate(.95) brightness(.68);transform:scale(1.02)}
+.hero-video-overlay{position:absolute;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(180deg,rgba(2,7,19,.62) 0%,rgba(2,7,19,.36) 38%,rgba(2,7,19,.72) 100%),radial-gradient(circle at 50% 48%,rgba(20,120,220,.20),transparent 52%)}
+.hero>*:not(.hero-video-bg):not(.hero-video-overlay){z-index:1}
+@media(max-width:700px){.hero{min-height:620px;padding:80px 18px 90px}.hero-video-bg video{object-position:center center;filter:saturate(.9) brightness(.58)}.hero-video-overlay{background:linear-gradient(180deg,rgba(2,7,19,.68),rgba(2,7,19,.42) 40%,rgba(2,7,19,.82))}}
+
+.chemora-showcase{padding:30px 5vw 70px}.chemora-showcase-card{max-width:1100px;margin:auto;border-radius:24px;overflow:hidden;border:1px solid rgba(120,210,255,.18);background:rgba(255,255,255,.035);box-shadow:0 20px 60px rgba(0,0,0,.18)}.chemora-showcase video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}.chemora-showcase-copy{padding:20px 22px}.chemora-showcase-copy h3{margin:0 0 7px}.chemora-showcase-copy p{margin:0;opacity:.72}
+@media(max-width:600px){.chemora-assistant-launcher{right:14px;bottom:14px}.chemora-assistant-panel{right:10px;bottom:82px;width:calc(100vw - 20px);height:min(590px,calc(100vh - 100px))}.chemora-intro-card{border-radius:16px}.chemora-intro-overlay{padding:15px}.chemora-intro-overlay p{font-size:13px}}
+/* Fix "CHEMORA" word-break and fluid typography */
+.hero h1, 
+.hero-title {
+  font-size: clamp(2.2rem, 4.5vw, 3.75rem);
+  line-height: 1.1;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* Keep "CHEMORA" on a single unbroken line */
+.hero h1 span,
+.hero-title .brand-gradient {
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* Add a dark gradient scrim over the hero background so text is readable */
+.hero-banner,
+.hero-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before,
+.hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(8, 13, 26, 0.92) 0%, rgba(8, 13, 26, 0.75) 55%, rgba(8, 13, 26, 0.4) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}

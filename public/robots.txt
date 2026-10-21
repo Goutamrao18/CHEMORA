@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /challenge/data/
+Disallow: /loaders-preview.html
+
+Sitemap: https://chemora.work.gd/sitemap.xml
