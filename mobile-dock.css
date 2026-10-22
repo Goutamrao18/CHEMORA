@@ -160,9 +160,9 @@
   .chemora-floating-ask {
     position: fixed;
     right: 14px;
-    bottom: calc(var(--chemora-dock-height, 64px) + var(--chemora-dock-bottom-offset, calc(14px + env(safe-area-inset-bottom, 0px))) + 10px);
+    bottom: var(--chemora-dock-bottom-offset, calc(14px + env(safe-area-inset-bottom, 0px)));
     z-index: 44;
-    height: 44px;
+    height: 60px;
     padding: 0 16px 0 12px;
     border-radius: var(--chemora-radius-pill, 9999px);
     background: linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(99, 102, 241, 0.35) 100%);

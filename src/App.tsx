@@ -13,6 +13,7 @@ const ExperimentsView = lazy(() => import('./components/ExperimentsView').then((
 const ProgressView = lazy(() => import('./components/ProgressView').then((m) => ({ default: m.ProgressView })));
 const AccountView = lazy(() => import('./components/AccountView').then((m) => ({ default: m.AccountView })));
 const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
+const AdminView = lazy(() => import('./components/admin/AdminView'));
 
 import { AtomSpinner } from './components/Loaders/AtomSpinner';
 import { BubbleTransition } from './components/BubbleTransition';
@@ -77,6 +78,22 @@ export default function App() {
     } catch {}
   }, [isLightMode]);
 
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => {
+    return window.location.pathname.startsWith('/admin') || window.location.hash.startsWith('#admin');
+  });
+
+  useEffect(() => {
+    const checkRoute = () => {
+      setIsAdminRoute(window.location.pathname.startsWith('/admin') || window.location.hash.startsWith('#admin'));
+    };
+    window.addEventListener('popstate', checkRoute);
+    window.addEventListener('hashchange', checkRoute);
+    return () => {
+      window.removeEventListener('popstate', checkRoute);
+      window.removeEventListener('hashchange', checkRoute);
+    };
+  }, []);
+
   // URL Hash synchronization for direct bookmarks (does not trigger transition on direct initial link)
   useEffect(() => {
     const handleHash = () => {
@@ -121,6 +138,16 @@ export default function App() {
   const handleAskAI = (_topic?: string) => {
     setIsAssistantOpen(true);
   };
+
+  if (isAdminRoute) {
+    return (
+      <ErrorBoundary tabName="Chemora Admin Control Room">
+        <Suspense fallback={<ViewSkeleton label="Accessing Secure Administrative Enclave..." />}>
+          <AdminView />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#020816] text-slate-100 selection:bg-cyan-500 selection:text-slate-950 font-sans antialiased relative">

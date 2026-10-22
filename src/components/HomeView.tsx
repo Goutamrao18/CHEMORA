@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { videoUrl, localVideoUrl } from '../utils/videoUrl';
 import { Skeleton } from './Loaders/Skeleton';
+import { LiquidButton } from './ui/LiquidButton';
 
 interface HomeViewProps {
   onSelectTab: (tab: ActiveTab) => void;
@@ -249,14 +250,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
 
             {/* Actions: Full-Width Stacked CTA on Phone, Horizontal on Tablet/Desktop */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full">
-              <button
-                type="button"
+              <LiquidButton
                 onClick={() => onSelectTab('know')}
-                className="sliding-cta-underline w-full sm:w-auto min-h-[48px] px-8 py-3.5 rounded-full text-sm font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-300 shadow-[0_12px_35px_rgba(20,163,196,0.45)] hover:shadow-[0_16px_40px_rgba(20,163,196,0.65)] active:scale-[0.98] transition-all transform flex items-center justify-center gap-2 group"
+                className="w-full sm:w-auto"
               >
                 <span>Start Exploring</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </button>
+              </LiquidButton>
               <button
                 type="button"
                 onClick={() => onSelectTab('challenge')}

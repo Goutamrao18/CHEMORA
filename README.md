@@ -35,11 +35,38 @@ npm run preview
 
 ---
 
-## 📹 Video Storage & Updates
+---
 
-Demonstration videos and posters are served directly from Supabase Storage CDN. To upload or replace video files:
+## 🔐 Phase 4 — Secure Admin Enclave (`/admin`)
 
-1. Place compressed `.mp4`, `.webm`, and `.webp` files in `./videos-compressed/`.
-2. Run `npm run upload:videos` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set.
-3. **Note:** After replacing a video, hard refresh (`Ctrl+F5` / `Cmd+Shift+R`) in your browser to clear the CDN edge cache and see the updated video.
+An administrative command center modeled after an AI dashboard with floating navigation rail, soft cards, real-time telemetry, and operational AI assistant.
+
+### Features
+- **Stealth Security:** Unauthenticated or unauthorized requests to `/api/admin/*` return **HTTP 404** (stealth mode, invisible to unauthorized actors).
+- **Session Protection:** Session in `httpOnly`, `Secure`, `SameSite=Strict` cookie with 30-minute idle expiration.
+- **Rate-Limiting:** 5 failed login attempts per 15 minutes per IP and email.
+- **Audit Trail:** Immutable records in `admin_audit_log` with client IP address, action type, and metadata for every administrative write.
+- **Review Moderation:** Filter by pending/approved/rejected, keyboard shortcuts (`A` to approve, `R` to reject, `↑`/`↓` to navigate), bulk actions, and undo toast.
+- **Video Content Health:** Automated server-side HEAD checks against Supabase storage URLs for 21 manifest video streams.
+- **Operational AI Assistant:** Read-only intelligence querying live metrics, queue backlogs, and video health with zero PII and automated prompt sanitization.
+
+### Creating the First Admin
+1. Apply the migration:
+   ```bash
+   # Run in Supabase SQL Editor
+   cat supabase/migrations/20261022000000_admin_hardening.sql
+   ```
+2. In the Supabase SQL Editor, insert your target user's UUID into `admin_users`:
+   ```sql
+   INSERT INTO public.admin_users (user_id, role)
+   VALUES ('YOUR_USER_UUID_HERE', 'super_admin');
+   ```
+
+*(In local development environments without Supabase credentials configured, a built-in pre-seeded administrator `admin@chemora.edu` / `ChemoraAdmin2026!` is available for local testing.)*
+
+### Running Admin Verification Tests
+```bash
+node scripts/test-admin.mjs
+```
+
 

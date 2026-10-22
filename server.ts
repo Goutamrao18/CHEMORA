@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import accountRouter from './server/routes/account.ts';
 import reviewsRouter from './server/routes/reviews.ts';
+import adminRouter from './server/routes/admin.ts';
 import {
   apiRateLimiter,
   aiRateLimiter,
@@ -149,9 +150,17 @@ async function startServer() {
   app.use('/api/account', databaseRateLimiter);
   app.use('/api/reviews', databaseRateLimiter);
 
+  // Security Hardening: X-Frame-Options DENY + noindex on /admin
+  app.use('/admin', (_req: Request, res: Response, next: express.NextFunction) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    next();
+  });
+
   // Mount backend API routes
   app.use('/api/account', accountRouter);
   app.use('/api/reviews', reviewsRouter);
+  app.use('/api/admin', adminRouter);
 
   // Mount assistant route handler if available (with its own 12MB limit for homework images)
   const assistantJsonParser = express.json({ limit: '12mb' });

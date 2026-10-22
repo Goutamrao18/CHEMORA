@@ -178,100 +178,107 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
         </defs>
       </svg>
 
-      {/* Separate Floating Action: CHEMORA AI Chemistry Assistant */}
-      <button
-        type="button"
-        onClick={onOpenAITutor}
-        aria-label="Open CHEMORA AI Assistant"
-        className={`fixed right-3 sm:right-6 lg:right-10 bottom-[calc(80px+env(safe-area-inset-bottom,12px))] z-40 h-11 px-4 rounded-full bg-gradient-to-r from-cyan-500/25 via-blue-600/35 to-indigo-600/30 bg-[#061124]/90 border border-cyan-400/50 shadow-[0_8px_24px_rgba(6,182,212,0.35)] backdrop-blur-xl flex items-center gap-2 text-white font-bold text-xs active:scale-[0.96] transition-all duration-200 select-none ${
-          isHidden || isAITutorOpen
-            ? 'translate-y-8 opacity-0 pointer-events-none'
-            : 'translate-y-0 opacity-100'
-        }`}
-      >
-        <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse flex-shrink-0" />
-        <span className="tracking-wide text-cyan-100">AI Tutor</span>
-      </button>
-
-      {/* Liquid Floating Bar Navigation - Centered in the middle */}
-      <nav
-        aria-label="Main Navigation"
-        className={`fixed bottom-[calc(14px+env(safe-area-inset-bottom,12px))] inset-x-0 mx-auto w-fit max-w-[calc(100vw-24px)] z-40 transition-all duration-300 ${
+      {/* Floating Bottom Dock Container: Navigation Bar & AI Tutor at the exact same bottom level */}
+      <div
+        className={`fixed bottom-[calc(14px+env(safe-area-inset-bottom,12px))] inset-x-0 mx-auto w-full px-3 sm:px-6 z-40 pointer-events-none transition-all duration-300 ${
           isHidden
-            ? 'translate-y-[calc(100%+32px)] opacity-0 pointer-events-none'
+            ? 'translate-y-[calc(100%+32px)] opacity-0'
             : 'translate-y-0 opacity-100'
         }`}
       >
-        <div
-          ref={containerRef}
-          role="tablist"
-          className="relative h-[56px] px-2 rounded-[28px] bg-[#050c1c]/90 border border-white/14 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-xl flex items-center justify-center gap-1 sm:gap-1.5 select-none overflow-hidden mx-auto"
-        >
-          {/* Subtle Top Specular Reflection Highlight */}
-          <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent pointer-events-none z-20" />
-
-          {/* Liquid Gooey Indicator Highlight (Only applied to this sliding layer!) */}
-          {indicatorRect && (
+        <div className="relative max-w-7xl mx-auto flex items-center justify-center">
+          {/* Liquid Floating Bar Navigation - Centered in the middle */}
+          <nav
+            aria-label="Main Navigation"
+            className="pointer-events-auto w-fit max-w-[calc(100vw-24px)]"
+          >
             <div
-              className="absolute top-1.5 bottom-1.5 pointer-events-none z-10"
-              style={{
-                left: `${indicatorRect.left}px`,
-                width: `${indicatorRect.width}px`,
-                filter: prefersReducedMotion ? 'none' : 'url(#chemora-liquid-gooey)',
-                transition: prefersReducedMotion
-                  ? 'opacity 160ms ease'
-                  : 'left 280ms cubic-bezier(0.2, 0.9, 0.28, 1), width 280ms cubic-bezier(0.2, 0.9, 0.28, 1)',
-              }}
+              ref={containerRef}
+              role="tablist"
+              className="relative h-[56px] px-2 rounded-[28px] bg-[#050c1c]/90 border border-white/14 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-xl flex items-center justify-center gap-1 sm:gap-1.5 select-none overflow-hidden mx-auto"
             >
-              <div className="w-full h-full rounded-[22px] bg-gradient-to-r from-cyan-500/25 via-blue-500/20 to-teal-400/25 border border-cyan-400/60 shadow-[0_0_16px_rgba(6,182,212,0.35)] relative overflow-hidden">
-                {/* Secondary inner specular dot for gooey organic elasticity */}
-                <div className="absolute top-1 left-2 w-3 h-1.5 rounded-full bg-cyan-200/50 blur-[1px]" />
-              </div>
-            </div>
-          )}
+              {/* Subtle Top Specular Reflection Highlight */}
+              <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent pointer-events-none z-20" />
 
-          {/* Tab Buttons (44px min tap targets, haptic active scale 0.96) */}
-          {NAV_ITEMS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
-
-            return (
-              <button
-                key={tab.id}
-                ref={(el) => {
-                  if (el) tabsRef.current.set(tab.id, el);
-                  else tabsRef.current.delete(tab.id);
-                }}
-                type="button"
-                role="tab"
-                id={`floating-tab-${tab.id}`}
-                aria-selected={isActive}
-                aria-current={isActive ? 'page' : undefined}
-                aria-label={tab.label}
-                onClick={() => onSelectTab(tab.id)}
-                className={`relative z-20 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[20px] transition-transform duration-100 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-1 ${
-                  isActive ? 'px-3 text-cyan-300 font-bold' : 'px-2 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Icon
-                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${
-                      isActive
-                        ? 'stroke-cyan-300 scale-105 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]'
-                        : 'stroke-current'
-                    }`}
-                  />
-                  {isActive && (
-                    <span className="text-xs tracking-tight font-extrabold text-white whitespace-nowrap animate-in fade-in duration-150">
-                      {tab.label}
-                    </span>
-                  )}
+              {/* Liquid Gooey Indicator Highlight (Only applied to this sliding layer!) */}
+              {indicatorRect && (
+                <div
+                  className="absolute top-1.5 bottom-1.5 pointer-events-none z-10"
+                  style={{
+                    left: `${indicatorRect.left}px`,
+                    width: `${indicatorRect.width}px`,
+                    filter: prefersReducedMotion ? 'none' : 'url(#chemora-liquid-gooey)',
+                    transition: prefersReducedMotion
+                      ? 'opacity 160ms ease'
+                      : 'left 280ms cubic-bezier(0.2, 0.9, 0.28, 1), width 280ms cubic-bezier(0.2, 0.9, 0.28, 1)',
+                  }}
+                >
+                  <div className="w-full h-full rounded-[22px] bg-gradient-to-r from-cyan-500/25 via-blue-500/20 to-teal-400/25 border border-cyan-400/60 shadow-[0_0_16px_rgba(6,182,212,0.35)] relative overflow-hidden">
+                    {/* Secondary inner specular dot for gooey organic elasticity */}
+                    <div className="absolute top-1 left-2 w-3 h-1.5 rounded-full bg-cyan-200/50 blur-[1px]" />
+                  </div>
                 </div>
-              </button>
-            );
-          })}
+              )}
+
+              {/* Tab Buttons (44px min tap targets, haptic active scale 0.96) */}
+              {NAV_ITEMS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const Icon = tab.icon;
+
+                return (
+                  <button
+                    key={tab.id}
+                    ref={(el) => {
+                      if (el) tabsRef.current.set(tab.id, el);
+                      else tabsRef.current.delete(tab.id);
+                    }}
+                    type="button"
+                    role="tab"
+                    id={`floating-tab-${tab.id}`}
+                    aria-selected={isActive}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={tab.label}
+                    onClick={() => onSelectTab(tab.id)}
+                    className={`relative z-20 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[20px] transition-transform duration-100 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-1 ${
+                      isActive ? 'px-3 text-cyan-300 font-bold' : 'px-2 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Icon
+                        className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${
+                          isActive
+                            ? 'stroke-cyan-300 scale-105 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]'
+                            : 'stroke-current'
+                        }`}
+                      />
+                      {isActive && (
+                        <span className="text-xs tracking-tight font-extrabold text-white whitespace-nowrap animate-in fade-in duration-150">
+                          {tab.label}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* AI Tutor Floating Trigger - Exactly aligned to the same bottom level & height */}
+          <button
+            type="button"
+            onClick={onOpenAITutor}
+            aria-label="Open CHEMORA AI Assistant"
+            className={`pointer-events-auto sm:absolute sm:right-0 sm:bottom-0 ml-2 sm:ml-0 h-[56px] px-3.5 sm:px-5 rounded-[28px] bg-gradient-to-r from-cyan-500/25 via-blue-600/35 to-indigo-600/30 bg-[#061124]/90 border border-cyan-400/50 hover:border-cyan-400/80 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_16px_rgba(6,182,212,0.3)] backdrop-blur-xl flex items-center gap-2 text-white font-bold text-xs active:scale-[0.96] transition-all duration-200 select-none ${
+              isAITutorOpen
+                ? 'opacity-0 pointer-events-none scale-90'
+                : 'opacity-100 scale-100'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse flex-shrink-0" />
+            <span className="tracking-wide text-cyan-100 hidden xs:inline">AI Tutor</span>
+          </button>
         </div>
-      </nav>
+      </div>
     </>
   );
 };
