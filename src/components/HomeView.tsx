@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ActiveTab } from './Navbar';
-import { Sparkles, BookOpen, Trophy, Compass, Beaker, ChevronRight, ArrowRight } from 'lucide-react';
-import { ReviewsSection } from './ReviewsSection';
-import { GlassCard, GlassPanel, GlassBadge, GlassButton } from './ui/Glass';
+import {
+  Sparkles,
+  BookOpen,
+  Trophy,
+  Compass,
+  Beaker,
+  ChevronRight,
+  ArrowRight,
+  ShieldCheck,
+  Flame,
+  Layers,
+  CheckCircle2,
+  Play
+} from 'lucide-react';
 import { videoUrl, localVideoUrl } from '../utils/videoUrl';
 import { Skeleton } from './Loaders/Skeleton';
 
@@ -10,12 +21,77 @@ interface HomeViewProps {
   onSelectTab: (tab: ActiveTab) => void;
 }
 
+// Animated Stat Counter with IntersectionObserver (Item 4)
+function AnimatedCounter({
+  end,
+  duration = 1200,
+  suffix = '',
+}: {
+  end: number;
+  duration?: number;
+  suffix?: string;
+}) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const frame = (now: number) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const current = Math.floor(progress * (2 - progress) * end);
+            setVal(current);
+            if (progress < 1) {
+              requestAnimationFrame(frame);
+            } else {
+              setVal(end);
+            }
+          };
+          requestAnimationFrame(frame);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [end, duration]);
+
+  return (
+    <span ref={ref}>
+      {val.toLocaleString()}
+      {suffix}
+    </span>
+  );
+}
+
 export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [heroFallback, setHeroFallback] = useState(false);
   const heroVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Eliminate background video lag by pausing when offscreen or document is hidden
+  // Foreground parallax mouse tracking (Item 3)
+  const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
+  const heroCardRef = useRef<HTMLDivElement>(null);
+
+  const handleHeroMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!heroCardRef.current) return;
+    const rect = heroCardRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setParallaxOffset({ x: x * 14, y: y * 14 });
+  };
+
+  const handleHeroMouseLeave = () => {
+    setParallaxOffset({ x: 0, y: 0 });
+  };
+
+  // Video visibility optimizer: pauses when scrolled offscreen
   useEffect(() => {
     const video = heroVideoRef.current;
     if (!video) return;
@@ -53,36 +129,49 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
 
   const faqs = [
     {
-      q: "What is CHEMORA?",
-      a: "CHEMORA is a comprehensive chemistry learning platform combining an interactive 130+ item knowledge library, guided practical experiments with video explainers, 100 progressive challenges, and an AI chemistry tutor."
+      q: 'What is CHEMORA?',
+      a: 'CHEMORA is a comprehensive chemistry learning platform combining an interactive 134-item knowledge library, guided practical experiments with video explainers, 100 progressive challenges, and an AI chemistry tutor.',
     },
     {
-      q: "Can I track my learning progress?",
-      a: "Yes! Challenge results, completed practical experiments, earned XP, accuracy metrics, and strengths across topics are automatically saved in your browser and account."
+      q: 'Can I track my learning progress?',
+      a: 'Yes! Challenge results, completed practical experiments, earned XP, accuracy metrics, and strengths across topics are automatically saved in your browser and account.',
     },
     {
-      q: "Does CHEMORA replace a real laboratory?",
-      a: "No. The virtual simulation and interactive activities are designed for safe learning, exploration, and pre-lab preparation. Always follow institution and laboratory safety protocols when conducting physical experiments."
+      q: 'Does CHEMORA replace a real laboratory?',
+      a: 'No. The virtual simulation and interactive activities are designed for safe learning, exploration, and pre-lab preparation. Always follow institution and laboratory safety protocols when conducting physical experiments.',
     },
     {
-      q: "How does CHEMORA AI work?",
-      a: "CHEMORA AI provides instant, intelligent chemistry guidance, balancing equations, safety warnings, and contextual explanations for questions across organic, inorganic, and physical chemistry."
+      q: 'How does CHEMORA AI work?',
+      a: 'CHEMORA AI provides instant, intelligent chemistry guidance, balancing equations, safety warnings, and contextual explanations for questions across organic, inorganic, and physical chemistry.',
     },
     {
-      q: "Is an account required?",
-      a: "All learning materials, practicals, and challenge levels are completely open without signing in. Creating a profile allows you to customize learning preferences and maintain your researcher rank."
-    }
+      q: 'Is an account required?',
+      a: 'All learning materials, practicals, and challenge levels are completely open without signing in. Creating a profile allows you to customize learning preferences and maintain your researcher rank.',
+    },
   ];
 
   return (
-    <div className="text-slate-100 pb-16 space-y-12">
-      {/* Authentic CHEMORA Hero Card - Rounded 34px with High-Visibility Beaker Video */}
-      <section className="relative rounded-[28px] sm:rounded-[34px] overflow-hidden border border-cyan-500/35 bg-gradient-to-r from-[#05142b]/95 via-[#051228]/90 to-[#020814]/95 shadow-[0_30px_90px_rgba(0,0,0,0.45)] min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] flex items-center p-5 sm:p-12 lg:p-16 glass-top-edge">
+    <div className="text-slate-100 pb-16 space-y-16">
+      {/* =========================================================================
+          HERO CARD (Item 3)
+          - Video Background preserved
+          - Staggered line-by-line reveal
+          - Stronger scrim for high contrast
+          - Sliding underline on primary CTA
+          - Subtle parallax on foreground content only
+          ========================================================================= */}
+      <section
+        ref={heroCardRef}
+        onMouseMove={handleHeroMouseMove}
+        onMouseLeave={handleHeroMouseLeave}
+        className="relative rounded-[28px] sm:rounded-[34px] overflow-hidden border border-cyan-500/35 bg-[#030d1d] shadow-[0_30px_90px_rgba(0,0,0,0.65)] min-h-[100dvh] sm:min-h-[530px] lg:min-h-[570px] flex items-center p-5 sm:p-12 lg:p-16 transition-shadow duration-300"
+      >
         {/* Top Specular Edge Highlight */}
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent pointer-events-none z-30" />
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent pointer-events-none z-30" />
 
+        {/* Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <Skeleton variant="video" className="absolute inset-0 w-full h-full opacity-30" />
+          <Skeleton variant="video" className="absolute inset-0 w-full h-full opacity-20" />
           <video
             ref={heroVideoRef}
             muted
@@ -90,7 +179,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             playsInline
             preload="none"
             poster={heroFallback ? localVideoUrl('chemora-intro-poster.webp') : videoUrl('chemora-intro', 'poster')}
-            className="w-full h-full object-cover object-center transform-gpu opacity-80"
+            className="w-full h-full object-cover object-center transform-gpu opacity-70 scale-105"
             onError={() => {
               if (!heroFallback) setHeroFallback(true);
             }}
@@ -109,20 +198,31 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           </video>
         </div>
 
-        {/* Luminous Glass Overlays - High-Performance Gradient Scrim without GPU Filter Stalls */}
-        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#05142b]/95 via-[#051228]/70 to-[#020814]/30" />
-        <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,rgba(34,146,255,0.18),transparent_60%)]" />
+        {/* Enhanced High-Contrast Scrim Gradient Overlays for Phone & Desktop */}
+        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#020816]/98 via-[#020918]/92 sm:from-[#020816]/95 sm:via-[#020918]/85 to-[#020814]/50" />
+        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-[#020816]/98 via-[#020816]/40 to-[#020816]/80 sm:from-[#020816]/90 sm:via-transparent sm:to-[#020816]/60" />
+        <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_25%_45%,rgba(20,163,196,0.3),transparent_70%)]" />
 
-        {/* Hero Content on Left Side */}
-        <div className="relative z-20 max-w-xl text-left">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <GlassBadge variant="cyan" dot={true}>
-              LEARN · EXPERIMENT · CREATE
-            </GlassBadge>
+        {/* Foreground Content with Subtle Mouse Parallax & Staggered Reveal */}
+        <div
+          style={{
+            transform: `translate3d(${parallaxOffset.x}px, ${parallaxOffset.y}px, 0)`,
+            transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+          className="relative z-20 max-w-xl text-left will-change-transform w-full"
+        >
+          {/* Line 1: Eyebrow Metadata (Unboxed text with bullet separators per constitution) */}
+          <div className="hero-reveal-line-1 flex items-center gap-2 mb-3 text-xs font-mono font-semibold tracking-wider text-cyan-300">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span>LEARN</span>
+            <span className="text-cyan-500/60">·</span>
+            <span>EXPERIMENT</span>
+            <span className="text-cyan-500/60">·</span>
+            <span>REACT</span>
           </div>
 
-          {/* Heading - FIXED: "CHEMORA" will NEVER break into CHEMOR \n A */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white leading-[1.05] tracking-tight mb-2">
+          {/* Line 2: Headline with Unbroken Brand Title & Fluid Clamp Typography */}
+          <h1 className="hero-reveal-line-2 text-[clamp(2.1rem,7.5vw,4.5rem)] font-black text-white leading-[1.08] tracking-tight mb-2">
             Welcome to{' '}
             <span
               style={{
@@ -130,158 +230,283 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
                 whiteSpace: 'nowrap',
                 wordBreak: 'keep-all',
               }}
-              className="text-transparent bg-clip-text bg-gradient-to-r from-[#b77bff] to-[#58d6ff] drop-shadow-[0_0_35px_rgba(63,202,255,0.35)]"
+              className="text-transparent bg-clip-text bg-gradient-to-r from-[#b77bff] via-[#7fdcef] to-[#14a3c4] drop-shadow-[0_0_35px_rgba(20,163,196,0.4)]"
             >
               CHEMORA
             </span>
           </h1>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
+          {/* Line 3: Subtitle */}
+          <h2 className="hero-reveal-line-3 text-lg sm:text-2xl font-bold text-slate-200 mb-3 sm:mb-4 tracking-tight">
             Explore. Learn. Experiment. Create.
           </h2>
 
-          <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8 max-w-lg">
-            Your complete chemistry learning platform with interactive tools, 20 guided practical experiments, 100 progressive challenges, and AI assistance — all in one luminous workspace.
-          </p>
+          {/* Line 4: Body and Stacked Phone Actions */}
+          <div className="hero-reveal-line-4 space-y-6 sm:space-y-7">
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-lg">
+              Your comprehensive chemistry workspace with 134 apparatus &amp; chemicals, 20 guided practical experiments, 100 progressive challenges, and intelligent AI assistance.
+            </p>
 
-          {/* Actions with Gloss Buttons */}
-          <div className="flex flex-wrap items-center gap-4">
-            <button
-              onClick={() => onSelectTab('know')}
-              className="glass-btn glass-btn-cyan px-7 py-3.5 rounded-full text-sm font-black text-slate-950 shadow-[0_12px_35px_rgba(6,182,212,0.45)] hover:shadow-[0_16px_40px_rgba(6,182,212,0.65)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 group"
-            >
-              <span>Start Exploring</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </button>
-            <button
-              onClick={() => onSelectTab('challenge')}
-              className="glass-btn px-6 py-3.5 text-sm font-bold flex items-center gap-2 hover:border-purple-500/50 transition-colors"
-            >
-              <Trophy className="w-4 h-4 text-purple-400" />
-              Take Challenge
-            </button>
+            {/* Actions: Full-Width Stacked CTA on Phone, Horizontal on Tablet/Desktop */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full">
+              <button
+                type="button"
+                onClick={() => onSelectTab('know')}
+                className="sliding-cta-underline w-full sm:w-auto min-h-[48px] px-8 py-3.5 rounded-full text-sm font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-300 shadow-[0_12px_35px_rgba(20,163,196,0.45)] hover:shadow-[0_16px_40px_rgba(20,163,196,0.65)] active:scale-[0.98] transition-all transform flex items-center justify-center gap-2 group"
+              >
+                <span>Start Exploring</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab('challenge')}
+                className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 rounded-full text-sm font-bold text-slate-200 bg-[#07162e]/90 border border-cyan-500/35 hover:border-purple-400/60 hover:text-white active:scale-[0.98] transition-all backdrop-blur-md flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Trophy className="w-4 h-4 text-purple-400" />
+                <span>Take Challenge</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Explore Workspace Cards */}
+      {/* =========================================================================
+          HOME WORKSPACE BENTO GRID (Item 4)
+          Asymmetric Bento Layout using exactly TWO card styles:
+          - Style A: Primary Feature Bento (2-column span, interactive visual peek)
+          - Style B: Compact Metric/Signal Bento (1-column span, animated counter)
+          - Oversized numbered section indices (01, 02, 03, 04)
+          ========================================================================= */}
       <section className="space-y-6">
-        <div>
-          <span className="text-[11px] font-mono font-bold text-cyan-400 tracking-[0.18em] uppercase">
-            CHEMORA WORKSPACE
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 mb-2">
-            Everything you need for chemistry
-          </h2>
-          <p className="text-slate-400 text-xs sm:text-sm">
-            Jump directly into the part of the platform you want to use.
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-cyan-950/60">
+          <div>
+            <span className="text-[11px] font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase">
+              CHEMORA LAB MODULES
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white mt-1 tracking-tight">
+              Interactive Workspace Curriculum
+            </h2>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-sm">
+            Curriculum-grounded modules spanning reagents, simulations, and laboratory certification.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 chemora-stagger">
-          {/* Know Card */}
-          <GlassCard
-            variant="cyan"
-            interactive={true}
+        {/* 4-Item Asymmetric Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Card 1: Style A (Primary Bento - 2 Columns) - Know Library */}
+          <div
             onClick={() => onSelectTab('know')}
-            className="p-6 flex flex-col justify-between group"
+            className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061830]/90 via-[#051428]/80 to-[#020b18]/90 border border-cyan-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-cyan-400/60 hover:shadow-[0_20px_60px_rgba(20,163,196,0.22)] transition-all duration-300 cursor-pointer"
           >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center p-2.5 text-cyan-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition">
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">KNOW</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-cyan-200 transition">
-                Know Library
-              </h3>
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
-                Explore 134 chemicals, laboratory tools, apparatus, plus a searchable Chemistry Glossary &amp; Dictionary.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition">
-              Open library <ChevronRight className="w-4 h-4" />
+            {/* Oversized Numbered Section Index (Item 4) */}
+            <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-cyan-400/10 select-none pointer-events-none group-hover:text-cyan-400/15 transition-colors">
+              01
             </span>
-          </GlassCard>
 
-          {/* Challenge Card */}
-          <GlassCard
-            variant="purple"
-            interactive={true}
-            onClick={() => onSelectTab('challenge')}
-            className="p-6 flex flex-col justify-between group"
-          >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center p-2.5 text-purple-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition">
-                <Trophy className="w-6 h-6" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-105 transition-transform">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-mono text-cyan-400 font-semibold tracking-wider uppercase">
+                    KNOWLEDGE REPOSITORY
+                  </div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-cyan-200 transition-colors">
+                    Apparatus &amp; Chemical Library
+                  </h3>
+                </div>
               </div>
-              <span className="text-[10px] font-mono font-bold text-purple-400 tracking-wider">CHALLENGE</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-purple-200 transition">
+
+              <p className="text-slate-300 text-sm leading-relaxed max-w-xl mb-6">
+                Master 134 precision instruments, glassware, and active chemical reagents. Complete with NFPA 704 hazard diamonds, formula breakdowns, and usage guidelines.
+              </p>
+
+              {/* Bento Content Preview Pills/Metrics */}
+              <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-300">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#091b33] border border-cyan-900/60">
+                  <span className="text-cyan-400 font-black text-sm">
+                    <AnimatedCounter end={134} suffix="+" />
+                  </span>
+                  <span className="text-slate-400">Items Cataloged</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#091b33] border border-cyan-900/60">
+                  <span className="text-emerald-400 font-black text-sm">NFPA 704</span>
+                  <span className="text-slate-400">Safety Standards</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#091b33] border border-cyan-900/60">
+                  <span className="text-purple-400 font-black text-sm">Glossary</span>
+                  <span className="text-slate-400">Chemistry Dictionary</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-center justify-between border-t border-cyan-900/40 pt-4">
+              <span className="text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                <span>Explore apparatus &amp; chemicals</span>
+                <ArrowRight className="w-4 h-4" />
+              </span>
+              <span className="text-[11px] font-mono text-slate-400">Interactive Database</span>
+            </div>
+          </div>
+
+          {/* Card 2: Style B (Compact Metric Bento - 1 Column) - Challenge Arena */}
+          <div
+            onClick={() => onSelectTab('challenge')}
+            className="col-span-1 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a1226]/90 via-[#070e1e]/85 to-[#040814]/90 border border-purple-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-purple-400/60 hover:shadow-[0_20px_60px_rgba(155,114,255,0.2)] transition-all duration-300 cursor-pointer"
+          >
+            {/* Oversized Numbered Section Index (Item 4) */}
+            <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-purple-400/10 select-none pointer-events-none group-hover:text-purple-400/15 transition-colors">
+              02
+            </span>
+
+            <div>
+              <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center text-purple-300 mb-4 group-hover:scale-105 transition-transform">
+                <Trophy className="w-5 h-5" />
+              </div>
+
+              <div className="text-[11px] font-mono text-purple-400 font-semibold tracking-wider uppercase mb-1">
+                COMPETITIVE ARENA
+              </div>
+              <h3 className="text-xl font-bold text-white group-hover:text-purple-200 transition-colors mb-3">
                 Chemistry Challenge
               </h3>
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
-                Test and elevate your knowledge across 100 progressive levels with 1,000 curriculum-aligned questions and instant explanations.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 group-hover:translate-x-1 transition">
-              Start challenge <ChevronRight className="w-4 h-4" />
-            </span>
-          </GlassCard>
 
-          {/* Experiments Card */}
-          <GlassCard
-            variant="emerald"
-            interactive={true}
-            onClick={() => onSelectTab('experiments')}
-            className="p-6 flex flex-col justify-between group"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center p-2.5 text-emerald-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition">
-                <Beaker className="w-6 h-6" />
+              {/* Animated Stat Counter */}
+              <div className="my-4">
+                <div className="text-4xl font-black font-mono text-white tracking-tight">
+                  <AnimatedCounter end={100} />
+                </div>
+                <div className="text-xs font-mono text-purple-300/80 mt-1">
+                  Progressive Curriculum Levels
+                </div>
               </div>
-              <span className="text-[10px] font-mono font-bold text-emerald-400 tracking-wider">EXPERIMENTS</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-emerald-200 transition">
-                Guided Practicals
-              </h3>
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
-                Follow 20 step-by-step practical laboratory protocols complete with video demonstrations, balanced equations, and observations.
+
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                Test your mastery with 1,000 curriculum-aligned questions, streak multipliers, and instant answer explanations.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition">
-              Open experiments <ChevronRight className="w-4 h-4" />
-            </span>
-          </GlassCard>
 
-          {/* Progress Card */}
-          <GlassCard
-            variant="amber"
-            interactive={true}
+            <div className="mt-8 border-t border-purple-900/40 pt-4 flex items-center justify-between">
+              <span className="text-xs font-bold text-purple-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                <span>Enter arena</span>
+                <ChevronRight className="w-4 h-4" />
+              </span>
+              <span className="text-[10px] font-mono text-purple-400">1,000+ Questions</span>
+            </div>
+          </div>
+
+          {/* Card 3: Style B (Compact Metric Bento - 1 Column) - Progress Dashboard */}
+          <div
             onClick={() => onSelectTab('progress')}
-            className="p-6 flex flex-col justify-between group"
+            className="col-span-1 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#121624]/90 via-[#0d121c]/85 to-[#060912]/90 border border-amber-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-amber-400/60 hover:shadow-[0_20px_60px_rgba(245,158,11,0.2)] transition-all duration-300 cursor-pointer"
           >
+            {/* Oversized Numbered Section Index (Item 4) */}
+            <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-amber-400/10 select-none pointer-events-none group-hover:text-amber-400/15 transition-colors">
+              03
+            </span>
+
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center p-2.5 text-amber-300 mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition">
-                <Compass className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-300 mb-4 group-hover:scale-105 transition-transform">
+                <Compass className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-mono font-bold text-amber-400 tracking-wider">PROGRESS</span>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 group-hover:text-amber-200 transition">
-                Learning Dashboard
+
+              <div className="text-[11px] font-mono text-amber-400 font-semibold tracking-wider uppercase mb-1">
+                RESEARCH METRICS
+              </div>
+              <h3 className="text-xl font-bold text-white group-hover:text-amber-200 transition-colors mb-3">
+                Discipline Mastery
               </h3>
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
-                Track completed levels, best accuracy scores, XP streaks, and topic strengths across organic, physical, and inorganic chemistry.
+
+              {/* Animated Stat Counter */}
+              <div className="my-4">
+                <div className="text-4xl font-black font-mono text-white tracking-tight">
+                  <AnimatedCounter end={4} suffix=" Disciplines" />
+                </div>
+                <div className="text-xs font-mono text-amber-300/80 mt-1">
+                  Organic · Inorganic · Physical · Analytical
+                </div>
+              </div>
+
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                Concentric pure-SVG progress rings, GitHub-style 52-week activity heatmap, and researcher milestone ranks.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 group-hover:translate-x-1 transition">
-              View your progress <ChevronRight className="w-4 h-4" />
+
+            <div className="mt-8 border-t border-amber-900/40 pt-4 flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                <span>View analytics</span>
+                <ChevronRight className="w-4 h-4" />
+              </span>
+              <span className="text-[10px] font-mono text-amber-400">Activity Heatmap</span>
+            </div>
+          </div>
+
+          {/* Card 4: Style A (Primary Bento - 2 Columns) - Guided Practicals */}
+          <div
+            onClick={() => onSelectTab('experiments')}
+            className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061c28]/90 via-[#041620]/80 to-[#020b12]/90 border border-emerald-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-emerald-400/60 hover:shadow-[0_20px_60px_rgba(70,226,176,0.22)] transition-all duration-300 cursor-pointer"
+          >
+            {/* Oversized Numbered Section Index (Item 4) */}
+            <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-emerald-400/10 select-none pointer-events-none group-hover:text-emerald-400/15 transition-colors">
+              04
             </span>
-          </GlassCard>
+
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center text-emerald-300 group-hover:scale-105 transition-transform">
+                  <Beaker className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-mono text-emerald-400 font-semibold tracking-wider uppercase">
+                    PRACTICAL PROTOCOLS
+                  </div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-emerald-200 transition-colors">
+                    Guided Laboratory Practicals
+                  </h3>
+                </div>
+              </div>
+
+              <p className="text-slate-300 text-sm leading-relaxed max-w-xl mb-6">
+                Step-by-step chemical procedures for 20 essential experiments. Includes high-fidelity demonstration videos with custom keyboard controls, persistent playback, and interactive step completion rings.
+              </p>
+
+              {/* Bento Content Preview Pills/Metrics */}
+              <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-300">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#09221b] border border-emerald-900/60">
+                  <span className="text-emerald-400 font-black text-sm">
+                    <AnimatedCounter end={20} />
+                  </span>
+                  <span className="text-slate-400">Verified Practicals</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#09221b] border border-emerald-900/60">
+                  <span className="text-cyan-400 font-black text-sm">HD Video</span>
+                  <span className="text-slate-400">Step Demonstrations</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#09221b] border border-emerald-900/60">
+                  <span className="text-amber-400 font-black text-sm">Safety</span>
+                  <span className="text-slate-400">Hazchem Protocols</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-center justify-between border-t border-emerald-900/40 pt-4">
+              <span className="text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                <span>Start lab investigation</span>
+                <ArrowRight className="w-4 h-4" />
+              </span>
+              <span className="text-[11px] font-mono text-slate-400">Interactive Checklist</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* FAQ Section with GlassPanel */}
-      <GlassPanel glow="cyan" className="p-6 sm:p-10">
+      {/* FAQ Accordion Section */}
+      <section className="rounded-3xl bg-[#051124]/90 border border-cyan-900/50 p-6 sm:p-10 shadow-xl">
         <div className="mb-6">
-          <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-[0.18em] uppercase">
-            HELP &amp; TRUST
+          <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-[0.2em] uppercase">
+            HELP &amp; INFORMATION
           </span>
           <h2 className="text-2xl font-extrabold text-white mt-1">Frequently asked questions</h2>
         </div>
@@ -290,11 +515,11 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           {faqs.map((faq, idx) => (
             <div
               key={idx}
-              className="glass-card bg-[#071324]/80 border border-cyan-900/40 rounded-xl overflow-hidden transition hover:border-cyan-500/40"
+              className="bg-[#07162e]/80 border border-cyan-900/40 rounded-2xl overflow-hidden transition hover:border-cyan-500/40"
             >
               <button
                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                className="w-full text-left px-5 py-3.5 flex items-center justify-between text-sm font-semibold text-slate-100 hover:text-cyan-300 transition"
+                className="w-full text-left px-5 py-4 flex items-center justify-between text-sm font-semibold text-slate-100 hover:text-cyan-300 transition"
               >
                 <span>{faq.q}</span>
                 <ChevronRight
@@ -311,13 +536,9 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             </div>
           ))}
         </div>
-      </GlassPanel>
+      </section>
 
-      {/* Database-Backed Learner Reviews & Feedback System */}
-      <ReviewsSection />
-
-
-      {/* Footer with Compliance, Legal Pages & Business Details */}
+      {/* Footer */}
       <footer className="pt-8 pb-4 border-t border-cyan-950/60 text-xs text-slate-400 space-y-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-300">
@@ -336,8 +557,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-cyan-950/40 text-[11px] text-slate-400 gap-2 text-center sm:text-left">
-          <p>&copy; {new Date().getFullYear()} CHEMORA Education. [LEGAL COMPANY NAME / OPERATOR NAME] &bull; [REGISTERED BUSINESS ADDRESS]</p>
-          <p className="font-mono text-[10px] text-slate-400">Educational chemistry platform &bull; No marketing trackers &bull; 100% Free</p>
+          <p>&copy; {new Date().getFullYear()} CHEMORA Education &bull; Open Chemistry Simulation System</p>
+          <p className="font-mono text-[10px] text-slate-400">Interactive chemistry learning platform &bull; No marketing trackers &bull; 100% Free</p>
         </div>
       </footer>
     </div>

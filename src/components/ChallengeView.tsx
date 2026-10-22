@@ -9,7 +9,7 @@ import {
 import { recordStreakActivity } from '../data/streakManager';
 import { Trophy, CheckCircle2, XCircle, ArrowLeft, Flame, Clock, Award, ChevronRight, RotateCcw, Sparkles } from 'lucide-react';
 import { fireConfetti } from '../utils/confetti';
-import { ReviewsSection } from './ReviewsSection';
+import { playBubblePop, playSuccessChime, playWrongTap, playSoftClick } from '../utils/soundEffects';
 
 interface ChallengeViewProps {
   onAskAI?: (topic: string) => void;
@@ -33,6 +33,10 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
   const [timer, setTimer] = useState(30);
   const [isLevelFinished, setIsLevelFinished] = useState(false);
   const [unlockedReward, setUnlockedReward] = useState<{ title: string; desc: string; xp: number } | null>(null);
+  
+  // Chemistry Feedback States (Item 6)
+  const [isShaking, setIsShaking] = useState(false);
+  const [showBubbleBurst, setShowBubbleBurst] = useState(false);
 
   const timerRef = useRef<number | null>(null);
 
@@ -126,18 +130,26 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
       setLevelCorrect((c) => c + 1);
       setLevelXpGained((x) => x + bonusXp);
       setStreak((s) => s + 1);
+      setShowBubbleBurst(true);
+      playBubblePop();
+      playSuccessChime();
+      setTimeout(() => setShowBubbleBurst(false), 850);
 
       // Light confetti on streak milestones
-      if ((streak + 1) % 5 === 0) {
-        try { fireConfetti({ particleCount: 35, spread: 60, origin: { y: 0.7 } }); } catch {}
+      if ((streak + 1) % 3 === 0) {
+        try { fireConfetti({ particleCount: 40, spread: 65, origin: { y: 0.65 } }); } catch {}
       }
     } else {
       setLevelWrong((w) => w + 1);
       setStreak(0);
+      setIsShaking(true);
+      playWrongTap();
+      setTimeout(() => setIsShaking(false), 500);
     }
   };
 
   const handleNextQuestion = () => {
+    playSoftClick();
     if (currentIdx + 1 < questions.length) {
       setCurrentIdx((prev) => prev + 1);
       setSelectedAnswer(null);
@@ -155,7 +167,17 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
     const totalQ = questions.length;
     const passed = finalCorrect >= Math.ceil(totalQ * 0.6); // 60% passing requirement
 
-    try { fireConfetti({ particleCount: passed ? 80 : 30, spread: 80, origin: { y: 0.6 } }); } catch {}
+    try {
+      fireConfetti({
+        particleCount: passed ? 120 : 45,
+        spread: passed ? 90 : 60,
+        origin: { y: 0.55 },
+        colors: ['#14a3c4', '#38bdf8', '#34d399', '#f59e0b', '#04212b']
+      });
+    } catch {}
+    if (passed) {
+      playSuccessChime();
+    }
     recordStreakActivity();
 
     updateState((prev) => {
@@ -258,12 +280,37 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
           </div>
         </div>
 
-        {/* Progress Track */}
-        <div className="w-full bg-[#101726] h-2 rounded-full overflow-hidden border border-cyan-950 mb-6">
-          <div
-            className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-300"
-            style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
-          />
+        {/* Liquid-Fill Meniscus Wave Progress Track (Item 6) */}
+        <div className="relative mb-6">
+          <div className="flex items-center justify-between text-[11px] font-mono text-cyan-400/80 mb-1.5 px-0.5">
+            <span className="flex items-center gap-1.5 font-bold tracking-wider uppercase text-[10px]">
+              <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              Reaction Progress
+            </span>
+            <span className="font-bold text-cyan-300">
+              {Math.round(((currentIdx + 1) / questions.length) * 100)}%
+            </span>
+          </div>
+          <div className="relative w-full h-3.5 rounded-full bg-[#040e1d] border border-cyan-800/60 overflow-hidden shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
+            {/* Lab graduated tick marks */}
+            <div className="absolute inset-0 flex justify-between px-3 pointer-events-none z-10 opacity-30">
+              <div className="w-px h-full bg-white/40" />
+              <div className="w-px h-full bg-white/40" />
+              <div className="w-px h-full bg-white/40" />
+              <div className="w-px h-full bg-white/40" />
+            </div>
+
+            {/* Liquid fill */}
+            <div
+              className="relative h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-teal-300 transition-all duration-500 rounded-full overflow-hidden shadow-[0_0_12px_rgba(20,163,196,0.6)]"
+              style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
+            >
+              {/* Liquid meniscus wave highlight */}
+              <div className="absolute inset-0 liquid-wave-layer opacity-40 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/40 to-transparent" />
+              {/* Surface meniscus shine */}
+              <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-white/70" />
+            </div>
+          </div>
         </div>
 
         {/* Metadata badges */}
@@ -275,9 +322,9 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
             <span className="px-2.5 py-1 rounded-md bg-[#131c2d] border border-cyan-950 text-slate-400 font-medium">
               {currentQ.difficulty}
             </span>
-            {streak > 1 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold animate-pulse">
-                <Flame className="w-3.5 h-3.5 fill-amber-400" />
+            {streak > 0 && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold anim-flame-pulse shadow-sm shadow-amber-500/30">
+                <Flame className="w-4 h-4 fill-amber-400 text-amber-300" />
                 {streak} streak
               </span>
             )}
@@ -288,8 +335,40 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
           </div>
         </div>
 
-        {/* Question Card */}
-        <div className="chemora-card p-5 sm:p-8 shadow-2xl mb-6">
+        {/* Question Card with Chemistry Bubble Burst & Shake */}
+        <div className={`chemora-card p-5 sm:p-8 shadow-2xl mb-6 relative overflow-hidden transition-all duration-300 ${
+          isShaking ? 'anim-shake ring-2 ring-rose-500/60 shadow-rose-950/50' : ''
+        }`}>
+          {/* Chemical Bubble Burst particles on correct answer */}
+          {showBubbleBurst && (
+            <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
+              <div className="absolute w-28 h-28 rounded-full border-2 border-cyan-400/80 animate-ping opacity-75" />
+              <div className="absolute w-44 h-44 rounded-full border border-teal-300/60 animate-ping opacity-50 animation-delay-150" />
+              {[
+                { x: 30, y: -45, s: 12 },
+                { x: -45, y: -35, s: 16 },
+                { x: 50, y: 25, s: 10 },
+                { x: -35, y: 40, s: 14 },
+                { x: 0, y: -60, s: 18 },
+                { x: -55, y: -10, s: 12 },
+                { x: 45, y: -20, s: 14 },
+                { x: -20, y: -50, s: 10 }
+              ].map((b, i) => (
+                <span
+                  key={i}
+                  className="absolute rounded-full bg-gradient-to-tr from-cyan-400 to-teal-200 anim-bubble-pop shadow-[0_0_10px_#14a3c4]"
+                  style={{
+                    width: `${b.s}px`,
+                    height: `${b.s}px`,
+                    ['--tx' as string]: `${b.x * 1.5}px`,
+                    ['--ty' as string]: `${b.y * 1.5}px`,
+                    animationDelay: `${i * 35}ms`
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-4">
             <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 font-bold">
               {String(currentIdx + 1).padStart(2, '0')}
@@ -323,18 +402,19 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
               return (
                 <button
                   key={idx}
+                  type="button"
                   onClick={() => !hasChecked && setSelectedAnswer(idx)}
                   disabled={hasChecked}
-                  className={`w-full min-h-[48px] text-left p-3.5 sm:p-4 rounded-xl border font-medium text-sm flex items-center justify-between transition-all active:scale-[0.99] ${btnClass}`}
+                  className={`w-full min-h-[54px] text-left px-4 py-3.5 rounded-2xl border font-medium text-sm sm:text-base flex items-center justify-between transition-all active:scale-[0.98] select-none ${btnClass}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-md bg-[#0a0f18] text-xs font-mono flex items-center justify-center font-bold text-cyan-400">
+                  <div className="flex items-center gap-3.5">
+                    <span className="w-7 h-7 rounded-lg bg-[#0a0f18] text-xs font-mono flex items-center justify-center font-bold text-cyan-400 border border-white/5 flex-shrink-0">
                       {String.fromCharCode(65 + idx)}
                     </span>
-                    <span>{option}</span>
+                    <span className="leading-snug">{option}</span>
                   </div>
                   {hasChecked && (
-                    <div>
+                    <div className="flex-shrink-0 ml-2">
                       {isCorrectAnswer && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                       {isSelected && !isCorrectAnswer && <XCircle className="w-5 h-5 text-rose-400" />}
                     </div>
@@ -368,31 +448,65 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-8 pt-4 border-t border-cyan-950">
+          {/* Actions (Desktop/Tablet Card Footer) */}
+          <div className="hidden sm:flex items-center justify-between mt-8 pt-4 border-t border-cyan-950">
             <button
+              type="button"
               onClick={handleSkipQuestion}
-              className="px-4 py-2.5 rounded-xl bg-[#121b2d] hover:bg-[#18233a] border border-cyan-950 text-xs font-bold text-slate-400 transition"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#121b2d] hover:bg-[#18233a] border border-cyan-950 text-xs font-bold text-slate-400 active:scale-[0.97] transition"
             >
               {hasChecked ? 'Next →' : 'Skip'}
             </button>
             {!hasChecked ? (
               <button
+                type="button"
                 onClick={handleCheckAnswer}
                 disabled={selectedAnswer === null}
-                className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:hover:bg-cyan-500 text-slate-950 font-bold text-xs tracking-wider uppercase transition shadow-md shadow-cyan-500/30"
+                className="min-h-[44px] px-7 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:hover:bg-cyan-500 text-slate-950 font-extrabold text-xs tracking-wider uppercase active:scale-[0.97] transition shadow-md shadow-cyan-500/30"
               >
                 Check answer →
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleNextQuestion}
-                className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs tracking-wider uppercase transition shadow-md shadow-cyan-500/30"
+                className="min-h-[44px] px-7 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs tracking-wider uppercase active:scale-[0.97] transition shadow-md shadow-cyan-500/30"
               >
                 {currentIdx + 1 === questions.length ? 'View Results →' : 'Next Question →'}
               </button>
             )}
           </div>
+        </div>
+
+        {/* Mobile Sticky Action Bar in Thumb Zone (Phones < 640px) */}
+        <div className="sm:hidden fixed bottom-[calc(76px+env(safe-area-inset-bottom,12px))] left-3 right-3 z-30 bg-[#061022]/95 border border-cyan-500/50 rounded-2xl p-2 shadow-[0_-8px_32px_rgba(0,0,0,0.85)] backdrop-blur-xl flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSkipQuestion}
+            className="min-h-[46px] min-w-[72px] px-3 rounded-xl bg-white/10 text-slate-300 font-bold text-xs uppercase tracking-wider active:scale-[0.96] transition flex items-center justify-center"
+          >
+            {hasChecked ? 'Next' : 'Skip'}
+          </button>
+          {!hasChecked ? (
+            <button
+              type="button"
+              onClick={handleCheckAnswer}
+              disabled={selectedAnswer === null}
+              className="flex-1 min-h-[46px] rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 disabled:opacity-35 text-slate-950 font-black text-xs uppercase tracking-wider active:scale-[0.96] transition shadow-md shadow-cyan-500/30 flex items-center justify-center gap-1.5"
+            >
+              <span>Check Answer</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleNextQuestion}
+              className="flex-1 min-h-[46px] rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider active:scale-[0.96] transition shadow-md shadow-cyan-500/30 flex items-center justify-center gap-1.5"
+            >
+              <span>{currentIdx + 1 === questions.length ? 'View Results' : 'Next Question'}</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -622,9 +736,6 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
           })}
         </div>
       </div>
-
-      {/* Database-Backed Learner Reviews & Feedback System */}
-      <ReviewsSection defaultCategory="100 Progressive Challenges" className="mt-14" />
     </div>
   );
 };

@@ -52,9 +52,10 @@ import {
   CheckCheck,
   Cpu,
 } from 'lucide-react';
-import { ReviewsSection } from './ReviewsSection';
 import { AuthCard } from './AuthCard';
 import { GradientWaves } from './GradientWaves';
+import { ErrorBoundary } from './ErrorBoundary';
+import { withTimeout } from '../utils/fetchWithRetry';
 
 interface AccountViewProps {
   onThemeChanged?: () => void;
@@ -84,7 +85,12 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   const [accountProfile, setAccountProfile] = useState<AccountProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [authCheckTimedOut, setAuthCheckTimedOut] = useState(false);
   const [isBackendOnline, setIsBackendOnline] = useState<boolean | null>(null);
+
+  // Keep profile ref to prevent stale closures and infinite effect loops
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
 
   // Supabase Database System State
   const [dbDiagnostics, setDbDiagnostics] = useState<SupabaseDatabaseDiagnostics | null>(null);
@@ -150,21 +156,37 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   })();
 
   // Load session from backend API (Zero-localStorage: profile comes exclusively from server)
-  // Load session with Supabase client prioritization
+  // Non-blocking background diagnostics + robust getSession timeout
   const refreshAccount = useCallback(async () => {
     setIsLoadingAuth(true);
-    try {
-      const [status, dbInfo] = await Promise.all([
-        checkBackendStatus().catch(() => ({ status: 'unknown', databaseConnected: false })),
-        fetchDatabaseDiagnostics().catch(() => null),
-      ]);
-      setIsBackendOnline(status.status === 'online');
-      if (dbInfo) setDbDiagnostics(dbInfo);
+    setAuthCheckTimedOut(false);
 
-      // 1. Check if Supabase Auth client has an active session in browser
-      const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    // Hard safety timeout: after 4 seconds, force loading state to false so login card is accessible
+    const safetyTimer = setTimeout(() => {
+      console.warn('[AccountView] Auth check safety timeout reached (4000ms). Forcing UI availability.');
+      setIsLoadingAuth(false);
+      setAuthCheckTimedOut(true);
+    }, 4000);
+
+    // Background diagnostics: do NOT block auth check or login UI
+    checkBackendStatus()
+      .then((status) => setIsBackendOnline(status.status === 'online'))
+      .catch(() => setIsBackendOnline(false));
+
+    fetchDatabaseDiagnostics()
+      .then((dbInfo) => { if (dbInfo) setDbDiagnostics(dbInfo); })
+      .catch(() => {});
+
+    try {
+      // 1. Check if Supabase Auth client has an active session in browser (with hard 3s timeout)
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        3000,
+        { data: { session: null }, error: null }
+      );
       if (session?.user) {
-        await syncSupabaseSession(session.user, session.access_token);
+        clearTimeout(safetyTimer);
+        await syncSupabaseSessionRef.current(session.user, session.access_token);
         return;
       }
 
@@ -174,8 +196,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         setIsAuthenticated(true);
         setAccountProfile(data.profile);
 
+        const currentProfile = profileRef.current;
         const updatedProfile: UserProfile = {
-          ...profile,
+          ...currentProfile,
           id: data.profile.id,
           name: data.profile.full_name || 'Researcher',
           email: data.profile.email,
@@ -185,35 +208,38 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         };
         setProfile(updatedProfile);
 
-        // Fetch synced laboratory progress from Supabase database
-        try {
-          const cloudProg = await fetchResearcherProgressFromDatabase();
-          if (cloudProg?.progress) {
-            setSyncedProgress(cloudProg.progress);
-            setLastDbSyncTime(
-              cloudProg.progress.updatedAt
-                ? new Date(cloudProg.progress.updatedAt).toLocaleTimeString()
-                : new Date().toLocaleTimeString()
-            );
-          }
-        } catch (progErr) {
-          console.warn('Progress lookup from database note:', progErr);
-        }
+        // Fetch synced laboratory progress in background without blocking
+        fetchResearcherProgressFromDatabase()
+          .then((cloudProg) => {
+            if (cloudProg?.progress) {
+              setSyncedProgress(cloudProg.progress);
+              setLastDbSyncTime(
+                cloudProg.progress.updatedAt
+                  ? new Date(cloudProg.progress.updatedAt).toLocaleTimeString()
+                  : new Date().toLocaleTimeString()
+              );
+            }
+          })
+          .catch((progErr) => {
+            console.warn('Progress lookup from database note:', progErr);
+          });
       } else {
         setIsAuthenticated(false);
         setAccountProfile(null);
-        if (profile.isLoggedIn) {
-          const guest: UserProfile = { ...GUEST_PROFILE, preferences: profile.preferences };
+        if (profileRef.current.isLoggedIn) {
+          const guest: UserProfile = { ...GUEST_PROFILE, preferences: profileRef.current.preferences };
           setProfile(guest);
         }
       }
     } catch (err) {
       console.warn('Backend account verification failed:', err);
       setIsAuthenticated(false);
+      setAuthCheckTimedOut(true);
     } finally {
+      clearTimeout(safetyTimer);
       setIsLoadingAuth(false);
     }
-  }, [profile]);
+  }, []);
 
   // Synchronize a Supabase user session directly with UI state matching table schema
   const syncSupabaseSession = useCallback(async (sessionUser: SupabaseUser, token?: string) => {
@@ -511,18 +537,25 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
   // Supabase Auth state listener: runs once on mount and cleanly handles session transitions
   useEffect(() => {
-    // Initial backend status checks
-    Promise.all([
-      checkBackendStatus().catch(() => ({ status: 'unknown', databaseConnected: false })),
-      fetchDatabaseDiagnostics().catch(() => null),
-    ]).then(([status, dbInfo]) => {
-      setIsBackendOnline(status.status === 'online');
-      if (dbInfo) setDbDiagnostics(dbInfo);
-    });
+    // Initial hard safety timeout: if nothing finishes within 4 seconds, force UI available
+    const mountSafetyTimer = setTimeout(() => {
+      console.warn('[AccountView] Mount auth check safety timeout reached (4000ms). Forcing UI availability.');
+      setIsLoadingAuth(false);
+      setAuthCheckTimedOut(true);
+    }, 4000);
+
+    // Initial background diagnostics (non-blocking)
+    checkBackendStatus()
+      .then((status) => setIsBackendOnline(status.status === 'online'))
+      .catch(() => setIsBackendOnline(false));
+
+    fetchDatabaseDiagnostics()
+      .then((dbInfo) => { if (dbInfo) setDbDiagnostics(dbInfo); })
+      .catch(() => {});
 
     // Subscribe to Supabase Auth state transitions
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
           // If session is already actively synchronized with this user and token, do not re-run or spam logs
           if (
@@ -530,14 +563,25 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             moduleActiveSession.token === session.access_token
           ) {
             setIsLoadingAuth(false);
+            clearTimeout(mountSafetyTimer);
             return;
           }
           if (event !== 'INITIAL_SESSION') {
             console.log(`[Supabase Auth] State changed: ${event}`, session.user.email);
           }
           moduleActiveSession = { userId: session.user.id, token: session.access_token };
-          await syncSupabaseSessionRef.current(session.user, session.access_token);
+
+          // Lightweight state updates immediately
+          setIsAuthenticated(true);
           setIsLoadingAuth(false);
+          clearTimeout(mountSafetyTimer);
+
+          // CRITICAL: Defer the heavy async database sync outside callback to avoid supabase-js v2 deadlock
+          setTimeout(() => {
+            syncSupabaseSessionRef.current(session.user, session.access_token).catch((err) => {
+              console.warn('[AccountView] Error in deferred syncSupabaseSession:', err);
+            });
+          }, 0);
         } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
           console.log(`[Supabase Auth] State changed: ${event}`);
           moduleActiveSession = {};
@@ -547,16 +591,23 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           setSyncedProgress(null);
           setProfile((prev) => ({ ...GUEST_PROFILE, preferences: prev.preferences }));
           setIsLoadingAuth(false);
+          clearTimeout(mountSafetyTimer);
         } else {
+          // INITIAL_SESSION without active session
           setIsLoadingAuth(false);
+          clearTimeout(mountSafetyTimer);
         }
       }
     );
+
+    // Initial active session verification (non-blocking mount trigger)
+    refreshAccountRef.current();
 
     const handleStreakChange = () => setStreakState(getDailyStreak());
     window.addEventListener('chemora:streak_update', handleStreakChange);
 
     return () => {
+      clearTimeout(mountSafetyTimer);
       subscription.unsubscribe();
       window.removeEventListener('chemora:streak_update', handleStreakChange);
     };
@@ -570,8 +621,12 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
     setIsSyncingDb(true);
     try {
-      // 1. Update in public.profiles table directly if session is active
-      const { data: { session } } = await supabase.auth.getSession();
+      // 1. Update in public.profiles table directly if session is active (with hard timeout)
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        3000,
+        { data: { session: null }, error: null }
+      );
       if (session?.user) {
         const payload = {
           levels_cleared: challengeState.levels.length,
@@ -802,7 +857,11 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
       // 1. Direct update to public.profiles table in Supabase
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          3000,
+          { data: { session: null }, error: null }
+        );
         if (session?.user) {
           const updatePayload = {
             full_name: nameInput.trim(),
@@ -885,7 +944,11 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     try {
       // 1. Direct Supabase auth update
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          3000,
+          { data: { session: null }, error: null }
+        );
         if (session) {
           await supabase.auth.updateUser({ password: newPassword });
         }
@@ -997,10 +1060,21 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         </div>
       )}
 
-      {/* Animated Reset Progress Modal Popup */}
+      {/* Animated Reset Progress Modal Popup / Bottom Sheet */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-[#0a1220] border-2 border-rose-500/60 rounded-3xl p-6 sm:p-7 shadow-[0_20px_60px_rgba(244,63,94,0.35)] anim-popup">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowResetConfirm(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full bg-[#0a1220] border-t sm:border-2 border-rose-500/60 rounded-t-3xl sm:rounded-3xl p-6 sm:p-7 shadow-[0_20px_60px_rgba(244,63,94,0.35)] anim-popup pb-[env(safe-area-inset-bottom,20px)] sm:pb-7"
+          >
+            {/* Mobile Drag/Indicator Handle */}
+            <div className="w-12 h-1.5 rounded-full bg-slate-600/80 mx-auto mb-4 sm:hidden" />
+
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 mb-4 mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
@@ -1014,14 +1088,14 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 transition hover:scale-102 active:scale-98"
+                className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 transition active:scale-[0.96]"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleResetData}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-xs font-black text-white shadow-lg shadow-rose-600/30 transition hover:scale-102 active:scale-98"
+                className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-xs font-black text-white shadow-lg shadow-rose-600/30 transition active:scale-[0.96]"
               >
                 Confirm Reset
               </button>
@@ -1572,7 +1646,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                   <div>
                     <h5 className="text-xs font-bold text-rose-100">Permanently delete your account?</h5>
                     <p className="text-[11px] text-rose-300/90 mt-0.5">
-                      Please enter your password to confirm. This will permanently erase your profile, synced progress, and reviews.
+                      Please enter your password to confirm. This will permanently erase your profile and synced progress.
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -1631,57 +1705,80 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         </div>
       )}
 
+      {/* Subtle fallback notice if session verification timed out or couldn't reach auth service */}
+      {!isLoadingAuth && !isAuthenticated && authCheckTimedOut && (
+        <div className="max-w-md mx-auto mb-6 p-3.5 rounded-2xl bg-[#0b1320]/90 border border-amber-500/40 text-slate-300 text-xs flex items-center justify-between gap-3 shadow-lg anim-slide-down">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Couldn't verify your session, you can still sign in</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthCheckTimedOut(false);
+              refreshAccount();
+            }}
+            className="px-3 py-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shrink-0"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
       {/* Unauthenticated View: Sliding AuthCard Portal */}
       {!isLoadingAuth && !isAuthenticated && (
         <div className="space-y-10 anim-slide-up">
-          <AuthCard
-            isRegister={authMode === 'signup'}
-            onToggleMode={(isReg) => {
-              setAuthMode(isReg ? 'signup' : 'signin');
-              setAuthError(null);
-              setAuthSuccess(null);
-            }}
-            email={authEmail}
-            onEmailChange={setAuthEmail}
-            password={authPassword}
-            onPasswordChange={setAuthPassword}
-            fullName={authFullName}
-            onFullNameChange={setAuthFullName}
-            agreeTerms={agreeTerms}
-            onAgreeTermsChange={setAgreeTerms}
-            confirmAge={confirmAge}
-            onConfirmAgeChange={setConfirmAge}
-            rememberMe={true}
-            isSubmitting={isSubmittingAuth}
-            error={authError}
-            onClearError={() => setAuthError(null)}
-            success={authSuccess}
-            onClearSuccess={() => setAuthSuccess(null)}
-            onSignIn={handleSignIn}
-            onSignUp={handleSignUp}
-            onGoogleSignIn={handleGoogleSignIn}
-            onForgotPassword={async (recoveryEmail) => {
-              if (!recoveryEmail.trim()) {
-                setAuthError('Please enter an email address.');
-                return;
-              }
-              setIsSubmittingAuth(true);
-              setAuthError(null);
-              setAuthSuccess(null);
-              try {
-                await supabase.auth.resetPasswordForEmail(recoveryEmail.trim()).catch(() => {});
-                const msg = await requestPasswordReset(recoveryEmail.trim());
-                setAuthSuccess(msg);
-                triggerToast(msg, 'info');
-              } catch (err: any) {
-                const msg = cleanErrorMessage(err.message || 'Failed to request password reset.');
-                setAuthError(msg);
-                triggerToast(msg, 'error');
-              } finally {
-                setIsSubmittingAuth(false);
-              }
-            }}
-          />
+          <ErrorBoundary tabName="Account Authentication Card">
+            <AuthCard
+              isRegister={authMode === 'signup'}
+              onToggleMode={(isReg) => {
+                setAuthMode(isReg ? 'signup' : 'signin');
+                setAuthError(null);
+                setAuthSuccess(null);
+              }}
+              email={authEmail}
+              onEmailChange={setAuthEmail}
+              password={authPassword}
+              onPasswordChange={setAuthPassword}
+              fullName={authFullName}
+              onFullNameChange={setAuthFullName}
+              agreeTerms={agreeTerms}
+              onAgreeTermsChange={setAgreeTerms}
+              confirmAge={confirmAge}
+              onConfirmAgeChange={setConfirmAge}
+              rememberMe={true}
+              isSubmitting={isSubmittingAuth}
+              error={authError}
+              onClearError={() => setAuthError(null)}
+              success={authSuccess}
+              onClearSuccess={() => setAuthSuccess(null)}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onGoogleSignIn={handleGoogleSignIn}
+              onForgotPassword={async (recoveryEmail) => {
+                if (!recoveryEmail.trim()) {
+                  setAuthError('Please enter an email address.');
+                  return;
+                }
+                setIsSubmittingAuth(true);
+                setAuthError(null);
+                setAuthSuccess(null);
+                try {
+                  await supabase.auth.resetPasswordForEmail(recoveryEmail.trim()).catch(() => {});
+                  const msg = await requestPasswordReset(recoveryEmail.trim());
+                  setAuthSuccess(msg);
+                  triggerToast(msg, 'info');
+                } catch (err: any) {
+                  const msg = cleanErrorMessage(err.message || 'Failed to request password reset.');
+                  setAuthError(msg);
+                  triggerToast(msg, 'error');
+                } finally {
+                  setIsSubmittingAuth(false);
+                }
+              }}
+            />
+          </ErrorBoundary>
 
           {/* Guest Exploration Option */}
           <div className="max-w-md mx-auto text-center">
@@ -1726,9 +1823,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           </div>
         </div>
       )}
-
-      {/* Database-Backed Learner Reviews & Feedback System */}
-      <ReviewsSection className="mt-12" />
     </div>
   );
 };

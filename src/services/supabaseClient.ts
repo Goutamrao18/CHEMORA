@@ -33,7 +33,14 @@ export const SUPABASE_ANON_KEY: string = resolveValidKey(import.meta.env?.VITE_S
 function createMockSupabaseClient(): SupabaseClient {
   const dummyAuth = {
     getSession: async () => ({ data: { session: null }, error: null }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    onAuthStateChange: (callback: any) => {
+      setTimeout(() => {
+        try {
+          callback('INITIAL_SESSION', null);
+        } catch {}
+      }, 0);
+      return { data: { subscription: { unsubscribe: () => {} } } };
+    },
     signInWithPassword: async () => ({
       data: { user: null, session: null },
       error: new Error('Supabase client unavailable'),

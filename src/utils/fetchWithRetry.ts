@@ -136,3 +136,32 @@ export async function fetchJsonWithRetry<T = any>(url: string, options: FetchOpt
 
   return data as T;
 }
+
+/**
+ * Wraps a promise with a hard timeout, returning a fallback value if it rejects or exceeds ms.
+ */
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms = 3000,
+  fallback: T
+): Promise<T> {
+  let timerId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timerId = setTimeout(() => {
+      resolve(fallback);
+    }, ms);
+  });
+
+  try {
+    const result = await Promise.race([
+      promise.catch((err) => {
+        console.warn(`[withTimeout] Promise rejected within ${ms}ms:`, err);
+        return fallback;
+      }),
+      timeoutPromise,
+    ]);
+    return result;
+  } finally {
+    if (timerId) clearTimeout(timerId);
+  }
+}

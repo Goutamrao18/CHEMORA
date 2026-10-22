@@ -37,12 +37,12 @@ function getStreakLevel(streak: number): string {
 }
 
 const DEFAULT_STREAK: DailyStreakState = {
-  currentStreak: 3, // Starter momentum
-  bestStreak: 5,
-  lastActiveDate: getYesterdayString(),
-  activeDates: [getYesterdayString()],
+  currentStreak: 0,
+  bestStreak: 0,
+  lastActiveDate: '',
+  activeDates: [],
   freezesRemaining: 2,
-  streakLevel: 'Steady Flame',
+  streakLevel: 'Unlit Flame',
   hasCompletedToday: false,
 };
 

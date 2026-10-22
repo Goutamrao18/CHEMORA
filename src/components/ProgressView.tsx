@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChallengeState, getInitialChallengeState } from '../data/challengeData';
 import { EXPERIMENTS } from '../data/experimentsData';
 import {
@@ -21,13 +21,13 @@ import {
   CheckCircle2,
   Sparkles,
   Calendar,
-  Zap
+  Zap,
+  ChevronRight
 } from 'lucide-react';
 import { getStoredProfile } from '../data/userProfile';
 import { DropperDrip } from './Loaders/DropperDrip';
 import { fireConfetti } from '../utils/confetti';
 import { GlassCard, GlassPanel, GlassBadge, GlassButton } from './ui/Glass';
-import { ReviewsSection } from './ReviewsSection';
 
 interface ProgressViewProps {
   onGoToChallenge: () => void;
@@ -47,6 +47,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
   });
 
   const [claimedTodayNotice, setClaimedTodayNotice] = useState(false);
+  const [hoveredDate, setHoveredDate] = useState<{ date: string; count: number } | null>(null);
 
   useEffect(() => {
     const handleProgressUpdate = () => {
@@ -90,14 +91,41 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
     .sort((a, b) => b.earnedAt - a.earnedAt)
     .slice(0, 10);
 
-  // Topics breakdown
-  const topicBreakdown = [
-    { name: 'Chemistry Fundamentals', levels: Math.min(doneCount, 20), accuracy: doneCount > 0 ? Math.max(70, accuracy) : 0 },
-    { name: 'Acids, Bases & Salts', levels: Math.max(0, Math.min(doneCount - 15, 20)), accuracy: doneCount > 15 ? Math.max(65, accuracy - 4) : 0 },
-    { name: 'Redox & Electrochemistry', levels: Math.max(0, Math.min(doneCount - 35, 20)), accuracy: doneCount > 35 ? Math.max(60, accuracy - 8) : 0 },
-    { name: 'Reactivity & Metals', levels: Math.max(0, Math.min(doneCount - 55, 20)), accuracy: doneCount > 55 ? Math.max(60, accuracy - 5) : 0 },
-    { name: 'Qualitative & Quantitative Analysis', levels: Math.max(0, Math.min(doneCount - 75, 25)), accuracy: doneCount > 75 ? Math.max(55, accuracy - 10) : 0 },
-  ];
+  // Topics breakdown - authentic per-category completion and accuracy
+  const topicBreakdown = useMemo(() => {
+    const categories = [
+      { name: 'Chemistry Fundamentals', minLvl: 1, maxLvl: 20 },
+      { name: 'Acids, Bases & Salts', minLvl: 21, maxLvl: 40 },
+      { name: 'Redox & Electrochemistry', minLvl: 41, maxLvl: 60 },
+      { name: 'Reactivity & Metals', minLvl: 61, maxLvl: 80 },
+      { name: 'Qualitative & Quantitative Analysis', minLvl: 81, maxLvl: 100 },
+    ];
+
+    return categories.map((cat) => {
+      const catLevels = challengeState.levels.filter((lvl) => lvl >= cat.minLvl && lvl <= cat.maxLvl);
+      let catCorrect = 0;
+      let catAttempts = 0;
+
+      catLevels.forEach((lvl) => {
+        const res = challengeState.levelResults?.[lvl];
+        if (res) {
+          catCorrect += (res.correct || 0);
+          catAttempts += ((res.correct || 0) + (res.wrong || 0));
+        }
+      });
+
+      const catAccuracy = catAttempts > 0
+        ? Math.round((catCorrect / catAttempts) * 100)
+        : (catLevels.length > 0 && accuracy > 0 ? accuracy : 0);
+
+      return {
+        name: cat.name,
+        levels: catLevels.length,
+        total: cat.maxLvl - cat.minLvl + 1,
+        accuracy: catAccuracy
+      };
+    });
+  }, [challengeState.levels, challengeState.levelResults, accuracy]);
 
   // Streak Milestones
   const streakMilestones = [
@@ -107,10 +135,117 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
     { days: 30, label: 'Elemental Legend', bonus: '+1,000 XP', achieved: streakState.currentStreak >= 30 },
   ];
 
-  // Mobile calculations
+  // 4 Core Disciplines for Pure-SVG Rings (Item 8)
+  // Truly authentic calculations starting at 0% with no artificial minimums
+  const organicLevelsCount = challengeState.levels.filter((lvl) => lvl >= 1 && lvl <= 25).length;
+  const inorganicLevelsCount = challengeState.levels.filter((lvl) => lvl >= 26 && lvl <= 50).length;
+  const physicalLevelsCount = challengeState.levels.filter((lvl) => lvl >= 51 && lvl <= 75).length;
+  const analyticalChallengeCount = challengeState.levels.filter((lvl) => lvl >= 76 && lvl <= 100).length;
+  const totalAnalyticalItems = 25 + EXPERIMENTS.length; // 25 challenge levels + 20 practicals = 45
+  const completedAnalyticalItems = analyticalChallengeCount + completedExperiments.length;
+
+  const disciplines = [
+    {
+      name: 'Organic Chemistry',
+      subtitle: 'Hydrocarbons & Mechanisms',
+      color: '#38bdf8',
+      accentClass: 'text-sky-400',
+      bgClass: 'border-sky-500/20 bg-sky-950/20',
+      percent: Math.min(100, Math.round((organicLevelsCount / 25) * 100)),
+      topics: 'Alkanes, Alkenes, Functional Groups'
+    },
+    {
+      name: 'Inorganic Chemistry',
+      subtitle: 'Periodic Trends & Metals',
+      color: '#34d399',
+      accentClass: 'text-emerald-400',
+      bgClass: 'border-emerald-500/20 bg-emerald-950/20',
+      percent: Math.min(100, Math.round((inorganicLevelsCount / 25) * 100)),
+      topics: 'Transition Metals, Coordination, Salts'
+    },
+    {
+      name: 'Physical Chemistry',
+      subtitle: 'Thermodynamics & Rates',
+      color: '#f59e0b',
+      accentClass: 'text-amber-400',
+      bgClass: 'border-amber-500/20 bg-amber-950/20',
+      percent: Math.min(100, Math.round((physicalLevelsCount / 25) * 100)),
+      topics: 'Kinetics, Equilibria, Energetics'
+    },
+    {
+      name: 'Analytical Chemistry',
+      subtitle: 'Quantitative & Qualitative',
+      color: '#a855f7',
+      accentClass: 'text-purple-400',
+      bgClass: 'border-purple-500/20 bg-purple-950/20',
+      percent: Math.min(100, Math.round((completedAnalyticalItems / totalAnalyticalItems) * 100)),
+      topics: 'Titrations, Flame Tests, Gas Laws'
+    }
+  ];
+
+  // Rank Progression (Item 8)
+  const RANK_TIERS = [
+    { name: 'Apprentice Chemist', minXp: 0, maxXp: 500, badge: '🌱', level: 1 },
+    { name: 'Junior Synthesizer', minXp: 500, maxXp: 1500, badge: '⚗️', level: 2 },
+    { name: 'Laboratory Analyst', minXp: 1500, maxXp: 3500, badge: '🔬', level: 3 },
+    { name: 'Senior Chemist', minXp: 3500, maxXp: 7500, badge: '🧪', level: 4 },
+    { name: 'Principal Investigator', minXp: 7500, maxXp: 15000, badge: '🛡️', level: 5 },
+    { name: 'Master of Elements', minXp: 15000, maxXp: 50000, badge: '👑', level: 6 }
+  ];
+
+  const currentXp = challengeState.xp;
+  let currentTierIndex = 0;
+  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+    if (currentXp >= RANK_TIERS[i].minXp) {
+      currentTierIndex = i;
+      break;
+    }
+  }
+  const currentTier = RANK_TIERS[currentTierIndex] || RANK_TIERS[0];
+  const nextTier = RANK_TIERS[currentTierIndex + 1] || null;
+  const rankProgressPercent = nextTier
+    ? Math.min(100, Math.max(0, Math.round(((currentXp - currentTier.minXp) / (nextTier.minXp - currentTier.minXp)) * 100)))
+    : 100;
+  const xpNeededForNext = nextTier ? Math.max(0, nextTier.minXp - currentXp) : 0;
+
+  // 52-Week Practice Calendar Heatmap (Item 8)
+  const heatmapData = useMemo(() => {
+    const today = new Date();
+    const activeSet = new Set(streakState.activeDates || []);
+    const weeks: Array<Array<{ dateStr: string; count: number; dateFormatted: string; isToday: boolean; isCompleted: boolean }>> = [];
+
+    const totalDays = 52 * 7;
+    const start = new Date(today);
+    start.setDate(today.getDate() - totalDays + 1);
+
+    let week: Array<{ dateStr: string; count: number; dateFormatted: string; isToday: boolean; isCompleted: boolean }> = [];
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const isToday = dateStr === today.toISOString().split('T')[0];
+      const isCompleted = activeSet.has(dateStr);
+      let count = isCompleted ? 2 : 0;
+      if (isToday && streakState.hasCompletedToday) count = 3;
+
+      week.push({
+        dateStr,
+        count,
+        isToday,
+        isCompleted,
+        dateFormatted: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      });
+
+      if (week.length === 7) {
+        weeks.push(week);
+        week = [];
+      }
+    }
+    if (week.length > 0) weeks.push(week);
+    return weeks;
+  }, [streakState.activeDates, streakState.hasCompletedToday]);
+
   const userProfile = getStoredProfile();
-  const organicPercent = Math.min(100, Math.max(12, Math.round((doneCount / 35) * 100)));
-  const titrationPercent = Math.min(100, Math.max(16, Math.round(((doneCount + completedExperiments.length * 4) / 45) * 100)));
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-10">
@@ -164,10 +299,11 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           <button
             type="button"
             onClick={streakState.hasCompletedToday ? undefined : handleClaimToday}
-            className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-xl border text-center transition ${
+            aria-label={`Daily streak: ${streakState.currentStreak} days`}
+            className={`min-h-[44px] min-w-[44px] flex flex-col items-center justify-center px-3 py-1.5 rounded-xl border text-center transition ${
               streakState.hasCompletedToday
                 ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-                : 'bg-amber-500/20 border-amber-500/40 text-amber-300 active:scale-95'
+                : 'bg-amber-500/20 border-amber-500/40 text-amber-300 active:scale-[0.96]'
             }`}
           >
             <span className="text-base leading-none">🔥</span>
@@ -222,75 +358,55 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           </div>
         </div>
 
-        {/* 3. Circular Progress Rings for Organic Chemistry & Titration Progress */}
+        {/* 3. Pure-SVG Discipline Mastery Rings (Organic, Inorganic, Physical, Analytical) */}
         <div className="chemora-card p-3.5 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
               Discipline Mastery Rings
             </span>
-            <span className="text-[10px] font-mono text-cyan-400">Lab Standards</span>
+            <span className="text-[10px] font-mono text-cyan-400">Pure-SVG</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            {/* Ring 1: Organic Chemistry */}
-            <div className="flex flex-col items-center text-center p-2.5 rounded-2xl bg-white/[0.03] border border-cyan-500/15">
-              <div className="relative w-18 h-18 flex items-center justify-center">
-                <svg className="chemora-ring-svg w-18 h-18" viewBox="0 0 72 72">
-                  <circle
-                    className="chemora-ring-bg"
-                    cx="36"
-                    cy="36"
-                    r="28"
-                    strokeWidth="5"
-                  />
-                  <circle
-                    className="chemora-ring-fill"
-                    cx="36"
-                    cy="36"
-                    r="28"
-                    strokeWidth="5"
-                    stroke="#38bdf8"
-                    strokeDasharray={2 * Math.PI * 28}
-                    strokeDashoffset={2 * Math.PI * 28 * (1 - organicPercent / 100)}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xs font-black text-white">{organicPercent}%</span>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-white mt-1.5 leading-tight">Organic Chem</span>
-              <span className="text-[9px] text-cyan-400 font-mono">Bonds &amp; Carbon</span>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            {disciplines.map((d, idx) => {
+              const radius = 26;
+              const circumference = 2 * Math.PI * radius;
+              const dashoffset = circumference * (1 - d.percent / 100);
 
-            {/* Ring 2: Titration & Analytical */}
-            <div className="flex flex-col items-center text-center p-2.5 rounded-2xl bg-white/[0.03] border border-purple-500/15">
-              <div className="relative w-18 h-18 flex items-center justify-center">
-                <svg className="chemora-ring-svg w-18 h-18" viewBox="0 0 72 72">
-                  <circle
-                    className="chemora-ring-bg"
-                    cx="36"
-                    cy="36"
-                    r="28"
-                    strokeWidth="5"
-                  />
-                  <circle
-                    className="chemora-ring-fill"
-                    cx="36"
-                    cy="36"
-                    r="28"
-                    strokeWidth="5"
-                    stroke="#a855f7"
-                    strokeDasharray={2 * Math.PI * 28}
-                    strokeDashoffset={2 * Math.PI * 28 * (1 - titrationPercent / 100)}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xs font-black text-white">{titrationPercent}%</span>
+              return (
+                <div key={idx} className="flex flex-col items-center text-center p-2.5 rounded-2xl bg-white/[0.03] border border-cyan-500/15">
+                  <div className="relative w-16 h-16 flex items-center justify-center">
+                    <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r={radius}
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeWidth="4.5"
+                        fill="transparent"
+                      />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r={radius}
+                        stroke={d.color}
+                        strokeWidth="4.5"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={dashoffset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xs font-black text-white">{d.percent}%</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-white mt-1 leading-tight">{d.name}</span>
+                  <span className="text-[9px] text-slate-400 font-mono truncate max-w-[110px]">{d.subtitle}</span>
                 </div>
-              </div>
-              <span className="text-xs font-bold text-white mt-1.5 leading-tight">Titration &amp; pH</span>
-              <span className="text-[9px] text-purple-300 font-mono">Quantitative</span>
-            </div>
+              );
+            })}
           </div>
         </div>
 
@@ -567,6 +683,241 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
         </GlassCard>
       </div>
 
+      {/* ================================================================
+          RANK BADGE PROGRESSION (Item 8)
+          ================================================================ */}
+      <section className="chemora-card p-6 sm:p-8 bg-gradient-to-br from-[#0c1628] via-[#09101f] to-[#040813] border border-cyan-900/60 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-cyan-950">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-blue-500/30 to-purple-500/30 border-2 border-cyan-400/50 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(20,163,196,0.3)]">
+              {currentTier.badge}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400">
+                  TIER {currentTier.level} RESEARCHER
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/40">
+                  {currentXp.toLocaleString()} Total XP
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5">
+                {currentTier.name}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {nextTier ? `Progressing towards ${nextTier.name} (${nextTier.badge})` : 'Highest researcher rank achieved!'}
+              </p>
+            </div>
+          </div>
+
+          {nextTier && (
+            <div className="text-left sm:text-right font-mono">
+              <span className="text-xs text-slate-400 block mb-0.5">Next Rank Unlock</span>
+              <strong className="text-sm font-bold text-cyan-300">
+                {xpNeededForNext.toLocaleString()} XP remaining
+              </strong>
+            </div>
+          )}
+        </div>
+
+        {/* Progress bar to next rank */}
+        {nextTier && (
+          <div className="mt-5 space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-slate-400 font-semibold">{currentTier.name}</span>
+              <span className="text-cyan-400 font-bold">{rankProgressPercent}% Complete</span>
+              <span className="text-slate-400 font-semibold">{nextTier.name}</span>
+            </div>
+            <div className="w-full bg-[#050b16] h-3 rounded-full overflow-hidden border border-cyan-900/60 p-0.5">
+              <div
+                className="bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(20,163,196,0.5)]"
+                style={{ width: `${rankProgressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ================================================================
+          FOUR PURE-SVG DISCIPLINE MASTERY RINGS (Item 8)
+          ================================================================ */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span className="text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase block">
+              CORE DOMAINS
+            </span>
+            <h2 className="text-2xl font-black text-white">
+              Discipline Mastery Rings
+            </h2>
+          </div>
+          <p className="text-xs text-slate-400 max-w-sm">
+            Curriculum coverage calculated across Organic, Inorganic, Physical, and Analytical chemistry benchmarks.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {disciplines.map((d, idx) => {
+            const radius = 38;
+            const circumference = 2 * Math.PI * radius;
+            const dashoffset = circumference * (1 - d.percent / 100);
+
+            return (
+              <div
+                key={idx}
+                className={`chemora-card p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${d.bgClass}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <span className={`text-[10px] font-mono font-bold uppercase tracking-wider block ${d.accentClass}`}>
+                      {d.subtitle}
+                    </span>
+                    <h3 className="text-base font-bold text-white mt-0.5 leading-snug">
+                      {d.name}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Pure-SVG Ring */}
+                <div className="flex items-center justify-center my-3">
+                  <div className="relative w-28 h-28 flex items-center justify-center">
+                    <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 96 96">
+                      <circle
+                        cx="48"
+                        cy="48"
+                        r={radius}
+                        stroke="rgba(255,255,255,0.06)"
+                        strokeWidth="7"
+                        fill="transparent"
+                      />
+                      <circle
+                        cx="48"
+                        cy="48"
+                        r={radius}
+                        stroke={d.color}
+                        strokeWidth="7"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={dashoffset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        className="transition-all duration-1000 ease-out"
+                        style={{ filter: `drop-shadow(0 0 6px ${d.color}40)` }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-xl font-black text-white tracking-tight">
+                        {d.percent}%
+                      </span>
+                      <span className="text-[9px] font-mono uppercase text-slate-400">
+                        Mastery
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-cyan-950/80">
+                  <span className="text-[10px] font-mono text-slate-400 block truncate">
+                    {d.topics}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ================================================================
+          52-WEEK PRACTICE CALENDAR HEATMAP (Item 8)
+          ================================================================ */}
+      <section className="chemora-card p-6 sm:p-8 border border-cyan-900/60 shadow-xl overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
+                52-WEEK ACTIVITY HEATMAP
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white">
+              Annual Study Consistency
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs font-mono">
+            <div>
+              <span className="text-slate-400 block text-[10px]">CURRENT STREAK</span>
+              <strong className="text-amber-300 font-bold">{streakState.currentStreak} Days</strong>
+            </div>
+            <div className="h-6 w-px bg-cyan-950" />
+            <div>
+              <span className="text-slate-400 block text-[10px]">LONGEST STREAK</span>
+              <strong className="text-emerald-400 font-bold">{streakState.bestStreak} Days</strong>
+            </div>
+            <div className="h-6 w-px bg-cyan-950" />
+            <div>
+              <span className="text-slate-400 block text-[10px]">ACTIVE DAYS</span>
+              <strong className="text-cyan-300 font-bold">{streakState.activeDates.length} Days</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Heatmap Grid (52 Columns x 7 Rows) */}
+        <div className="overflow-x-auto pb-2">
+          <div className="inline-block min-w-[720px] w-full">
+            <div className="flex gap-1.5 justify-between">
+              {heatmapData.map((week, wIdx) => (
+                <div key={wIdx} className="flex flex-col gap-1.5 flex-1">
+                  {week.map((day) => {
+                    let cellClass = 'bg-[#060c18] border-cyan-950/60 hover:border-cyan-400/60';
+                    if (day.count === 3 || (day.isToday && streakState.hasCompletedToday)) {
+                      cellClass = 'bg-amber-400 border-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.8)]';
+                    } else if (day.count === 2 || day.isCompleted) {
+                      cellClass = 'bg-cyan-500 border-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]';
+                    } else if (day.count === 1) {
+                      cellClass = 'bg-cyan-900/60 border-cyan-800/60';
+                    } else if (day.isToday) {
+                      cellClass = 'bg-[#060c18] border-cyan-400/70 ring-1 ring-cyan-400/30';
+                    }
+
+                    return (
+                      <div
+                        key={day.dateStr}
+                        onMouseEnter={() => setHoveredDate({ date: day.dateFormatted, count: day.count })}
+                        onMouseLeave={() => setHoveredDate(null)}
+                        className={`w-full aspect-square rounded-[3px] border transition-all cursor-pointer ${cellClass}`}
+                        title={`${day.dateFormatted}: ${day.count > 0 ? `${day.count} sessions completed` : 'No study logged'}`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            {/* Heatmap Legend & Tooltip */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-cyan-950 text-xs text-slate-400 font-mono">
+              <div>
+                {hoveredDate ? (
+                  <span className="text-cyan-300">
+                    <strong>{hoveredDate.date}</strong>: {hoveredDate.count > 0 ? 'Study session completed 🔥' : 'No recorded activity'}
+                  </span>
+                ) : (
+                  <span>Hover any cell to inspect daily session logs</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-[10px]">
+                <span>Less</span>
+                <span className="w-2.5 h-2.5 rounded-[2px] bg-[#060c18] border border-cyan-950" />
+                <span className="w-2.5 h-2.5 rounded-[2px] bg-cyan-900/60 border border-cyan-800" />
+                <span className="w-2.5 h-2.5 rounded-[2px] bg-cyan-500 border border-cyan-400" />
+                <span className="w-2.5 h-2.5 rounded-[2px] bg-amber-400 border border-amber-300" />
+                <span>More</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Topic Strengths */}
         <div className="lg:col-span-2 space-y-8">
@@ -582,17 +933,17 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-white">{t.name}</span>
                     <span className="text-cyan-400 font-mono font-bold">
-                      {t.accuracy > 0 ? `${t.accuracy}%` : 'Developing'}
+                      {t.levels > 0 ? `${t.accuracy}%` : 'Not Started'}
                     </span>
                   </div>
                   <div className="w-full bg-[#090d16] h-2.5 rounded-full overflow-hidden border border-cyan-950">
                     <div
                       className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-500 shadow-[0_0_8px_#00f0ff]"
-                      style={{ width: `${t.accuracy > 0 ? t.accuracy : 5}%` }}
+                      style={{ width: `${t.accuracy > 0 ? t.accuracy : 0}%` }}
                     />
                   </div>
                   <span className="text-[10px] text-slate-500 block">
-                    {t.levels} levels represented in curriculum
+                    {t.levels} of {t.total} levels completed
                   </span>
                 </div>
               ))}
@@ -707,9 +1058,6 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ onGoToChallenge, onG
           </div>
         </div>
       </div>
-
-      {/* Database-Backed Learner Reviews & Feedback System */}
-      <ReviewsSection className="mt-14" />
     </div>
   );
 };

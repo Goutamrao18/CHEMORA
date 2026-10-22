@@ -1,7 +1,16 @@
+@import "./styles/tokens.css";
 @import "../public/loaders.css";
 @import "../public/mobile-tokens.css";
-@import "../public/mobile-dock.css";
 @import "./auth-card.css";
+
+@media (max-width: 1023px) {
+  body {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 14px));
+  }
+  main {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 14px)) !important;
+  }
+}
 
 @tailwind base;
 @tailwind components;
@@ -186,4 +195,206 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid #38bdf8 !important;
   outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   PHASE 2 UPGRADE: SIGNATURE TRANSITIONS & MICRO-INTERACTIONS
+   ========================================================================== */
+
+/* Signature Bubble Transition (Item 2 & Phase 3 GPU Optimization) */
+.bubble-transition-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 250vw;
+  height: 250vw;
+  min-width: 250vh;
+  min-height: 250vh;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate3d(-150%, 50%, 0) scale(0.2);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.bubble-transition-circle.bubble-cyan {
+  background: radial-gradient(circle at 40% 40%, #14a3c4 0%, #0c768f 70%, #06404f 100%);
+  box-shadow: 0 0 80px rgba(20, 163, 196, 0.55);
+  z-index: 1;
+}
+
+.bubble-transition-circle.bubble-navy {
+  background: radial-gradient(circle at 45% 45%, #052c3a 0%, #04212b 65%, #021218 100%);
+  box-shadow: 0 0 90px rgba(4, 33, 43, 0.8);
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .bubble-transition-circle.bubble-cyan {
+    box-shadow: 0 0 24px rgba(20, 163, 196, 0.4);
+  }
+  .bubble-transition-circle.bubble-navy {
+    box-shadow: 0 0 24px rgba(4, 33, 43, 0.6);
+  }
+}
+
+@keyframes chemoraBubbleSweep {
+  0% {
+    transform: translate3d(-120%, 60%, 0) scale(0.3);
+  }
+  48% {
+    transform: translate3d(-50%, -50%, 0) scale(1.1);
+  }
+  52% {
+    transform: translate3d(-50%, -50%, 0) scale(1.1);
+  }
+  100% {
+    transform: translate3d(60%, -150%, 0) scale(0.3);
+  }
+}
+
+/* Phase 3 Mobile Performance Utilities */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 280px;
+}
+
+/* Low-end & Reduced Transparency Fallback */
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-md {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: #070f1e !important;
+  }
+}
+
+/* Nav Link 0.25s Staggered Entrance (Item 2) */
+@keyframes navLinkFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.nav-link-stagger {
+  animation: navLinkFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Staggered Line-by-Line Headline Reveal (Item 3) */
+@keyframes headlineLineReveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.hero-reveal-line-1 {
+  animation: headlineLineReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+.hero-reveal-line-2 {
+  animation: headlineLineReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+.hero-reveal-line-3 {
+  animation: headlineLineReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+.hero-reveal-line-4 {
+  animation: headlineLineReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+/* Sliding Underline on Primary CTA (Item 3) */
+.sliding-cta-underline {
+  position: relative;
+  overflow: hidden;
+}
+
+.sliding-cta-underline::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, #14a3c4, #7fdcef, #58d6ff);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 9999px;
+  box-shadow: 0 0 8px rgba(127, 220, 239, 0.8);
+}
+
+.sliding-cta-underline:hover::after {
+  transform: scaleX(1);
+}
+
+/* Shake on Wrong Answer (Item 6) */
+@keyframes chemoraShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-8px) rotate(-1deg); }
+  30% { transform: translateX(7px) rotate(1deg); }
+  45% { transform: translateX(-5px) rotate(-0.5deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); }
+  75% { transform: translateX(-2px); }
+}
+
+.anim-shake {
+  animation: chemoraShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Streak Flame Pulse (Item 6) */
+@keyframes flamePulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+  }
+  50% {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.95)) drop-shadow(0 0 20px rgba(239, 68, 68, 0.5));
+  }
+}
+
+.anim-flame-pulse {
+  animation: flamePulse 1.4s ease-in-out infinite;
+}
+
+/* Chemistry Liquid Fill Meniscus Wave (Item 6) */
+@keyframes liquidWave {
+  0% { transform: translateX(0) translateZ(0); }
+  50% { transform: translateX(-25%) translateZ(0); }
+  100% { transform: translateX(-50%) translateZ(0); }
+}
+
+.liquid-wave-layer {
+  animation: liquidWave 4s linear infinite;
+}
+
+/* Chemistry Bubble Burst (Item 6) */
+@keyframes chemoraBubblePop {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--tx, 20px), var(--ty, -30px)) scale(1.4);
+    opacity: 0;
+  }
+}
+
+.anim-bubble-pop {
+  animation: chemoraBubblePop 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

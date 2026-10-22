@@ -203,6 +203,49 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sheetContainerRef = useRef<HTMLDivElement>(null);
+
+  // Mobile Bottom Sheet Drag-to-Dismiss State
+  const [sheetDragY, setSheetDragY] = useState(0);
+  const sheetTouchStartY = useRef<number>(0);
+  const [isSheetDragging, setIsSheetDragging] = useState(false);
+
+  // Focus trap & Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    sheetTouchStartY.current = e.touches[0].clientY;
+    setIsSheetDragging(true);
+  };
+
+  const handleSheetTouchMove = (e: React.TouchEvent) => {
+    if (!isSheetDragging) return;
+    const delta = e.touches[0].clientY - sheetTouchStartY.current;
+    if (delta > 0) {
+      setSheetDragY(delta);
+    } else {
+      setSheetDragY(0);
+    }
+  };
+
+  const handleSheetTouchEnd = () => {
+    setIsSheetDragging(false);
+    if (sheetDragY > 80) {
+      onClose();
+    }
+    setSheetDragY(0);
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -413,28 +456,42 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
 
   return (
     <>
-      {/* Floating Launcher Button - Bottom Right */}
-      {!isOpen && (
-        <button
-          onClick={onOpen}
-          aria-label="Open CHEMORA AI Vision Chat"
-          className="hidden md:flex fixed bottom-6 right-6 z-50 items-center gap-2.5 px-4.5 py-3 rounded-full bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_12px_38px_rgba(6,182,212,0.45)] hover:shadow-[0_16px_45px_rgba(6,182,212,0.65)] hover:scale-105 active:scale-95 transition-all duration-200 border border-cyan-300/50"
-        >
-          <Camera className="w-4 h-4 text-slate-950 animate-pulse" />
-          <span>AI Vision Chat</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-        </button>
-      )}
-
-      {/* Assistant Modal Window */}
+      {/* Mobile Backdrop for Bottom Sheet */}
       {isOpen && (
         <div
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm md:hidden animate-in fade-in"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Assistant Modal Window / Mobile Bottom Sheet */}
+      {isOpen && (
+        <div
+          ref={sheetContainerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="CHEMORA AI Chemistry Assistant"
           onPaste={handlePaste}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className="fixed top-20 right-4 sm:right-6 bottom-6 z-50 w-[min(440px,calc(100vw-32px))] bg-[#0a121f]/95 border border-cyan-500/40 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden backdrop-blur-2xl anim-popup"
+          style={{
+            transform: sheetDragY > 0 ? `translate3d(0, ${sheetDragY}px, 0)` : undefined,
+            transition: isSheetDragging ? 'none' : 'transform 240ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+          className="fixed inset-x-0 bottom-0 md:bottom-6 md:top-20 md:right-6 md:left-auto z-50 h-[88dvh] md:h-auto md:w-[min(440px,calc(100vw-32px))] bg-[#0a121f]/95 border-t md:border border-cyan-500/40 rounded-t-[28px] md:rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden backdrop-blur-2xl anim-popup pb-[env(safe-area-inset-bottom,12px)] md:pb-0"
         >
+          {/* Mobile Drag Handle for Dismissal */}
+          <div
+            onTouchStart={handleSheetTouchStart}
+            onTouchMove={handleSheetTouchMove}
+            onTouchEnd={handleSheetTouchEnd}
+            className="w-full pt-3 pb-2 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none md:hidden bg-[#0c182d]"
+            aria-label="Drag down to dismiss assistant"
+          >
+            <div className="w-12 h-1.5 rounded-full bg-slate-500/80 active:bg-cyan-400 transition-colors" />
+          </div>
           {/* Drag Overlay */}
           {isDragging && (
             <div className="absolute inset-0 z-50 bg-cyan-950/90 border-2 border-dashed border-cyan-400 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">

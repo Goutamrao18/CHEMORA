@@ -1,0 +1,142 @@
+/**
+ * CHEMORA UNIFIED DESIGN TOKENS
+ * Consolidates root CSS variables (style.css, modern-overhaul.css, site-polish.css,
+ * v2-enhancements.css, reference-ui.css, src/glass.css) into a single design token system.
+ */
+
+:root {
+  /* =========================================================================
+     1. COLOR PALETTE
+     ========================================================================= */
+  /* Signature Chemora Cyan & Deep Navy */
+  --color-primary-cyan: #14a3c4;
+  --color-primary-navy: #04212b;
+  --color-cyan-glow: #58d6ff;
+  --color-cyan-bright: #7fdcef;
+  --color-cyan-muted: #1e5a70;
+
+  /* Disciplines & Accents */
+  --color-purple: #9b72ff;
+  --color-blue: #4d7cff;
+  --color-emerald: #46e2b0;
+  --color-amber: #ffb84d;
+  --color-rose: #f43f5e;
+
+  /* Backgrounds & Canvas */
+  --color-bg-deep: #020816;
+  --color-bg-base: #040914;
+  --color-bg-card: #05142b;
+  --color-bg-panel: rgba(7, 18, 38, 0.78);
+  --color-surface: rgba(10, 20, 36, 0.72);
+  --color-surface-elevated: rgba(14, 28, 48, 0.85);
+
+  /* Lines & Borders */
+  --color-line-subtle: rgba(110, 205, 255, 0.14);
+  --color-line-standard: rgba(56, 189, 248, 0.28);
+  --color-line-strong: rgba(91, 214, 255, 0.45);
+
+  /* Typography / Content */
+  --color-text-main: #f4f8ff;
+  --color-text-muted: #91a6c2;
+  --color-text-subtle: #627b9f;
+
+  /* Backward Compatibility Aliases for Legacy Stylesheets */
+  --bg: var(--color-bg-deep);
+  --text: var(--color-text-main);
+  --muted: var(--color-text-muted);
+  --cyan: var(--color-cyan-glow);
+  --blue: var(--color-blue);
+  --line: var(--color-line-standard);
+  --cm-bg: var(--color-bg-base);
+  --cm-surface: var(--color-surface);
+  --cm-surface-2: var(--color-surface-elevated);
+  --cm-line: var(--color-line-subtle);
+  --cm-line-strong: var(--color-line-strong);
+  --cm-cyan: var(--color-cyan-glow);
+  --cm-blue: var(--color-blue);
+  --cm-purple: var(--color-purple);
+  --cm-green: var(--color-emerald);
+  --cm-amber: var(--color-amber);
+  --cm-text: var(--color-text-main);
+  --cm-muted: var(--color-text-muted);
+
+  /* =========================================================================
+     2. RADIUS TOKENS
+     ========================================================================= */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* =========================================================================
+     3. SPACING TOKENS
+     ========================================================================= */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* =========================================================================
+     4. SHADOW & GLOW TOKENS
+     ========================================================================= */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.45);
+  --shadow-elevated: 0 24px 64px -12px rgba(0, 0, 0, 0.6);
+  --shadow-glow-cyan: 0 0 35px rgba(20, 163, 196, 0.3), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-glow-purple: 0 0 35px rgba(155, 114, 255, 0.25), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-glow-emerald: 0 0 35px rgba(70, 226, 176, 0.25), 0 12px 30px rgba(0, 0, 0, 0.4);
+
+  /* =========================================================================
+     5. BLUR TOKENS
+     ========================================================================= */
+  --blur-sm: 8px;
+  --blur-md: 16px;
+  --blur-lg: 24px;
+  --blur-xl: 36px;
+
+  /* =========================================================================
+     6. EASING & TIMING TOKENS
+     ========================================================================= */
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+
+  /* =========================================================================
+     7. DURATION TOKENS
+     ========================================================================= */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-transition: 1000ms;
+}
+
+/* Light mode token adaptations */
+.light {
+  --color-bg-deep: #f8fafc;
+  --color-bg-base: #f1f5f9;
+  --color-bg-card: #ffffff;
+  --color-bg-panel: rgba(255, 255, 255, 0.88);
+  --color-surface: rgba(248, 250, 252, 0.85);
+  --color-surface-elevated: rgba(255, 255, 255, 0.95);
+  --color-line-subtle: rgba(14, 165, 233, 0.15);
+  --color-line-standard: rgba(14, 165, 233, 0.25);
+  --color-line-strong: rgba(14, 165, 233, 0.45);
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-subtle: #64748b;
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 40px -8px rgba(15, 23, 42, 0.12);
+  --shadow-glow-cyan: 0 0 25px rgba(20, 163, 196, 0.18), 0 8px 20px rgba(15, 23, 42, 0.06);
+}

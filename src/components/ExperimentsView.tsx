@@ -1,18 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EXPERIMENTS, Experiment } from '../data/experimentsData';
 import { recordStreakActivity } from '../data/streakManager';
-import { Play, CheckCircle2, AlertTriangle, X, Shield, Sparkles, Filter, Beaker } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Maximize,
+  CheckCircle2,
+  AlertTriangle,
+  X,
+  Shield,
+  Sparkles,
+  Filter,
+  Beaker,
+  Check,
+  FastForward,
+  Rewind
+} from 'lucide-react';
 import { fireConfetti } from '../utils/confetti';
-import { ReviewsSection } from './ReviewsSection';
-import { hasVideoAsset, videoUrl, localVideoUrl } from '../utils/videoUrl';
+import { hasVideoAsset, videoUrl } from '../utils/videoUrl';
 import { BeakerFill, Skeleton } from './Loaders';
 import { useDelayedLoading } from '../hooks/useDelayedLoading';
+import { playSoftClick, playSuccessChime } from '../utils/soundEffects';
 
 interface ExperimentsViewProps {
   onAskAI?: (topic: string) => void;
 }
 
 const STORAGE_KEY = 'chemoraExperimentProgress';
+
+const formatTime = (seconds: number) => {
+  if (isNaN(seconds) || seconds < 0) return '00:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
 
 export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => {
   const [completedIds, setCompletedIds] = useState<string[]>(() => {
@@ -31,6 +55,44 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
   const [isBuffering, setIsBuffering] = useState(false);
   const showBuffering = useDelayedLoading(isBuffering, { delay: 200, minDuration: 400 });
 
+  // Custom Video Player Controls (Item 7)
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const hideControlsTimer = useRef<number | null>(null);
+
+  // Mobile Bottom Sheet Drag-to-Dismiss State
+  const [sheetDragY, setSheetDragY] = useState(0);
+  const sheetTouchStartY = useRef<number>(0);
+  const [isSheetDragging, setIsSheetDragging] = useState(false);
+
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    sheetTouchStartY.current = e.touches[0].clientY;
+    setIsSheetDragging(true);
+  };
+
+  const handleSheetTouchMove = (e: React.TouchEvent) => {
+    if (!isSheetDragging) return;
+    const delta = e.touches[0].clientY - sheetTouchStartY.current;
+    if (delta > 0) {
+      setSheetDragY(delta);
+    } else {
+      setSheetDragY(0);
+    }
+  };
+
+  const handleSheetTouchEnd = () => {
+    setIsSheetDragging(false);
+    if (sheetDragY > 80) {
+      setSelectedExperiment(null);
+    }
+    setSheetDragY(0);
+  };
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds));
@@ -42,7 +104,8 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
       const exists = prev.includes(id);
       const next = exists ? prev.filter((x) => x !== id) : [...prev, id];
       if (!exists) {
-        try { fireConfetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } }); } catch {}
+        try { fireConfetti({ particleCount: 50, spread: 70, origin: { y: 0.65 } }); } catch {}
+        playSuccessChime();
         recordStreakActivity();
       }
       return next;
@@ -56,9 +119,127 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
 
   const openExperiment = (exp: Experiment) => {
     setSelectedExperiment(exp);
-    setCompletedSteps({});
     setMediaLoadFailed(false);
     setIsBuffering(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+
+    // Restore saved step checklist for this practical
+    try {
+      const savedSteps = localStorage.getItem(`chemora_steps_${exp.id}`);
+      setCompletedSteps(savedSteps ? JSON.parse(savedSteps) : {});
+    } catch {
+      setCompletedSteps({});
+    }
+  };
+
+  // Keyboard shortcuts for video (Space: Play/Pause, Left/Right: Seek 5s, M: Mute, F: Fullscreen)
+  useEffect(() => {
+    if (!selectedExperiment) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        seekRelative(-5);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        seekRelative(5);
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        toggleMute();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.key === 'Escape') {
+        setSelectedExperiment(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedExperiment, isPlaying, isMuted]);
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const seekRelative = (delta: number) => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + delta));
+    setCurrentTime(videoRef.current.currentTime);
+  };
+
+  const toggleMute = () => {
+    if (!videoRef.current) return;
+    videoRef.current.muted = !videoRef.current.muted;
+    setIsMuted(videoRef.current.muted);
+  };
+
+  const toggleFullscreen = () => {
+    if (!videoContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      videoContainerRef.current.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  const handleVideoLoadedMetadata = () => {
+    if (!videoRef.current || !selectedExperiment) return;
+    setDuration(videoRef.current.duration || 0);
+
+    // Restore persistent playback position
+    try {
+      const savedPos = localStorage.getItem(`chemora_playback_${selectedExperiment.id}`);
+      if (savedPos) {
+        const time = parseFloat(savedPos);
+        if (time > 0 && time < (videoRef.current.duration - 2)) {
+          videoRef.current.currentTime = time;
+          setCurrentTime(time);
+        }
+      }
+    } catch {}
+  };
+
+  const handleVideoTimeUpdate = () => {
+    if (!videoRef.current || !selectedExperiment) return;
+    const time = videoRef.current.currentTime;
+    setCurrentTime(time);
+    try {
+      localStorage.setItem(`chemora_playback_${selectedExperiment.id}`, time.toString());
+    } catch {}
+  };
+
+  const toggleStep = (idx: number) => {
+    playSoftClick();
+    if (!selectedExperiment) return;
+    setCompletedSteps((prev) => {
+      const next = { ...prev, [idx]: !prev[idx] };
+      try {
+        localStorage.setItem(`chemora_steps_${selectedExperiment.id}`, JSON.stringify(next));
+      } catch {}
+
+      // If all steps now completed, celebrate
+      const allDone = selectedExperiment.steps.every((_, i) => (i === idx ? !prev[idx] : prev[i]));
+      if (allDone) {
+        playSuccessChime();
+        try { fireConfetti({ particleCount: 60, spread: 75, origin: { y: 0.6 } }); } catch {}
+      }
+      return next;
+    });
   };
 
   return (
@@ -80,8 +261,9 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
           {['all', 'beginner', 'intermediate', 'advanced'].map((lvl) => (
             <button
               key={lvl}
+              type="button"
               onClick={() => setActiveLevel(lvl)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition ${
+              className={`min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold capitalize transition active:scale-[0.96] ${
                 activeLevel === lvl
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                   : 'bg-[#101726] border border-cyan-950 text-slate-400 hover:text-white hover:bg-slate-800'
@@ -123,7 +305,7 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
             <article
               key={exp.id}
               onClick={() => openExperiment(exp)}
-              className={`chemora-card cursor-pointer p-5 sm:p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+              className={`chemora-card content-visibility-auto cursor-pointer p-5 sm:p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] flex flex-col justify-between ${
                 isDone
                   ? 'bg-emerald-950/20 border-emerald-500/40 hover:border-emerald-400 shadow-emerald-950/20'
                   : 'hover:border-cyan-500/40 shadow-cyan-950/40'
@@ -182,12 +364,36 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
         })}
       </div>
 
-      {/* Practical Details Modal */}
+      {/* Practical Details Modal / Mobile Bottom Sheet */}
       {selectedExperiment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl bg-[#0d1524] border border-cyan-800/70 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedExperiment.title}
+          onClick={() => setSelectedExperiment(null)}
+          className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center md:items-center p-0 md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              transform: sheetDragY > 0 ? `translate3d(0, ${sheetDragY}px, 0)` : undefined,
+              transition: isSheetDragging ? 'none' : 'transform 240ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            className="relative w-full md:max-w-4xl bg-[#0d1524] border-t md:border border-cyan-800/70 rounded-t-[28px] md:rounded-3xl overflow-hidden shadow-2xl max-h-[92dvh] md:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom,16px)] md:pb-0"
+          >
+            {/* Mobile Drag Handle Bar */}
+            <div
+              onTouchStart={handleSheetTouchStart}
+              onTouchMove={handleSheetTouchMove}
+              onTouchEnd={handleSheetTouchEnd}
+              className="w-full pt-3 pb-2 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none md:hidden bg-[#090f1a]"
+              aria-label="Drag down to dismiss practical details"
+            >
+              <div className="w-12 h-1.5 rounded-full bg-slate-500/80 active:bg-cyan-400 transition-colors" />
+            </div>
+
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-cyan-950 bg-[#090f1a] flex-shrink-0">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-cyan-950 bg-[#090f1a] flex-shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{selectedExperiment.emoji}</span>
                 <div>
@@ -208,182 +414,385 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
             </div>
 
             {/* Modal Scrollable Body */}
-            <div className="p-6 sm:p-8 space-y-6 overflow-y-auto">
-              {/* Video Player (Rendered when asset exists in verified manifest per Option A) */}
-              {hasVideoAsset(selectedExperiment.id) && (
-                <div className="rounded-2xl overflow-hidden bg-black border border-cyan-950 aspect-video relative flex items-center justify-center shadow-lg">
-                  <Skeleton variant="video" className="absolute inset-0 w-full h-full pointer-events-none z-0" />
-
-                  {showBuffering && !mediaLoadFailed && (
-                    <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 pointer-events-none anim-fade-in z-20" role="status" aria-live="polite">
-                      <BeakerFill size="lg" label="Buffering experiment video..." />
-                      <span className="text-xs font-mono font-bold text-cyan-300">Buffering experiment...</span>
-                    </div>
-                  )}
-
-                  {mediaLoadFailed ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 bg-[#090f1a] relative z-10">
-                      <AlertTriangle className="w-8 h-8 text-amber-400 mb-2" />
-                      <p className="text-sm font-semibold text-slate-200">Demonstration Video Unavailable</p>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                        Please review the experimental procedure and chemical observations below.
-                      </p>
-                    </div>
-                  ) : (
-                    <video
-                      key={selectedExperiment.id}
-                      controls
-                      playsInline
-                      preload="none"
-                      poster={videoUrl(selectedExperiment.id, 'poster')}
-                      className="w-full h-full object-contain relative z-10"
-                      style={{ aspectRatio: '16 / 9' }}
-                      onWaiting={() => setIsBuffering(true)}
-                      onSeeking={() => setIsBuffering(true)}
-                      onPlaying={() => setIsBuffering(false)}
-                      onCanPlay={() => setIsBuffering(false)}
-                      onError={() => {
-                        setIsBuffering(false);
-                        setMediaLoadFailed(true);
+            <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Left Column: Video & Scientific Theory (7 cols) */}
+                <div className="lg:col-span-7 space-y-6">
+                  {/* Video Player with Custom Minimal Controls (Item 7) */}
+                  {hasVideoAsset(selectedExperiment.id) && (
+                    <div
+                      ref={videoContainerRef}
+                      className="group relative rounded-2xl overflow-hidden bg-black border border-cyan-950 aspect-video shadow-2xl flex flex-col justify-end"
+                      onMouseEnter={() => setShowControls(true)}
+                      onMouseMove={() => {
+                        setShowControls(true);
+                        if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+                        hideControlsTimer.current = window.setTimeout(() => {
+                          if (isPlaying) setShowControls(false);
+                        }, 2500);
+                      }}
+                      onMouseLeave={() => {
+                        if (isPlaying) setShowControls(false);
                       }}
                     >
-                      <source
-                        src={videoUrl(selectedExperiment.id, 'webm')}
-                        type="video/webm"
-                      />
-                      <source
-                        src={videoUrl(selectedExperiment.id, 'mp4')}
-                        type="video/mp4"
-                        onError={() => {
-                          setIsBuffering(false);
-                          setMediaLoadFailed(true);
-                        }}
-                      />
-                      <p className="text-slate-400 text-xs p-4">
-                        Video demonstration unavailable. Review the procedure below.
-                      </p>
-                    </video>
+                      <Skeleton variant="video" className="absolute inset-0 w-full h-full pointer-events-none z-0" />
+
+                      {showBuffering && !mediaLoadFailed && (
+                        <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 pointer-events-none anim-fade-in z-20" role="status" aria-live="polite">
+                          <BeakerFill size="lg" label="Buffering experiment video..." />
+                          <span className="text-xs font-mono font-bold text-cyan-300">Buffering experiment...</span>
+                        </div>
+                      )}
+
+                      {mediaLoadFailed ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 bg-[#090f1a] relative z-10">
+                          <AlertTriangle className="w-8 h-8 text-amber-400 mb-2" />
+                          <p className="text-sm font-semibold text-slate-200">Demonstration Video Unavailable</p>
+                          <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                            Please review the experimental procedure and chemical observations below.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <video
+                            ref={videoRef}
+                            key={selectedExperiment.id}
+                            playsInline
+                            preload="metadata"
+                            poster={videoUrl(selectedExperiment.id, 'poster')}
+                            className="w-full h-full object-contain cursor-pointer relative z-10"
+                            style={{ aspectRatio: '16 / 9' }}
+                            onClick={togglePlay}
+                            onWaiting={() => setIsBuffering(true)}
+                            onSeeking={() => setIsBuffering(true)}
+                            onPlaying={() => {
+                              setIsBuffering(false);
+                              setIsPlaying(true);
+                            }}
+                            onPause={() => setIsPlaying(false)}
+                            onCanPlay={() => setIsBuffering(false)}
+                            onLoadedMetadata={handleVideoLoadedMetadata}
+                            onTimeUpdate={handleVideoTimeUpdate}
+                            onError={() => {
+                              setIsBuffering(false);
+                              setMediaLoadFailed(true);
+                            }}
+                          >
+                            <source src={videoUrl(selectedExperiment.id, 'webm')} type="video/webm" />
+                            <source
+                              src={videoUrl(selectedExperiment.id, 'mp4')}
+                              type="video/mp4"
+                              onError={() => {
+                                setIsBuffering(false);
+                                setMediaLoadFailed(true);
+                              }}
+                            />
+                          </video>
+
+                          {/* Center Play Button Overlay when paused */}
+                          {!isPlaying && (
+                            <div
+                              onClick={togglePlay}
+                              className="absolute inset-0 z-20 flex items-center justify-center bg-black/35 cursor-pointer transition-opacity"
+                            >
+                              <div className="w-14 h-14 rounded-full bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-lg shadow-cyan-500/40 transition transform hover:scale-110">
+                                <Play className="w-7 h-7 fill-slate-950 ml-1" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Minimal Custom Control Bar */}
+                          <div
+                            className={`absolute bottom-0 inset-x-0 z-30 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 pt-6 transition-opacity duration-200 ${
+                              showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                            }`}
+                          >
+                            {/* Scrubber track */}
+                            <div className="relative mb-2 flex items-center">
+                              <input
+                                type="range"
+                                min={0}
+                                max={duration || 100}
+                                step="any"
+                                value={currentTime}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (videoRef.current) {
+                                    videoRef.current.currentTime = val;
+                                    setCurrentTime(val);
+                                  }
+                                }}
+                                className="w-full h-1.5 bg-slate-700/80 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                              />
+                            </div>
+
+                            {/* Button actions row */}
+                            <div className="flex items-center justify-between text-xs text-white">
+                              <div className="flex items-center gap-2 sm:gap-3">
+                                <button
+                                  onClick={togglePlay}
+                                  className="p-1 rounded-md text-slate-200 hover:text-cyan-400 transition"
+                                  title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+                                >
+                                  {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+                                </button>
+                                <button
+                                  onClick={() => seekRelative(-5)}
+                                  className="p-1 rounded-md text-slate-300 hover:text-white transition"
+                                  title="Rewind 5s (←)"
+                                >
+                                  <Rewind className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => seekRelative(5)}
+                                  className="p-1 rounded-md text-slate-300 hover:text-white transition"
+                                  title="Forward 5s (→)"
+                                >
+                                  <FastForward className="w-3.5 h-3.5" />
+                                </button>
+
+                                <span className="font-mono text-[11px] text-slate-300 pl-1">
+                                  {formatTime(currentTime)} / {formatTime(duration)}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={toggleMute}
+                                  className="p-1 rounded-md text-slate-300 hover:text-cyan-400 transition"
+                                  title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
+                                >
+                                  {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+                                </button>
+                                <button
+                                  onClick={toggleFullscreen}
+                                  className="p-1 rounded-md text-slate-300 hover:text-cyan-400 transition"
+                                  title="Fullscreen (F)"
+                                >
+                                  <Maximize className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
 
-              {/* Safety Warning */}
-              <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-start gap-3">
-                <Shield className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-amber-300 text-xs font-bold uppercase tracking-wide block mb-0.5">
-                    Safety &amp; Handling Precautions
-                  </strong>
-                  <p className="text-xs text-amber-200/90 leading-relaxed">
-                    {selectedExperiment.safety}
-                  </p>
-                </div>
-              </div>
+                  {/* Keyboard Shortcuts Hint Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#090f1a] border border-cyan-950 text-[11px] font-mono text-slate-400">
+                    <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                      <span>⌨</span> Player Shortcuts
+                    </span>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-[#10192a] border border-cyan-900/60 text-slate-300">Space</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#10192a] border border-cyan-900/60 text-slate-300">← / → 5s</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#10192a] border border-cyan-900/60 text-slate-300">M (mute)</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#10192a] border border-cyan-900/60 text-slate-300">F (full)</span>
+                    </div>
+                  </div>
 
-              {/* Equipment & Chemicals Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950">
-                  <h4 className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider mb-2">
-                    Required Equipment ({selectedExperiment.equipment.length})
-                  </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-300">
-                    {selectedExperiment.equipment.map((eq, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                        {eq}
-                      </li>
-                    ))}
-                  </ul>
+                  {/* Safety Warning */}
+                  <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-start gap-3">
+                    <Shield className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-amber-300 text-xs font-bold uppercase tracking-wide block mb-0.5">
+                        Safety &amp; Handling Precautions
+                      </strong>
+                      <p className="text-xs text-amber-200/90 leading-relaxed">
+                        {selectedExperiment.safety}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Balanced Chemical Equation */}
+                  <div className="p-4 rounded-xl bg-[#111c2e] border border-cyan-900/60">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-cyan-400 block mb-1">
+                      Balanced Chemical Equation
+                    </span>
+                    <div className="text-sm sm:text-base font-bold font-mono text-cyan-200 bg-[#090f1a] p-3 rounded-lg border border-cyan-950 overflow-x-auto">
+                      {selectedExperiment.equation}
+                    </div>
+                  </div>
+
+                  {/* Equipment & Chemicals Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950">
+                      <h4 className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider mb-2">
+                        Required Equipment ({selectedExperiment.equipment.length})
+                      </h4>
+                      <ul className="space-y-1.5 text-xs text-slate-300">
+                        {selectedExperiment.equipment.map((eq, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                            {eq}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950">
+                      <h4 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-2">
+                        Chemicals &amp; Reagents ({selectedExperiment.chemicals.length})
+                      </h4>
+                      <ul className="space-y-1.5 text-xs text-slate-300">
+                        {selectedExperiment.chemicals.map((ch, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            {ch}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Observations & Conclusion */}
+                  <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950 space-y-3">
+                    <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      Key Observations
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+                      {selectedExperiment.observations.map((obs, i) => (
+                        <div key={i} className="flex items-center gap-2 bg-[#0e1626] p-2 rounded-lg">
+                          <span className="text-cyan-400">👁</span>
+                          {obs}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-2 border-t border-cyan-950">
+                      <h4 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1">
+                        Conclusion
+                      </h4>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {selectedExperiment.conclusion}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950">
-                  <h4 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-2">
-                    Chemicals &amp; Reagents ({selectedExperiment.chemicals.length})
-                  </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-300">
-                    {selectedExperiment.chemicals.map((ch, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        {ch}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+                {/* Right Column: Sticky Step Checklist with Progress Ring (Item 7) */}
+                <div className="lg:col-span-5 lg:sticky lg:top-0 space-y-4">
+                  {(() => {
+                    const totalSteps = selectedExperiment.steps.length;
+                    const checkedCount = selectedExperiment.steps.filter((_, i) => Boolean(completedSteps[i])).length;
+                    const pct = totalSteps > 0 ? Math.round((checkedCount / totalSteps) * 100) : 0;
+                    const radius = 30;
+                    const circumference = 2 * Math.PI * radius;
+                    const strokeDashoffset = circumference - (pct / 100) * circumference;
 
-              {/* Interactive Step-by-Step Procedure */}
-              <div>
-                <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-3">
-                  Step-by-step Procedure (Check off as you complete)
-                </h4>
-                <div className="space-y-2">
-                  {selectedExperiment.steps.map((step, idx) => {
-                    const isChecked = Boolean(completedSteps[idx]);
                     return (
-                      <button
-                        key={idx}
-                        onClick={() =>
-                          setCompletedSteps((prev) => ({ ...prev, [idx]: !prev[idx] }))
-                        }
-                        className={`w-full text-left p-3.5 rounded-xl border flex items-start gap-3 transition ${
-                          isChecked
-                            ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-100'
-                            : 'bg-[#090f1a] border-cyan-950 text-slate-200 hover:border-cyan-800'
-                        }`}
-                      >
-                        <span className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-mono font-bold flex-shrink-0 mt-0.5 ${
-                          isChecked ? 'bg-emerald-500 text-slate-950' : 'bg-[#121c2d] text-cyan-400'
-                        }`}>
-                          {isChecked ? '✓' : idx + 1}
-                        </span>
-                        <span className={`text-xs sm:text-sm leading-relaxed ${isChecked ? 'line-through opacity-70' : ''}`}>
-                          {step}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div className="p-5 rounded-2xl bg-[#0b1322] border border-cyan-900/60 shadow-xl">
+                        {/* Progress Ring Header */}
+                        <div className="flex items-center justify-between pb-4 border-b border-cyan-950">
+                          <div>
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 block">
+                              INVESTIGATION CHECKLIST
+                            </span>
+                            <h3 className="text-base font-bold text-white mt-0.5">
+                              Lab Procedure
+                            </h3>
+                            <p className="text-xs text-slate-400">
+                              {checkedCount} of {totalSteps} steps completed
+                            </p>
+                          </div>
 
-              {/* Chemical Equation & Observations */}
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-[#111c2e] border border-cyan-900/60">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-cyan-400 block mb-1">
-                    Balanced Chemical Equation
-                  </span>
-                  <div className="text-base sm:text-lg font-bold font-mono text-cyan-200 bg-[#090f1a] p-3 rounded-lg border border-cyan-950">
-                    {selectedExperiment.equation}
-                  </div>
-                </div>
+                          {/* Pure SVG Progress Ring */}
+                          <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 72 72">
+                              <circle
+                                cx="36"
+                                cy="36"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="5"
+                                fill="transparent"
+                                className="text-slate-800"
+                              />
+                              <circle
+                                cx="36"
+                                cy="36"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="5"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeDashoffset}
+                                strokeLinecap="round"
+                                fill="transparent"
+                                className={`transition-all duration-500 ${
+                                  pct === 100 ? 'text-emerald-400' : 'text-cyan-400'
+                                }`}
+                              />
+                            </svg>
+                            <span className="absolute font-mono text-xs font-bold text-white">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
 
-                <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950">
-                  <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">
-                    Key Observations
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
-                    {selectedExperiment.observations.map((obs, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-[#0e1626] p-2 rounded-lg">
-                        <span className="text-cyan-400">👁</span>
-                        {obs}
+                        {/* Interactive Steps List */}
+                        <div className="space-y-2 mt-4 max-h-[50vh] overflow-y-auto pr-1">
+                          {selectedExperiment.steps.map((step, idx) => {
+                            const isChecked = Boolean(completedSteps[idx]);
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => toggleStep(idx)}
+                                className={`w-full text-left p-3 rounded-xl border flex items-start gap-3 transition-all ${
+                                  isChecked
+                                    ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-100 shadow-sm'
+                                    : 'bg-[#090f1a] border-cyan-950 text-slate-200 hover:border-cyan-800 hover:bg-[#0e1628]'
+                                }`}
+                              >
+                                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-mono font-bold flex-shrink-0 mt-0.5 transition-colors ${
+                                  isChecked ? 'bg-emerald-500 text-slate-950' : 'bg-[#121c2d] text-cyan-400'
+                                }`}>
+                                  {isChecked ? '✓' : idx + 1}
+                                </span>
+                                <span className={`text-xs leading-relaxed ${isChecked ? 'line-through opacity-70' : ''}`}>
+                                  {step}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Quick action buttons for checklist */}
+                        <div className="mt-4 pt-3 border-t border-cyan-950 flex items-center justify-between text-[11px]">
+                          <button
+                            onClick={() => {
+                              playSoftClick();
+                              const allDone: Record<number, boolean> = {};
+                              selectedExperiment.steps.forEach((_, i) => { allDone[i] = true; });
+                              setCompletedSteps(allDone);
+                              try {
+                                localStorage.setItem(`chemora_steps_${selectedExperiment.id}`, JSON.stringify(allDone));
+                              } catch {}
+                              playSuccessChime();
+                              try { fireConfetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } }); } catch {}
+                            }}
+                            className="text-cyan-400 hover:text-cyan-300 font-semibold"
+                          >
+                            Mark All Done
+                          </button>
+                          <button
+                            onClick={() => {
+                              playSoftClick();
+                              setCompletedSteps({});
+                              try {
+                                localStorage.removeItem(`chemora_steps_${selectedExperiment.id}`);
+                              } catch {}
+                            }}
+                            className="text-slate-400 hover:text-rose-400 transition"
+                          >
+                            Reset Checklist
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#090f1a] border border-cyan-950">
-                  <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    Scientific Explanation
-                  </h4>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-3">
-                    {selectedExperiment.explanation}
-                  </p>
-                  <h4 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1">
-                    Conclusion
-                  </h4>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    {selectedExperiment.conclusion}
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -419,9 +828,6 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
           </div>
         </div>
       )}
-
-      {/* Database-Backed Learner Reviews & Feedback System */}
-      <ReviewsSection defaultCategory="Practical Experiments & Videos" className="mt-14" />
     </div>
   );
 };

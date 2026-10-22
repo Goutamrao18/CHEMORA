@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Sun, Moon, Sparkles, Flame, X } from 'lucide-react';
+import { Search, Sun, Moon, Sparkles, Flame, X, Volume2, VolumeX, Command } from 'lucide-react';
 import { getDailyStreak, DailyStreakState } from '../data/streakManager';
+import { isSoundEnabled, setSoundEnabled, playSoftClick } from '../utils/soundEffects';
 
 interface TopBarProps {
   onSearch: (q: string) => void;
@@ -8,6 +9,8 @@ interface TopBarProps {
   isLightMode: boolean;
   onToggleTheme: () => void;
   onGoToProgress?: () => void;
+  onOpenCommandPalette?: () => void;
+  onSelectHome?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -16,9 +19,21 @@ export const TopBar: React.FC<TopBarProps> = ({
   isLightMode,
   onToggleTheme,
   onGoToProgress,
+  onOpenCommandPalette,
+  onSelectHome,
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [streakState, setStreakState] = useState<DailyStreakState>(getDailyStreak);
+  const [soundActive, setSoundActive] = useState<boolean>(isSoundEnabled);
+
+  useEffect(() => {
+    const handleSoundToggle = (e: Event) => {
+      const custom = e as CustomEvent<boolean>;
+      setSoundActive(custom.detail);
+    };
+    window.addEventListener('chemora:sound_toggle', handleSoundToggle);
+    return () => window.removeEventListener('chemora:sound_toggle', handleSoundToggle);
+  }, []);
 
   useEffect(() => {
     const handleStreakUpdate = () => {
@@ -41,11 +56,32 @@ export const TopBar: React.FC<TopBarProps> = ({
   };
 
   return (
-    <div className="fixed top-0 right-0 left-0 lg:left-[172px] h-16 z-30 px-3 sm:px-8 flex items-center justify-between gap-2.5 sm:gap-4 pointer-events-none">
-      {/* Spacer on tablet for hamburger menu */}
-      <div className="w-10 hidden md:block lg:hidden pointer-events-auto flex-shrink-0" />
+    <div className="fixed top-0 right-0 left-0 h-16 z-30 px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2.5 sm:gap-4 pointer-events-none">
+      {/* Brand Logo & Name (Left side of TopBar) */}
+      <button
+        type="button"
+        onClick={onSelectHome}
+        aria-label="CHEMORA Home"
+        className="pointer-events-auto flex items-center gap-2 group flex-shrink-0 transition active:scale-[0.97]"
+      >
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 border border-cyan-500/40 flex items-center justify-center p-1.5 shadow-sm">
+          <img
+            src="/assets/chemora-mark.svg"
+            alt="CHEMORA"
+            className="w-full h-full object-contain filter drop-shadow"
+          />
+        </div>
+        <div className="hidden xs:block text-left">
+          <span className="block text-sm sm:text-base font-black tracking-wider text-white group-hover:text-cyan-400 transition leading-none">
+            CHEMORA
+          </span>
+          <span className="block text-[8px] font-mono tracking-widest text-cyan-400/80 font-bold mt-0.5">
+            CHEMISTRY
+          </span>
+        </div>
+      </button>
 
-      {/* Pill Search Bar - 44px Height */}
+      {/* Pill Search Bar - Centered in TopBar */}
       <form
         onSubmit={handleSearch}
         className="flex-1 max-w-[540px] mx-auto pointer-events-auto"
@@ -61,7 +97,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             placeholder="Search chemicals, topics, experiments..."
             className="w-full bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none"
           />
-          {searchValue && (
+          {searchValue ? (
             <button
               type="button"
               onClick={handleClear}
@@ -70,21 +106,61 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               <X className="w-3.5 h-3.5" />
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenCommandPalette}
+              title="Open Command Palette (⌘K / Ctrl+K)"
+              className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-cyan-400/80 bg-cyan-950/70 border border-cyan-800/40 hover:border-cyan-500/50 hover:text-cyan-200 transition"
+            >
+              <span>⌘K</span>
+            </button>
           )}
         </div>
       </form>
 
       {/* Right Controls */}
       <div className="flex items-center gap-2 pointer-events-auto flex-shrink-0">
+        {/* Command Palette Button for Mobile / Quick Access */}
+        <button
+          type="button"
+          onClick={onOpenCommandPalette}
+          aria-label="Open Command Palette (Ctrl+K)"
+          title="Command Palette (Ctrl+K)"
+          className="sm:hidden min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-[#07162e]/85 border border-cyan-500/30 text-cyan-300 hover:border-cyan-400 active:scale-[0.96] transition shadow-md backdrop-blur-md"
+        >
+          <Command className="w-4 h-4" />
+        </button>
+
+        {/* Soft Audio Effects Toggle (Tablet/Desktop or >= 400px) */}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !soundActive;
+            setSoundActive(next);
+            setSoundEnabled(next);
+            if (next) playSoftClick();
+          }}
+          aria-label={soundActive ? 'Disable UI sounds' : 'Enable soft UI sounds'}
+          title={soundActive ? 'UI Sounds: Enabled (click to mute)' : 'UI Sounds: Muted (click to enable)'}
+          className={`hidden xs:flex min-w-[44px] min-h-[44px] rounded-full items-center justify-center border transition-all duration-200 shadow-md active:scale-[0.96] backdrop-blur-md ${
+            soundActive
+              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(20,163,196,0.3)]'
+              : 'bg-[#07162e]/85 border-cyan-500/30 text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {soundActive ? <Volume2 className="w-4 h-4 text-cyan-300" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+        </button>
 
         {/* Streak Counter Chip */}
         <button
+          type="button"
           onClick={onGoToProgress}
           aria-label="View daily streak and progress"
           title={`Daily Streak: ${streakState.currentStreak} days (${streakState.streakLevel})`}
-          className="h-10 px-3.5 rounded-full flex items-center gap-1.5 bg-[#0e1628]/90 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-amber-200 transition-all duration-200 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:scale-105 active:scale-95 group backdrop-blur-md"
+          className="min-h-[44px] px-3 rounded-full flex items-center gap-1.5 bg-[#0e1628]/90 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-amber-200 transition-all duration-200 shadow-[0_0_15px_rgba(245,158,11,0.25)] active:scale-[0.96] group backdrop-blur-md"
         >
-          <span className="text-base group-hover:scale-125 transition-transform duration-200">🔥</span>
+          <span className="text-base group-hover:scale-115 transition-transform duration-200">🔥</span>
           <span className="text-xs font-black tracking-tight font-mono">
             {streakState.currentStreak}d
           </span>
@@ -92,20 +168,12 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Theme Toggle Button */}
         <button
+          type="button"
           onClick={onToggleTheme}
           aria-label="Toggle theme"
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#07162e]/85 border border-cyan-500/30 text-cyan-200 hover:border-cyan-400 hover:text-white transition-all duration-200 shadow-md hover:scale-105 active:scale-95 backdrop-blur-md"
+          className="min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-[#07162e]/85 border border-cyan-500/30 text-cyan-200 hover:border-cyan-400 hover:text-white transition-all duration-200 shadow-md active:scale-[0.96] backdrop-blur-md"
         >
           {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-300" />}
-        </button>
-
-        {/* AI Assistant Button */}
-        <button
-          onClick={onOpenAssistant}
-          aria-label="Open AI Assistant"
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-500/20 via-[#07162e]/90 to-purple-500/20 border border-cyan-400/40 text-cyan-300 hover:border-cyan-300 hover:shadow-[0_0_20px_rgba(57,215,255,0.45)] hover:text-white transition-all duration-200 shadow-md hover:scale-105 active:scale-95 backdrop-blur-md"
-        >
-          <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
         </button>
       </div>
     </div>

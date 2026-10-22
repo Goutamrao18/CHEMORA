@@ -1,11 +1,9 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ActiveTab } from './components/Navbar';
-import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieConsent } from './components/CookieConsent';
-import { MobileDock } from './components/MobileDock';
-import { FloatingAskPill } from './components/FloatingAskPill';
+import { LiquidFloatingBar } from './components/LiquidFloatingBar';
 
 // Code-split heavy views to keep initial bundle size minimal
 const HomeView = lazy(() => import('./components/HomeView').then((m) => ({ default: m.HomeView })));
@@ -17,6 +15,9 @@ const AccountView = lazy(() => import('./components/AccountView').then((m) => ({
 const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
 
 import { AtomSpinner } from './components/Loaders/AtomSpinner';
+import { BubbleTransition } from './components/BubbleTransition';
+import { CommandPalette } from './components/CommandPalette';
+import { playBubblePop } from './utils/soundEffects';
 
 function ViewSkeleton({ label }: { label: string }) {
   return (
@@ -34,6 +35,9 @@ function ViewSkeleton({ label }: { label: string }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
+  const [pendingTab, setPendingTab] = useState<ActiveTab | null>(null);
+  const [isBubbleTransitioning, setIsBubbleTransitioning] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState<boolean>(() => {
     try {
@@ -43,6 +47,18 @@ export default function App() {
     }
   });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Global Ctrl/Cmd+K keyboard listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Synchronize light/dark class on body & document
   useEffect(() => {
@@ -61,7 +77,7 @@ export default function App() {
     } catch {}
   }, [isLightMode]);
 
-  // URL Hash synchronization for direct bookmarks
+  // URL Hash synchronization for direct bookmarks (does not trigger transition on direct initial link)
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
@@ -74,16 +90,32 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  const handleSelectTab = (tab: ActiveTab) => {
-    setActiveTab(tab);
-    window.location.hash = tab === 'home' ? '' : tab;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Navigation with Signature Bubble Transition (Item 2)
+  const handleSelectTab = (targetTab: ActiveTab) => {
+    if (targetTab === activeTab && !pendingTab) return;
+    if (isBubbleTransitioning) return;
+
+    playBubblePop();
+    setPendingTab(targetTab);
+    setIsBubbleTransitioning(true);
+  };
+
+  const handleSwapView = () => {
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      window.location.hash = pendingTab === 'home' ? '' : pendingTab;
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  };
+
+  const handleTransitionComplete = () => {
+    setIsBubbleTransitioning(false);
+    setPendingTab(null);
   };
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
-    setActiveTab('know');
-    window.location.hash = 'know';
+    handleSelectTab('know');
   };
 
   const handleAskAI = (_topic?: string) => {
@@ -92,18 +124,28 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#020816] text-slate-100 selection:bg-cyan-500 selection:text-slate-950 font-sans antialiased relative">
+      {/* Signature Bubble Page Transition (Item 2) */}
+      <BubbleTransition
+        isTransitioning={isBubbleTransitioning}
+        onSwapView={handleSwapView}
+        onComplete={handleTransitionComplete}
+      />
+
+      {/* Global Command Palette (Item 9) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectTab={handleSelectTab}
+        onOpenAssistant={() => setIsAssistantOpen(true)}
+        isLightMode={isLightMode}
+        onToggleTheme={() => setIsLightMode(!isLightMode)}
+      />
+
       {/* Background radial ambiance */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[10%] left-[25%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
         <div className="absolute top-[28%] right-[15%] w-[450px] h-[450px] bg-purple-600/10 rounded-full blur-[140px]" />
       </div>
-
-      {/* Left Sidebar App Rail */}
-      <Sidebar
-        activeTab={activeTab}
-        onSelectTab={handleSelectTab}
-        onOpenAssistant={() => setIsAssistantOpen(true)}
-      />
 
       {/* Top Utility Header */}
       <TopBar
@@ -112,10 +154,12 @@ export default function App() {
         isLightMode={isLightMode}
         onToggleTheme={() => setIsLightMode(!isLightMode)}
         onGoToProgress={() => handleSelectTab('progress')}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onSelectHome={() => handleSelectTab('home')}
       />
 
-      {/* Main Content Area - Shifted 172px for Desktop Sidebar */}
-      <main className="relative z-10 lg:ml-[172px] pt-20 px-4 sm:px-8 pb-12 max-w-[1300px] mx-auto min-h-screen">
+      {/* Main Content Area - Fully Centered in the middle */}
+      <main className="relative z-10 pt-20 px-4 sm:px-8 pb-28 max-w-[1300px] mx-auto min-h-screen">
         {activeTab === 'home' && (
           <ErrorBoundary tabName="Home">
             <Suspense fallback={<ViewSkeleton label="Loading Laboratory Chamber..." />}>
@@ -182,16 +226,12 @@ export default function App() {
         </Suspense>
       </ErrorBoundary>
 
-      {/* Floating Ask CHEMORA Pill (Mobile screens <= 768px) */}
-      <FloatingAskPill
-        onOpen={() => setIsAssistantOpen(true)}
-        isAssistantOpen={isAssistantOpen}
-      />
-
-      {/* Floating Capsule Bottom Dock (Mobile screens <= 768px) */}
-      <MobileDock
+      {/* Liquid Floating Bar Navigation with integrated AI Tutor trigger (Mobile screens < 1024px) */}
+      <LiquidFloatingBar
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
+        onOpenAITutor={() => setIsAssistantOpen(true)}
+        isAITutorOpen={isAssistantOpen}
       />
 
       {/* Cookie & Storage Compliance Consent Banner */}

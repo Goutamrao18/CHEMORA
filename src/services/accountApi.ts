@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { fetchWithRetry, fetchJsonWithRetry } from '../utils/fetchWithRetry';
+import { fetchWithRetry, fetchJsonWithRetry, withTimeout } from '../utils/fetchWithRetry';
 
 export interface AccountUser {
   id: string;
@@ -88,7 +88,11 @@ export function getAuthToken(): string | null {
 
 export async function getLiveAuthToken(): Promise<string | null> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      3000,
+      { data: { session: null }, error: null }
+    );
     if (session?.access_token) {
       inMemoryToken = session.access_token;
       return session.access_token;
