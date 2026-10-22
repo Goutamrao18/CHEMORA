@@ -241,7 +241,8 @@ export const AdminView: React.FC = () => {
       }
 
       if (res.status >= 500) {
-        setAuthError('Server error encountered during 2FA verification.');
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || 'Server error encountered during 2FA verification.');
         return;
       }
 

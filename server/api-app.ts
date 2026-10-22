@@ -18,8 +18,16 @@ app.set('trust proxy', 1);
 // When Vercel rewrites /api/(.*) to /api, it passes the original requested path in x-matched-path or x-forwarded-uri
 app.use((req: Request, _res: Response, next: NextFunction) => {
   const matched = (req.headers['x-matched-path'] || req.headers['x-forwarded-uri']) as string | undefined;
-  if (matched && matched.startsWith('/api') && (req.url === '/' || req.url === '/api' || req.url === '/api/index')) {
-    req.url = matched;
+  if (matched && matched.startsWith('/api')) {
+    if (
+      req.url === '/' ||
+      req.url === '/api' ||
+      req.url === '/api/index' ||
+      req.url.startsWith('/api/[...path]') ||
+      req.url.startsWith('/[...path]')
+    ) {
+      req.url = matched;
+    }
   }
   next();
 });
