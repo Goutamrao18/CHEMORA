@@ -230,12 +230,12 @@ export const databaseRateLimiter = createRateLimiter({
  * 3. Authentication Rate Limiter:
  * High-security rate limiter for sensitive authentication mutations (/api/account/login, /api/account/signup, /api/account/password).
  * Protects against credential stuffing and brute force password guessing attacks.
- * Limits to 25 attempts per 15 minutes per IP.
+ * Limits to 10 attempts per 15 minutes per IP.
  */
 export const authRateLimiter = createRateLimiter({
   name: 'auth-limiter',
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 25, // 25 attempts / 15 minutes
+  max: 10, // 10 attempts / 15 minutes (strictly stops brute force within 10 tries)
   message: 'Too many authentication attempts from this IP. Please wait 15 minutes before trying again.',
 });
 

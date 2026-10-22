@@ -207,8 +207,15 @@ router.get('/status', (_req: Request, res: Response) => {
 });
 
 // GET /api/account/database
-router.get('/database', (_req: Request, res: Response) => {
-  res.json(getSupabaseSystemDiagnostics());
+router.get('/database', (req: Request, res: Response) => {
+  const adminToken = req.cookies?.chemora_admin_session;
+  if (!adminToken) {
+    return res.status(200).json({
+      status: 'active',
+      healthy: true,
+    });
+  }
+  return res.json(getSupabaseSystemDiagnostics());
 });
 
 // 2.8: Protected Route - Verified server-side session token

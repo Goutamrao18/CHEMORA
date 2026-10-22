@@ -1383,8 +1383,15 @@ router.get("/status", (_req, res) => {
     databaseConnected: isSupabaseConfigured()
   });
 });
-router.get("/database", (_req, res) => {
-  res.json(getSupabaseSystemDiagnostics());
+router.get("/database", (req, res) => {
+  const adminToken = req.cookies?.chemora_admin_session;
+  if (!adminToken) {
+    return res.status(200).json({
+      status: "active",
+      healthy: true
+    });
+  }
+  return res.json(getSupabaseSystemDiagnostics());
 });
 router.get("/progress", async (req, res) => {
   try {
@@ -2027,8 +2034,8 @@ var authRateLimiter = createRateLimiter({
   name: "auth-limiter",
   windowMs: 15 * 60 * 1e3,
   // 15 minutes
-  max: 25,
-  // 25 attempts / 15 minutes
+  max: 10,
+  // 10 attempts / 15 minutes (strictly stops brute force within 10 tries)
   message: "Too many authentication attempts from this IP. Please wait 15 minutes before trying again."
 });
 var apiRateLimiter = createRateLimiter({
@@ -3510,6 +3517,19 @@ app.use((req, _res, next) => {
       req.url = matched;
     }
   }
+  next();
+});
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-XSS-Protection", "0");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co; media-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai"
+  );
   next();
 });
 app.use(express4.json({ limit: "100kb" }));
