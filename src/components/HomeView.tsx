@@ -149,6 +149,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
       q: 'Is an account required?',
       a: 'All learning materials, practicals, and challenge levels are completely open without signing in. Creating a profile allows you to customize learning preferences and maintain your researcher rank.',
     },
+    {
+      q: 'Who develops and operates Chemora lab?',
+      a: 'Chemora lab is owned by Goutam and operates under the legal jurisdiction of the Government of India (india govt). The application was created through AI coding (vibe coding with Gemini, Claude, and ChatGPT) and is deployed on Vercel with high-performance Supabase database persistence and Upstash in-memory cache for extra RAM and rate limiting. For inquiries or questions, contact chemora_lab@agentmail.to.',
+    },
   ];
 
   return (
@@ -541,10 +545,36 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
       </section>
 
       {/* Footer */}
-      <footer className="pt-8 pb-4 border-t border-cyan-950/60 text-xs text-slate-400 space-y-4">
+      <footer className="pt-8 pb-4 border-t border-cyan-950/60 text-xs text-slate-400 space-y-5">
+        {/* Architecture & Colophon Bar */}
+        <div className="py-3 px-4 rounded-2xl bg-[#061325]/90 border border-cyan-900/50 flex flex-col md:flex-row items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center flex-wrap gap-2 text-slate-300 justify-center md:justify-start">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-cyan-300 font-bold">Chemora lab</span>
+            <span className="text-slate-600">•</span>
+            <span>Owner: <strong className="text-white">Goutam</strong></span>
+            <span className="text-slate-600">•</span>
+            <span>Jurisdiction: <span className="text-amber-300 font-medium">Government of India (india govt)</span></span>
+          </div>
+          <div className="flex items-center flex-wrap justify-center gap-1.5 text-[11px] text-slate-300">
+            <span className="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-700/50 text-cyan-200">
+              AI Vibe Coding: Gemini · Claude · ChatGPT
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700/60 text-slate-200">
+              Deploy: Vercel
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-700/50 text-emerald-200">
+              DB: Supabase
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-700/50 text-amber-200">
+              Extra RAM: Upstash
+            </span>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-300">
-            <span className="font-bold text-cyan-400">⚗ CHEMORA</span>
+            <span className="font-bold text-cyan-400">⚗ Chemora lab</span>
             <span>•</span>
             <span className="tracking-wider text-[11px] font-mono text-cyan-300/80">TOUCH · MIX · REACT</span>
           </div>
@@ -555,12 +585,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             <a href="/privacy.html" className="hover:text-cyan-300 transition-colors">Privacy Policy</a>
             <a href="/terms.html" className="hover:text-cyan-300 transition-colors">Terms of Service</a>
             <a href="/cookie-policy.html" className="hover:text-cyan-300 transition-colors">Cookie Policy</a>
-            <a href="mailto:support@chemora.work.gd" className="hover:text-cyan-300 transition-colors">Support</a>
+            <a href="mailto:chemora_lab@agentmail.to" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">Support: chemora_lab@agentmail.to</a>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-cyan-950/40 text-[11px] text-slate-400 gap-2 text-center sm:text-left">
-          <p>&copy; {new Date().getFullYear()} CHEMORA Education &bull; Open Chemistry Simulation System</p>
-          <p className="font-mono text-[10px] text-slate-400">Interactive chemistry learning platform &bull; No marketing trackers &bull; 100% Free</p>
+          <p>&copy; {new Date().getFullYear()} Chemora lab &bull; Owned by Goutam &bull; Jurisdiction: Government of India</p>
+          <p className="font-mono text-[10px] text-slate-400">Created through AI coding (Gemini, Claude, ChatGPT) &bull; Vercel &bull; Supabase &bull; Upstash</p>
         </div>
       </footer>
     </div>

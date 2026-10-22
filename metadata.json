@@ -1,6 +1,6 @@
 {
   "name": "CHEMORA — Chemistry Learning Platform",
-  "description": "Interactive chemistry learning platform featuring a 130+ item knowledge library, 100 progressive challenge levels, guided practical experiments, learner progress tracking, and AI chemistry assistant.",
+  "description": "Chemora lab — Interactive chemistry learning platform created through AI coding (vibe coding: Gemini, Claude, ChatGPT), owned by Goutam, under the jurisdiction of Government of India. Powered by Supabase database, Upstash in-memory cache, and deployed on Vercel.",
   "permissions": [],
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

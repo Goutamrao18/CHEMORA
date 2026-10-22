@@ -1698,10 +1698,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                       <Database className="w-4 h-4 text-cyan-700" />
                       <div>
                         <span className="text-xs font-bold text-slate-900 block">
-                          Advanced: API Supabase Database System
+                          Chemora lab System Architecture & Diagnostics
                         </span>
                         <span className="text-[10px] text-slate-500 font-mono">
-                          v2.0 PostgreSQL • Zero-LocalStorage Engine
+                          Supabase DB • Upstash In-Memory RAM • Vercel Deployment
                         </span>
                       </div>
                     </div>
@@ -1715,11 +1715,25 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
 
                   {isAdvancedOpen && (
                     <div className="p-4 pt-1 border-t border-slate-200 space-y-3 anim-slide-down">
+                      {/* Operator, Ownership & Infrastructure Card */}
+                      <div className="p-3 rounded-xl bg-slate-100/90 border border-slate-200 text-[11px] font-mono text-slate-700 space-y-1">
+                        <div className="font-bold text-slate-900 flex items-center justify-between">
+                          <span>Chemora lab (india govt)</span>
+                          <span className="text-cyan-700">Owner: Goutam</span>
+                        </div>
+                        <div className="text-[10px] text-slate-600">
+                          Contact: <a href="mailto:chemora_lab@agentmail.to" className="text-cyan-700 font-semibold underline">chemora_lab@agentmail.to</a>
+                        </div>
+                        <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-200">
+                          Architecture: AI vibe coding (Gemini, Claude, ChatGPT) &bull; Deployed on Vercel &bull; Supabase PostgreSQL DB &bull; Upstash In-Memory RAM
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px] font-mono text-slate-600">
                         <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                           <div className="font-bold text-slate-800 flex items-center gap-1 mb-0.5">
                             <Server className="w-3 h-3 text-cyan-600" />
-                            public.profiles
+                            Supabase: public.profiles
                           </div>
                           <div>User UUID: <span className="text-cyan-800 font-bold truncate block">{accountProfile.user_id || accountProfile.id}</span></div>
                         </div>
@@ -1727,9 +1741,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                         <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                           <div className="font-bold text-slate-800 flex items-center gap-1 mb-0.5">
                             <Activity className="w-3 h-3 text-teal-600" />
-                            public.researcher_progress
+                            Supabase: public.researcher_progress
                           </div>
-                          <div>Status: <span className="text-emerald-700 font-bold">Synced Cloud Persistence</span></div>
+                          <div>Cache/RAM: <span className="text-emerald-700 font-bold">Upstash Redis Accelerated</span></div>
                         </div>
                       </div>
 

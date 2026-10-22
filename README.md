@@ -1,7 +1,15 @@
-# 🧪 CHEMORA — Chemistry Learning Platform
+# 🧪 Chemora lab — Chemistry Learning Platform
 
 > **TOUCH. MIX. REACT.**
-> A modern React 19 + TypeScript web application for interactive chemistry education, practical experiments, progressive challenges, and laboratory simulation.
+> An interactive chemistry education platform and virtual laboratory created through AI coding (vibe coding: Gemini, Claude, ChatGPT).
+>
+> **Company:** Chemora lab  
+> **Owner:** Goutam  
+> **Government Jurisdiction:** Government of India (india govt)  
+> **Contact Email:** chemora_lab@agentmail.to  
+> **Deployment:** Vercel  
+> **Database:** Supabase (PostgreSQL with Row Level Security)  
+> **Extra RAM & In-Memory Cache:** Upstash (Serverless Redis)  
 
 ---
 
