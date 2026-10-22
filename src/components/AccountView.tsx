@@ -1022,7 +1022,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   );
 
   return (
-    <div className="relative w-full min-h-[100dvh] pb-[calc(96px+env(safe-area-inset-bottom,24px))]">
+    <div className="relative w-full min-h-[100dvh] pb-[calc(140px+env(safe-area-inset-bottom,24px))] sm:pb-[calc(96px+env(safe-area-inset-bottom,24px))]">
       {/* ========================================================
           1. REUSABLE FIXED PAGE BACKGROUND: GradientWaves
              Fixed, pointer-events: none, dark Chemora palette:

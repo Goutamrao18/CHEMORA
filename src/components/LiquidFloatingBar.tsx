@@ -195,7 +195,7 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
             <div
               ref={containerRef}
               role="tablist"
-              className="relative h-[56px] px-2 rounded-[28px] bg-[#050c1c]/90 border border-white/14 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-xl flex items-center justify-center gap-1 sm:gap-1.5 select-none overflow-hidden mx-auto"
+              className="relative h-[52px] sm:h-[56px] px-1.5 sm:px-2 rounded-[26px] sm:rounded-[28px] bg-[#050c1c]/90 border border-white/14 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-xl flex items-center justify-center gap-0.5 sm:gap-1.5 select-none overflow-hidden mx-auto"
             >
               {/* Subtle Top Specular Reflection Highlight */}
               <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent pointer-events-none z-20" />
@@ -239,20 +239,20 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={tab.label}
                     onClick={() => onSelectTab(tab.id)}
-                    className={`relative z-20 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[20px] transition-transform duration-100 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-1 ${
-                      isActive ? 'px-3 text-cyan-300 font-bold' : 'px-2 text-slate-400 hover:text-slate-200'
+                    className={`relative z-20 min-w-[38px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center rounded-[18px] sm:rounded-[20px] transition-transform duration-100 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-1 ${
+                      isActive ? 'px-2.5 sm:px-3 text-cyan-300 font-bold' : 'px-1.5 sm:px-2 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                       <Icon
-                        className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${
+                        className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 transition-transform duration-200 ${
                           isActive
                             ? 'stroke-cyan-300 scale-105 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]'
                             : 'stroke-current'
                         }`}
                       />
                       {isActive && (
-                        <span className="text-xs tracking-tight font-extrabold text-white whitespace-nowrap animate-in fade-in duration-150">
+                        <span className="text-[11px] sm:text-xs tracking-tight font-extrabold text-white whitespace-nowrap animate-in fade-in duration-150">
                           {tab.label}
                         </span>
                       )}
@@ -263,19 +263,19 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
             </div>
           </nav>
 
-          {/* AI Tutor Floating Trigger - Exactly aligned to the same bottom level & height */}
+          {/* AI Tutor Floating Trigger - Elevated on mobile to float cleanly without clipping; untouched on PC */}
           <button
             type="button"
             onClick={onOpenAITutor}
             aria-label="Open CHEMORA AI Assistant"
-            className={`pointer-events-auto sm:absolute sm:right-0 sm:bottom-0 ml-2 sm:ml-0 h-[56px] px-3.5 sm:px-5 rounded-[28px] bg-gradient-to-r from-cyan-500/25 via-blue-600/35 to-indigo-600/30 bg-[#061124]/90 border border-cyan-400/50 hover:border-cyan-400/80 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_16px_rgba(6,182,212,0.3)] backdrop-blur-xl flex items-center gap-2 text-white font-bold text-xs active:scale-[0.96] transition-all duration-200 select-none ${
+            className={`pointer-events-auto fixed sm:absolute right-3.5 sm:right-0 bottom-[calc(76px+env(safe-area-inset-bottom,12px))] sm:bottom-0 ml-0 h-[44px] sm:h-[56px] px-3 sm:px-5 rounded-full sm:rounded-[28px] bg-gradient-to-r from-cyan-500/25 via-blue-600/35 to-indigo-600/30 bg-[#061124]/90 border border-cyan-400/50 hover:border-cyan-400/80 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_16px_rgba(6,182,212,0.3)] backdrop-blur-xl flex items-center gap-1.5 sm:gap-2 text-white font-bold text-xs active:scale-[0.96] transition-all duration-200 select-none ${
               isAITutorOpen
                 ? 'opacity-0 pointer-events-none scale-90'
                 : 'opacity-100 scale-100'
             }`}
           >
             <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse flex-shrink-0" />
-            <span className="tracking-wide text-cyan-100 hidden xs:inline">AI Tutor</span>
+            <span className="tracking-wide text-cyan-100 hidden sm:inline">AI Tutor</span>
           </button>
         </div>
       </div>
