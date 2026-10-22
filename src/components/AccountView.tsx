@@ -53,6 +53,8 @@ import {
   Cpu,
 } from 'lucide-react';
 import { ReviewsSection } from './ReviewsSection';
+import { AuthCard } from './AuthCard';
+import { GradientWaves } from './GradientWaves';
 
 interface AccountViewProps {
   onThemeChanged?: () => void;
@@ -1028,17 +1030,35 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="text-center max-w-2xl mx-auto mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800/50 text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase mb-3">
-          <Shield className="w-3.5 h-3.5" />
-          RESEARCHER ACCOUNT &amp; LABORATORY
+      {/* Full-screen fixed page background (z-index 0, pointer-events none) with animated wave canvas */}
+      {!isAuthenticated && (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          <GradientWaves
+            horizonColor="#cfd8df"
+            waveColor="#a8bcc7"
+            crestColor="#e2ecf2"
+            amplitude={2.8}
+            fogDepth={34}
+            brightness={1.1}
+            mouseInteraction={false}
+            grain={false}
+          />
         </div>
-        <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Account &amp; Workspace</h1>
-        <p className="text-slate-300 text-xs sm:text-sm mt-2">
-          Manage your chemist identity, cloud research credentials, and verified experiment achievements.
-        </p>
-      </div>
+      )}
+
+      {/* Header (displayed when authenticated in laboratory workspace) */}
+      {isAuthenticated && (
+        <div className="text-center max-w-2xl mx-auto mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800/50 text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase mb-3">
+            <Shield className="w-3.5 h-3.5" />
+            RESEARCHER ACCOUNT &amp; LABORATORY
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Account &amp; Workspace</h1>
+          <p className="text-slate-300 text-xs sm:text-sm mt-2">
+            Manage your chemist identity, cloud research credentials, and verified experiment achievements.
+          </p>
+        </div>
+      )}
 
       {/* Global Alerts */}
       {authSuccess && (
@@ -1611,311 +1631,64 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         </div>
       )}
 
-      {/* Unauthenticated View: Clean Sign In / Register Portal */}
+      {/* Unauthenticated View: Sliding AuthCard Portal */}
       {!isLoadingAuth && !isAuthenticated && (
-        <div className="space-y-8 anim-slide-up">
-          <div className="max-w-md mx-auto chemora-card p-5 sm:p-8 anim-popup">
-            {/* Tabs */}
-            <div className="flex bg-[#070b13] p-1 rounded-2xl border border-cyan-950 mb-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signin');
-                  setAuthError(null);
-                  setAuthSuccess(null);
-                }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 hover:scale-102 active:scale-98 ${
-                  authMode === 'signin'
-                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Sign In</span>
-              </button>
+        <div className="space-y-10 anim-slide-up">
+          <AuthCard
+            isRegister={authMode === 'signup'}
+            onToggleMode={(isReg) => {
+              setAuthMode(isReg ? 'signup' : 'signin');
+              setAuthError(null);
+              setAuthSuccess(null);
+            }}
+            email={authEmail}
+            onEmailChange={setAuthEmail}
+            password={authPassword}
+            onPasswordChange={setAuthPassword}
+            fullName={authFullName}
+            onFullNameChange={setAuthFullName}
+            agreeTerms={agreeTerms}
+            onAgreeTermsChange={setAgreeTerms}
+            confirmAge={confirmAge}
+            onConfirmAgeChange={setConfirmAge}
+            rememberMe={true}
+            isSubmitting={isSubmittingAuth}
+            error={authError}
+            onClearError={() => setAuthError(null)}
+            success={authSuccess}
+            onClearSuccess={() => setAuthSuccess(null)}
+            onSignIn={handleSignIn}
+            onSignUp={handleSignUp}
+            onGoogleSignIn={handleGoogleSignIn}
+            onForgotPassword={async (recoveryEmail) => {
+              if (!recoveryEmail.trim()) {
+                setAuthError('Please enter an email address.');
+                return;
+              }
+              setIsSubmittingAuth(true);
+              setAuthError(null);
+              setAuthSuccess(null);
+              try {
+                await supabase.auth.resetPasswordForEmail(recoveryEmail.trim()).catch(() => {});
+                const msg = await requestPasswordReset(recoveryEmail.trim());
+                setAuthSuccess(msg);
+                triggerToast(msg, 'info');
+              } catch (err: any) {
+                const msg = cleanErrorMessage(err.message || 'Failed to request password reset.');
+                setAuthError(msg);
+                triggerToast(msg, 'error');
+              } finally {
+                setIsSubmittingAuth(false);
+              }
+            }}
+          />
 
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signup');
-                  setAuthError(null);
-                  setAuthSuccess(null);
-                }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 hover:scale-102 active:scale-98 ${
-                  authMode === 'signup'
-                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Register</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('forgot');
-                  setAuthError(null);
-                  setAuthSuccess(null);
-                }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 hover:scale-102 active:scale-98 ${
-                  authMode === 'forgot'
-                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-600/30'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Reset</span>
-              </button>
-            </div>
-
-            {/* Form */}
-            {authMode === 'signin' && (
-              <div className="space-y-4 anim-slide-up anim-popup">
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-bold text-white">Researcher Sign In</h3>
-                  <p className="text-xs text-slate-400 mt-1">Access your Supabase cloud profile, photo, &amp; achievements.</p>
-                </div>
-
-                {/* Google Sign In option */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isSubmittingAuth}
-                  className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md transition hover:scale-102 active:scale-98 disabled:opacity-50"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-
-                <div className="relative flex items-center justify-center my-3">
-                  <div className="border-t border-cyan-950/80 w-full" />
-                  <span className="bg-[#0b1320] px-3 text-[10px] font-mono uppercase tracking-wider text-slate-400 shrink-0">or sign in with password</span>
-                  <div className="border-t border-cyan-950/80 w-full" />
-                </div>
-
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1.5">Email Address</label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                      <input
-                        type="email"
-                        required
-                        value={authEmail}
-                        onChange={(e) => setAuthEmail(e.target.value)}
-                        placeholder="curie@chemora.edu"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-mono text-slate-400">Password</label>
-                      <button
-                        type="button"
-                        onClick={() => setAuthMode('forgot')}
-                        className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={authPassword}
-                        onChange={(e) => setAuthPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-300"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmittingAuth}
-                    aria-busy={isSubmittingAuth}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-sm font-bold text-white shadow-lg shadow-cyan-600/20 flex items-center justify-center gap-2 transition disabled:opacity-50 mt-2"
-                  >
-                    {isSubmittingAuth ? (
-                      <BubbleDots label="Authenticating credentials..." />
-                    ) : (
-                      <LogIn className="w-4 h-4" />
-                    )}
-                    <span>{isSubmittingAuth ? 'Authenticating...' : 'Sign In to Existing Account'}</span>
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {authMode === 'signup' && (
-              <form key="signup" onSubmit={handleSignUp} className="space-y-4 anim-slide-up anim-popup">
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-bold text-white">Register Researcher Account</h3>
-                  <p className="text-xs text-slate-400 mt-1">Start recording laboratory achievements and daily streaks.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1.5">Full Name</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={authFullName}
-                      onChange={(e) => setAuthFullName(e.target.value)}
-                      placeholder="e.g. Rosalind Franklin"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1.5">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      placeholder="franklin@lab.org"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1.5">Laboratory Password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      placeholder="At least 10 characters"
-                      className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-300"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Consent & Age Checkboxes (Compliance & Privacy) */}
-                <div className="space-y-2.5 pt-1.5 text-xs">
-                  <label className="flex items-start gap-2.5 cursor-pointer text-slate-300">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={agreeTerms}
-                      onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="accent-cyan-400 rounded w-4 h-4 mt-0.5 cursor-pointer flex-shrink-0"
-                    />
-                    <span className="leading-relaxed">
-                      I have read and agree to the{" "}
-                      <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline hover:text-cyan-300">
-                        Terms of Service
-                      </a>{" "}
-                      and{" "}
-                      <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline hover:text-cyan-300">
-                        Privacy Policy
-                      </a>.
-                    </span>
-                  </label>
-
-                  <label className="flex items-start gap-2.5 cursor-pointer text-slate-300">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={confirmAge}
-                      onChange={(e) => setConfirmAge(e.target.checked)}
-                      className="accent-cyan-400 rounded w-4 h-4 mt-0.5 cursor-pointer flex-shrink-0"
-                    />
-                    <span className="leading-relaxed">
-                      I confirm I am at least 13 years old (or have parental/guardian permission to use CHEMORA for chemistry study).
-                    </span>
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmittingAuth || !agreeTerms || !confirmAge}
-                  aria-busy={isSubmittingAuth}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition hover:scale-102 active:scale-98 disabled:opacity-50 mt-2"
-                >
-                  {isSubmittingAuth ? (
-                    <BubbleDots label="Creating researcher account..." />
-                  ) : (
-                    <UserPlus className="w-4 h-4" />
-                  )}
-                  <span>{isSubmittingAuth ? 'Creating Account...' : 'Create Researcher Account'}</span>
-                </button>
-              </form>
-            )}
-
-            {authMode === 'forgot' && (
-              <form key="forgot" onSubmit={handleForgotPassword} className="space-y-4 anim-slide-up anim-popup">
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-bold text-white">Reset Password</h3>
-                  <p className="text-xs text-slate-400 mt-1">Enter your email and we'll dispatch a secure recovery link.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 mb-1.5">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-cyan-400 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      placeholder="your.email@chemora.edu"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#070b13] border border-cyan-900/80 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmittingAuth}
-                  aria-busy={isSubmittingAuth}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-sm font-bold text-white shadow-lg flex items-center justify-center gap-2 transition hover:scale-102 active:scale-98 disabled:opacity-50 mt-2"
-                >
-                  {isSubmittingAuth ? <BubbleDots label="Sending recovery email..." /> : null}
-                  <span>{isSubmittingAuth ? 'Sending...' : 'Send Recovery Email'}</span>
-                </button>
-              </form>
-            )}
-
-            {/* Guest Exploration Option */}
-            <div className="mt-6 pt-5 border-t border-cyan-950 text-center">
-              <p className="text-xs text-slate-400 mb-2">Want to experiment without signing in?</p>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300">
-                <Beaker className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Guest Exploration (In-Memory Session • Zero Account LocalStorage)</span>
-              </div>
+          {/* Guest Exploration Option */}
+          <div className="max-w-md mx-auto text-center">
+            <p className="text-xs text-slate-400 mb-2">Want to experiment without signing in?</p>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 shadow-sm">
+              <Beaker className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Guest Exploration (In-Memory Session • Zero Account LocalStorage)</span>
             </div>
           </div>
 

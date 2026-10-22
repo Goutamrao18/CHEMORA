@@ -1,0 +1,278 @@
+/* ==========================================================================
+   CHEMORA AUTH CARD SLIDING ANIMATION SYSTEM
+   ========================================================================== */
+
+/* Full-Screen Page Container for Auth */
+.auth-page-container {
+  min-height: 100dvh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 24px) env(safe-area-inset-left, 16px);
+}
+
+/* Centered card: 660x520, radius 32px, white background, 8px white border */
+.auth-card {
+  position: relative;
+  width: 100%;
+  max-width: 660px;
+  border-radius: 32px;
+  background-color: #ffffff;
+  border: 8px solid #ffffff;
+  overflow: hidden;
+  box-shadow: 0 25px 70px rgba(4, 33, 43, 0.18), 0 10px 25px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .auth-card {
+    height: 520px;
+  }
+
+  /* Sliding Dark Panel (card-bg): 50% width, full height, radius 26px, #04212b */
+  .auth-card .card-bg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    border-radius: 26px;
+    background-color: #04212b;
+    z-index: 2;
+    overflow: hidden;
+    transform: translate3d(100%, 0, 0);
+    transition: transform 0.65s cubic-bezier(0.65, 0, 0.35, 1);
+    pointer-events: none;
+  }
+
+  /* When registering, dark panel slides to the left (0 0) */
+  .auth-card.register .card-bg {
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Hero Elements & Form Panels */
+  .auth-card .hero-element,
+  .auth-card .form-element {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.65s cubic-bezier(0.65, 0, 0.35, 1),
+                opacity 0.65s cubic-bezier(0.65, 0, 0.35, 1),
+                visibility 0.65s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* LOGIN HERO (visible by default on the right half, z-index 3) */
+  .auth-card .login-hero {
+    right: 0;
+    left: auto;
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    z-index: 3;
+    pointer-events: auto;
+  }
+  .auth-card.register .login-hero {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(-100%, 0, 0);
+    pointer-events: none;
+  }
+
+  /* REGISTER HERO (hidden by default, slides in on the left half) */
+  .auth-card .register-hero {
+    left: 0;
+    right: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(100%, 0, 0);
+    z-index: 3;
+    pointer-events: none;
+  }
+  .auth-card.register .register-hero {
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+  }
+
+  /* LOGIN FORM (visible by default on left half) */
+  .auth-card .login-form {
+    left: 0;
+    right: auto;
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    z-index: 1;
+    pointer-events: auto;
+  }
+  .auth-card.register .login-form {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(-100%, 0, 0);
+    pointer-events: none;
+  }
+
+  /* REGISTER FORM (hidden by default on right half) */
+  .auth-card .register-form {
+    left: 50%;
+    right: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(100%, 0, 0);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .auth-card.register .register-form {
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
+  }
+}
+
+/* Hero Content Styling (z-index 3) */
+.auth-card .hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  color: #f9f9f9;
+  height: 100%;
+  padding: 32px;
+}
+
+.auth-card .hero-content h2 {
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #f9f9f9;
+  margin: 0;
+}
+
+.auth-card .hero-content p {
+  opacity: 0.85;
+  line-height: 1.45;
+  font-size: 13px;
+  max-width: 230px;
+  margin: 0;
+  color: #f9f9f9;
+}
+
+/* Pill "switch" button */
+.auth-card .switch-btn {
+  padding: 12px 46px;
+  border-radius: 32px;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f9f9f9;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  user-select: none;
+}
+
+.auth-card .switch-btn:hover {
+  background-color: #f9f9f9;
+  color: #04212b;
+  border-color: #f9f9f9;
+}
+
+/* Mobile Responsive Adjustments (<640px) */
+@media (max-width: 639.98px) {
+  .auth-card {
+    border-radius: 26px;
+    border-width: 6px;
+    height: auto;
+    min-height: 560px;
+  }
+
+  .auth-card .card-bg {
+    position: relative;
+    width: 100%;
+    height: 165px;
+    border-radius: 20px;
+    background-color: #04212b;
+    overflow: hidden;
+  }
+
+  .auth-card .hero-element {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+  }
+
+  .auth-card:not(.register) .login-hero {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    z-index: 3;
+    pointer-events: auto;
+  }
+
+  .auth-card.register .register-hero {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    z-index: 3;
+    pointer-events: auto;
+  }
+
+  .auth-card .hero-content {
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .auth-card .hero-content h2 {
+    font-size: 20px;
+  }
+
+  .auth-card .hero-content p {
+    font-size: 12px;
+    max-width: 250px;
+  }
+
+  .auth-card .switch-btn {
+    padding: 8px 32px;
+    font-size: 12px;
+  }
+
+  .auth-card .form-element {
+    position: relative;
+    width: 100%;
+    height: auto;
+    padding: 24px 20px;
+  }
+
+  .auth-card .login-form {
+    display: block;
+  }
+  .auth-card.register .login-form {
+    display: none;
+  }
+
+  .auth-card .register-form {
+    display: none;
+  }
+  .auth-card.register .register-form {
+    display: block;
+  }
+}

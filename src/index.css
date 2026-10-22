@@ -1,6 +1,7 @@
 @import "../public/loaders.css";
 @import "../public/mobile-tokens.css";
 @import "../public/mobile-dock.css";
+@import "./auth-card.css";
 
 @tailwind base;
 @tailwind components;
