@@ -279,6 +279,38 @@ async function runTests() {
       assert(failureCount === 5, '5 initial attempts fail with HTTP 401');
       assert(got429, '6th attempt is blocked with HTTP 429 Too Many Requests (Lockout active)');
     }
+
+    // ------------------------------------------------------------------------
+    // Test 7: Audit Log Endpoints & CSV Export
+    // ------------------------------------------------------------------------
+    console.log('\n7. Testing Audit Log Endpoints & Compliance Export...');
+    {
+      // 7a: Unauthenticated audit log access returns 404 (Stealth protection)
+      const unauthAudit = await fetch(`${URL_A}/api/admin/audit-logs`);
+      assert(unauthAudit.status === 404, 'Unauthenticated /api/admin/audit-logs returns stealth 404');
+
+      // 7b: Authenticated audit log access returns HTTP 200 with structured logs and stats
+      const authAudit = await fetch(`${URL_A}/api/admin/audit-logs?limit=10`, {
+        headers: { Cookie: sessionCookie },
+      });
+      assert(authAudit.status === 200, 'Authenticated /api/admin/audit-logs returns HTTP 200');
+      const auditData = await authAudit.json();
+      assert(Array.isArray(auditData.logs), 'Audit response includes logs array');
+      assert(auditData.total > 0, 'Audit response reports total count > 0');
+      assert(auditData.stats && typeof auditData.stats.totalCount === 'number', 'Audit response includes computed stats');
+
+      // 7c: Audit log CSV export returns text/csv header
+      const exportRes = await fetch(`${URL_A}/api/admin/audit-logs/export?format=csv`, {
+        headers: { Cookie: sessionCookie },
+      });
+      assert(exportRes.status === 200, 'Audit export endpoint returns HTTP 200');
+      assert(
+        (exportRes.headers.get('content-type') || '').includes('text/csv'),
+        'Audit export returns text/csv content type'
+      );
+      const csvText = await exportRes.text();
+      assert(csvText.includes('Timestamp,Log ID,Admin Email,Action'), 'Audit CSV contains required compliance headers');
+    }
   } finally {
     // Cleanly close test server instances
     await new Promise((resolve) => serverA.close(resolve));

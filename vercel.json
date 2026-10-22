@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/api/assistant",
-      "destination": "/api/assistant.js"
+      "destination": "/api/assistant"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api/[...path]"
     },
     {
       "source": "/((?!api/|.*\\..*).*)",
