@@ -31,9 +31,6 @@ export const AdminView: React.FC = () => {
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [verifyCode, setVerifyCode] = useState('');
-  const [tempToken, setTempToken] = useState<string | null>(null);
-  const [isVerifyingState, setIsVerifyingState] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
@@ -182,77 +179,14 @@ export const AdminView: React.FC = () => {
 
       const data = await res.json();
 
-      if (data.requires2FA) {
-        setIsVerifyingState(true);
-        if (data.tempToken) {
-          setTempToken(data.tempToken);
-        }
-        setAuthSuccess('Please enter your 6-digit authenticator code.');
-      } else if (data.admin) {
+      if (data.admin) {
         setAdminUser(data.admin);
         setAuthSuccess('Authenticated successfully.');
+      } else if (data.error) {
+        setAuthError(data.error);
       }
     } catch (err) {
       setAuthError('Connection error. Could not verify administrator identity.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handle 2FA verification (State B)
-  const handleVerify2FA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setIsSubmitting(true);
-
-    try {
-      const res = await fetch('/api/admin/verify-2fa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          code: verifyCode.trim(),
-          tempToken,
-          email: loginEmail,
-          password: loginPassword,
-        }),
-      });
-
-      if (res.status === 400) {
-        const data = await res.json().catch(() => ({}));
-        setAuthError(data.error || 'Please check your input (valid 6-digit verification code required).');
-        return;
-      }
-
-      if (res.status === 401) {
-        setAuthError('Invalid or expired 2FA code.');
-        return;
-      }
-
-      if (res.status === 404) {
-        setAuthError('Admin verification service unavailable.');
-        return;
-      }
-
-      if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
-        setAuthError(data.error || 'Too many attempts. Please try again in 15 minutes.');
-        return;
-      }
-
-      if (res.status >= 500) {
-        const data = await res.json().catch(() => ({}));
-        setAuthError(data.error || 'Server error encountered during 2FA verification.');
-        return;
-      }
-
-      const data = await res.json();
-      if (data.admin) {
-        setAdminUser(data.admin);
-        setAuthSuccess('Security verification complete.');
-      }
-    } catch (err) {
-      setAuthError('Verification network failure.');
     } finally {
       setIsSubmitting(false);
     }
@@ -264,9 +198,7 @@ export const AdminView: React.FC = () => {
       await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
     } catch {}
     setAdminUser(null);
-    setIsVerifyingState(false);
     setLoginPassword('');
-    setVerifyCode('');
   };
 
   // Moderation quick actions from dashboard
@@ -340,27 +272,16 @@ export const AdminView: React.FC = () => {
         {/* Control Room Auth Card */}
         <div className="w-full max-w-4xl z-10 flex flex-col items-center">
           <AdminAuthCard
-            isVerifyingState={isVerifyingState}
             email={loginEmail}
             onEmailChange={setLoginEmail}
             password={loginPassword}
             onPasswordChange={setLoginPassword}
-            verifyCode={verifyCode}
-            onVerifyCodeChange={setVerifyCode}
             isSubmitting={isSubmitting}
             error={authError}
             onClearError={() => setAuthError(null)}
             success={authSuccess}
             onClearSuccess={() => setAuthSuccess(null)}
             onSignIn={handleSignIn}
-            onVerifySubmit={handleVerify2FA}
-            onCancel2FA={() => {
-              setIsVerifyingState(false);
-              setTempToken(null);
-              setVerifyCode('');
-              setAuthError(null);
-              setAuthSuccess(null);
-            }}
           />
         </div>
 

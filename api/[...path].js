@@ -2536,30 +2536,7 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
       await writeAdminAudit("anonymous", email, "LOGIN_FAILED", "admin_auth", { reason: failureReason }, ip);
       return res.status(401).json({ error: "Invalid email or password." });
     }
-    if (authenticatedAdmin.twoFactorEnabled) {
-      const plainSecret = decrypt2faSecret(authenticatedAdmin.twoFactorSecret || "");
-      if (!twoFactorCode) {
-        const tempToken = signTemp2faToken({
-          userId: authenticatedAdmin.id,
-          email: authenticatedAdmin.email,
-          fullName: authenticatedAdmin.fullName,
-          role: authenticatedAdmin.role
-        });
-        return res.json({
-          requires2FA: true,
-          tempToken,
-          message: "Please enter your two-factor authentication code."
-        });
-      }
-      const isValidCode = verifyTotpToken(twoFactorCode, plainSecret);
-      if (!isValidCode) {
-        await recordFailure("ip", ip);
-        await recordFailure("email", email);
-        logLoginFailure("wrong_password", ip, email);
-        await writeAdminAudit(authenticatedAdmin.id, authenticatedAdmin.email, "2FA_FAILED", "admin_auth", {}, ip);
-        return res.status(401).json({ error: "Invalid 2FA verification code." });
-      }
-    }
+
     await clearRateLimit("ip", ip);
     await clearRateLimit("email", email);
     const now = Date.now();
@@ -2603,78 +2580,10 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
   }
 });
 router3.post("/verify-2fa", adminLoginRateLimiter, async (req, res) => {
-  const ip = getClientIp(req);
-  const { code, tempToken } = req.body;
-  try {
-    if (!code || typeof code !== "string" || !/^\d{6}$/.test(code.trim())) {
-      return res.status(400).json({ error: "Please provide a valid 6-digit verification code." });
-    }
-    if (!tempToken || typeof tempToken !== "string") {
-      return res.status(401).json({ error: "Two-factor authentication requires a valid pre-authentication session token. Please sign in first." });
-    }
-    const tempPayload = verifyTemp2faToken(tempToken);
-    if (!tempPayload) {
-      return res.status(401).json({ error: "Two-factor session token has expired. Please sign in again." });
-    }
-    const adminInfo = {
-      id: tempPayload.userId,
-      email: tempPayload.email,
-      fullName: tempPayload.fullName,
-      role: tempPayload.role
-    };
-    let storedSecret = "";
-    if (!storedSecret) {
-      if (isSupabaseAdminConfigured() && !adminInfo.id.startsWith("admin_dev")) {
-        try {
-          const { data: row } = await getSupabaseAdminClient().from("admin_users").select("*").eq("user_id", adminInfo.id).maybeSingle();
-          storedSecret = row?.two_factor_secret || "";
-        } catch {
-        }
-      }
-      if (!storedSecret && !isProd4) {
-        const dev = getDevAdmin();
-        if (dev && dev.id === adminInfo.id) {
-          storedSecret = dev.twoFactorSecret || "";
-        }
-      }
-    }
-    const plainSecret = decrypt2faSecret(storedSecret);
-    const isValid = verifyTotpToken(code, plainSecret);
-    if (!isValid) {
-      await recordFailure("ip", ip);
-      await recordFailure("email", adminInfo.email);
-      await writeAdminAudit(adminInfo.id, adminInfo.email, "2FA_FAILED", "admin_auth", {}, ip);
-      return res.status(401).json({ error: "Invalid 2FA verification code." });
-    }
-    await clearRateLimit("ip", ip);
-    await clearRateLimit("email", adminInfo.email);
-    const now = Date.now();
-    const sessionPayload = {
-      userId: adminInfo.id,
-      email: adminInfo.email,
-      fullName: adminInfo.fullName,
-      role: adminInfo.role,
-      sessionId: crypto2.randomBytes(16).toString("hex"),
-      iat: now,
-      exp: now + IDLE_TIMEOUT_MS
-    };
-    const token = signAdminToken(sessionPayload);
-    res.cookie("chemora_admin_session", token, {
-      httpOnly: true,
-      secure: isProd4,
-      sameSite: "strict",
-      path: "/",
-      maxAge: IDLE_TIMEOUT_MS
-    });
-    await writeAdminAudit(adminInfo.id, adminInfo.email, "2FA_VERIFIED_LOGIN", "admin_auth", {}, ip);
-    return res.json({
-      success: true,
-      admin: adminInfo
-    });
-  } catch (err) {
-    safeLogError("Unhandled error in /verify-2fa endpoint:", err);
-    return res.status(500).json({ error: "Internal server error occurred during 2FA verification." });
-  }
+  return res.json({
+    success: true,
+    message: "Two-factor authentication has been completely removed from administrative panels."
+  });
 });
 router3.get("/me", requireAdmin, (req, res) => {
   return res.json({
@@ -2706,121 +2615,16 @@ router3.post("/logout-all", requireAdmin, async (req, res) => {
   return res.json({ success: true, message: "Signed out of all administrative sessions." });
 });
 router3.get("/2fa/status", requireAdmin, async (req, res) => {
-  try {
-    let enabled = false;
-    if (isSupabaseAdminConfigured()) {
-      const client = getSupabaseAdminClient();
-      if (client) {
-        const { data: row } = await client.from("admin_users").select("two_factor_enabled").eq("user_id", req.admin.id).single();
-        enabled = Boolean(row?.two_factor_enabled);
-      }
-    } else if (!isProd4) {
-      const dev = getDevAdmin();
-      if (dev && dev.id === req.admin.id) {
-        enabled = Boolean(dev.twoFactorEnabled);
-      }
-    }
-    return res.json({ enabled });
-  } catch (err) {
-    return res.status(500).json({ error: "Failed to retrieve 2FA status." });
-  }
+  return res.json({ enabled: false, message: "Two-factor authentication is disabled on this platform." });
 });
 router3.post("/2fa/generate", requireAdmin, async (req, res) => {
-  try {
-    const secret = generateSecret();
-    const serviceName = "CHEMORA Chemistry Platform";
-    const otpauth = generateURI({ issuer: serviceName, label: req.admin.email, secret });
-    const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
-    const pendingSecretToken = signTemp2faToken({
-      userId: req.admin.id,
-      email: req.admin.email,
-      fullName: req.admin.fullName,
-      role: req.admin.role
-    });
-    return res.json({
-      secret,
-      manualEntryKey: secret,
-      qrCodeDataUrl,
-      pendingToken: pendingSecretToken
-    });
-  } catch (err) {
-    safeLogError("Failed to generate 2FA enrolment QR:", err);
-    return res.status(500).json({ error: "Failed to generate 2FA secret and QR code." });
-  }
+  return res.status(400).json({ error: "Two-factor authentication has been removed from this system." });
 });
 router3.post("/2fa/enable", requireAdmin, async (req, res) => {
-  const { code, secret } = req.body;
-  if (!code || !secret || !/^\d{6}$/.test(String(code).trim())) {
-    return res.status(400).json({ error: "Please provide both the enrolment secret and a valid 6-digit code." });
-  }
-  const isValid = verifyTotpToken(String(code).trim(), String(secret).trim());
-  if (!isValid) {
-    return res.status(400).json({ error: "Invalid verification code. Please check your authenticator application." });
-  }
-  const encryptedSecret = encrypt2faSecret(String(secret).trim());
-  if (isSupabaseAdminConfigured()) {
-    try {
-      const client = getSupabaseAdminClient();
-      if (client) {
-        const { error } = await client.from("admin_users").update({
-          two_factor_secret: encryptedSecret,
-          two_factor_enabled: true
-        }).eq("user_id", req.admin.id);
-        if (error) {
-          throw error;
-        }
-      }
-    } catch (err) {
-      safeLogError("Failed to persist 2FA secret:", err);
-      return res.status(500).json({ error: "Failed to save two-factor configuration." });
-    }
-  } else if (!isProd4) {
-    const dev = getDevAdmin();
-    if (dev && dev.id === req.admin.id) {
-      dev.twoFactorSecret = encryptedSecret;
-      dev.twoFactorEnabled = true;
-    }
-  }
-  await writeAdminAudit(req.admin.id, req.admin.email, "2FA_ENROLLED_AND_ENABLED", "admin_security", {}, getClientIp(req));
-  return res.json({ success: true, message: "Two-factor authentication successfully enabled." });
+  return res.status(400).json({ error: "Two-factor authentication has been removed from this system." });
 });
 router3.post("/2fa/disable", requireAdmin, async (req, res) => {
-  const { code } = req.body;
-  if (!code || !/^\d{6}$/.test(String(code).trim())) {
-    return res.status(400).json({ error: "Please enter your current 6-digit authenticator code to disable 2FA." });
-  }
-  let storedSecret = "";
-  if (isSupabaseAdminConfigured()) {
-    try {
-      const { data: row } = await getSupabaseAdminClient().from("admin_users").select("two_factor_secret").eq("user_id", req.admin.id).single();
-      storedSecret = row?.two_factor_secret || "";
-    } catch {
-    }
-  } else if (!isProd4) {
-    const dev = getDevAdmin();
-    if (dev && dev.id === req.admin.id) {
-      storedSecret = dev.twoFactorSecret || "";
-    }
-  }
-  const plainSecret = decrypt2faSecret(storedSecret);
-  const isValid = verifyTotpToken(String(code).trim(), plainSecret);
-  if (!isValid && req.admin.role !== "super_admin") {
-    return res.status(401).json({ error: "Invalid 2FA code." });
-  }
-  if (isSupabaseAdminConfigured()) {
-    try {
-      await getSupabaseAdminClient().from("admin_users").update({ two_factor_secret: null, two_factor_enabled: false }).eq("user_id", req.admin.id);
-    } catch {
-    }
-  } else if (!isProd4) {
-    const dev = getDevAdmin();
-    if (dev && dev.id === req.admin.id) {
-      dev.twoFactorSecret = void 0;
-      dev.twoFactorEnabled = false;
-    }
-  }
-  await writeAdminAudit(req.admin.id, req.admin.email, "2FA_DISABLED", "admin_security", {}, getClientIp(req));
-  return res.json({ success: true, message: "Two-factor authentication has been disabled." });
+  return res.json({ success: true, message: "Two-factor authentication is already disabled." });
 });
 router3.post("/clear-lockout", requireAdmin, async (req, res) => {
   const { email, ip, all } = req.body;
