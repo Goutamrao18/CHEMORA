@@ -36,25 +36,24 @@ import {
   LogOut,
   Lock,
   Mail,
-  UserPlus,
-  LogIn,
-  Sliders,
+  Camera,
+  Upload,
   AlertCircle,
-  Eye,
-  EyeOff,
   Flame,
   CheckCircle2,
   RefreshCw,
   Server,
   Database,
   Activity,
-  HardDrive,
   CheckCheck,
   Cpu,
+  ChevronDown,
+  Sliders,
 } from 'lucide-react';
 import { AuthCard } from './AuthCard';
 import { GradientWaves } from './GradientWaves';
 import { ErrorBoundary } from './ErrorBoundary';
+import { AvatarCropModal } from './AvatarCropModal';
 import { withTimeout } from '../utils/fetchWithRetry';
 
 interface AccountViewProps {
@@ -66,6 +65,9 @@ const AVATAR_OPTIONS = [
   { label: 'Carbon', url: '/assets/chemistry/carbon.svg' },
   { label: 'Atom', url: '/icon-192.png' },
 ];
+
+const SECTIONS = ['profile', 'security', 'labdata'] as const;
+type AccountSection = typeof SECTIONS[number];
 
 function cleanErrorMessage(rawMsg: string | undefined): string {
   if (!rawMsg) return 'An error occurred. Please try again.';
@@ -88,6 +90,20 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   const [authCheckTimedOut, setAuthCheckTimedOut] = useState(false);
   const [isBackendOnline, setIsBackendOnline] = useState<boolean | null>(null);
 
+  // Active section for sliding tabs ('profile', 'security', 'labdata')
+  const [activeSection, setActiveSection] = useState<AccountSection>('profile');
+
+  // Advanced Supabase diagnostics accordion (collapsed by default)
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  // Profile Picture Upload & Crop State
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [selectedCropImage, setSelectedCropImage] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Keep profile ref to prevent stale closures and infinite effect loops
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -108,12 +124,11 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
 
-  // Animated Floating Toast Notification State
+  // Animated Floating Toast Notification State (Auto-dismiss after 4s)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const triggerToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -128,14 +143,18 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Edit Profile State
-  const [isEditing, setIsEditing] = useState(false);
+  // Edit Profile Form State
   const [nameInput, setNameInput] = useState('');
-  const [avatarInput, setAvatarInput] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Synchronize nameInput with profile
+  useEffect(() => {
+    if (profile.name) {
+      setNameInput(profile.name);
+    }
+  }, [profile.name]);
+
   // Change Password State
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState<{ error?: string; success?: string } | null>(null);
@@ -155,20 +174,40 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   })();
 
+  // Keep URL hash (#account) synchronized
+  useEffect(() => {
+    const handleHashSync = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('security')) {
+        setActiveSection('security');
+      } else if (hash.includes('lab') || hash.includes('data')) {
+        setActiveSection('labdata');
+      } else if (hash.includes('profile')) {
+        setActiveSection('profile');
+      }
+    };
+    handleHashSync();
+    window.addEventListener('hashchange', handleHashSync);
+    return () => window.removeEventListener('hashchange', handleHashSync);
+  }, []);
+
+  const handleSelectSection = (section: AccountSection) => {
+    setActiveSection(section);
+    // Keep #account working while smoothly reflecting sub-view
+    window.location.hash = section === 'profile' ? '#account' : `#account/${section}`;
+  };
+
   // Load session from backend API (Zero-localStorage: profile comes exclusively from server)
-  // Non-blocking background diagnostics + robust getSession timeout
   const refreshAccount = useCallback(async () => {
     setIsLoadingAuth(true);
     setAuthCheckTimedOut(false);
 
-    // Hard safety timeout: after 4 seconds, force loading state to false so login card is accessible
     const safetyTimer = setTimeout(() => {
       console.warn('[AccountView] Auth check safety timeout reached (4000ms). Forcing UI availability.');
       setIsLoadingAuth(false);
       setAuthCheckTimedOut(true);
     }, 4000);
 
-    // Background diagnostics: do NOT block auth check or login UI
     checkBackendStatus()
       .then((status) => setIsBackendOnline(status.status === 'online'))
       .catch(() => setIsBackendOnline(false));
@@ -178,7 +217,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       .catch(() => {});
 
     try {
-      // 1. Check if Supabase Auth client has an active session in browser (with hard 3s timeout)
       const { data: { session } } = await withTimeout(
         supabase.auth.getSession(),
         3000,
@@ -190,7 +228,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         return;
       }
 
-      // 2. Otherwise verify backend session
       const data = await fetchCurrentAccount();
       if (data.authenticated && data.profile) {
         setIsAuthenticated(true);
@@ -207,8 +244,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           isLoggedIn: true,
         };
         setProfile(updatedProfile);
+        setNameInput(updatedProfile.name);
 
-        // Fetch synced laboratory progress in background without blocking
         fetchResearcherProgressFromDatabase()
           .then((cloudProg) => {
             if (cloudProg?.progress) {
@@ -241,7 +278,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   }, []);
 
-  // Synchronize a Supabase user session directly with UI state matching table schema
+  // Synchronize Supabase session with strict avatar priority order (Part B.6)
   const syncSupabaseSession = useCallback(async (sessionUser: SupabaseUser, token?: string) => {
     if (token) {
       setAuthToken(token);
@@ -261,25 +298,19 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         sessionUser.user_metadata?.name ||
         sessionUser.user_metadata?.user_name;
 
-      // 1. Resiliently query public.profiles row directly from Supabase (checking id, user_id, email)
       let profileData: any = null;
 
-      // Priority 1: Query by primary key id (standard Supabase pattern where id = auth.users.id)
       try {
         const { data: byId } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', sessionUser.id)
           .maybeSingle();
-
-        if (byId) {
-          profileData = byId;
-        }
+        if (byId) profileData = byId;
       } catch (err) {
         console.warn('Profile lookup by id note:', err);
       }
 
-      // Priority 2: Query by user_id column if not found by id
       if (!profileData) {
         try {
           const { data: byUserId } = await supabase
@@ -287,16 +318,12 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             .select('*')
             .eq('user_id', sessionUser.id)
             .maybeSingle();
-
-          if (byUserId) {
-            profileData = byUserId;
-          }
+          if (byUserId) profileData = byUserId;
         } catch (err) {
           console.warn('Profile lookup by user_id note:', err);
         }
       }
 
-      // Priority 3: Query by email if available on profile row
       if (!profileData && sessionUser.email) {
         try {
           const { data: byEmail } = await supabase
@@ -304,64 +331,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             .select('*')
             .eq('email', sessionUser.email.toLowerCase().trim())
             .maybeSingle();
-
-          if (byEmail) {
-            profileData = byEmail;
-            // Link existing row with user_id or id if not set
-            if (!profileData.user_id && !profileData.id) {
-              try {
-                await supabase
-                  .from('profiles')
-                  .update({ user_id: sessionUser.id })
-                  .eq('id', profileData.id);
-              } catch {}
-            }
-          }
-        } catch (err) {
-          // email column may not exist in some schemas
-        }
+          if (byEmail) profileData = byEmail;
+        } catch {}
       }
 
-      // Priority 4: Check candidate full_name matching for existing accounts created prior to auth binding
-      if (!profileData) {
-        const candidateNames = [
-          metaName,
-          sessionUser.user_metadata?.full_name,
-          sessionUser.user_metadata?.name,
-          sessionUser.email?.split('@')[0],
-        ].filter((n): n is string => Boolean(n && n.trim().length > 0));
-
-        for (const cand of candidateNames) {
-          try {
-            const { data: nameMatches } = await supabase
-              .from('profiles')
-              .select('*')
-              .ilike('full_name', cand.trim())
-              .limit(1);
-
-            if (nameMatches && nameMatches.length > 0) {
-              profileData = nameMatches[0];
-              // Link this existing profile to the authenticated user's user_id or id
-              if (!profileData.user_id) {
-                try {
-                  await supabase
-                    .from('profiles')
-                    .update({ user_id: sessionUser.id })
-                    .eq('id', profileData.id);
-                  profileData.user_id = sessionUser.id;
-                } catch (linkErr) {
-                  console.warn('Linking user_id to existing profile note:', linkErr);
-                }
-              }
-              break;
-            }
-          } catch (nameErr) {
-            console.warn('Name search note:', nameErr);
-          }
-        }
-      }
-
-      // Priority 5: Fallback: check backend proxy if client-side database query was blocked by RLS
       if (!profileData) {
         try {
           const backendCurrent = await fetchCurrentAccount();
@@ -377,8 +350,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         } catch {}
       }
 
-      // Priority 6: Auto-provision ONLY if profile really does not exist anywhere
-      // Preserves existing local challenge achievements instead of overwriting with zeroes
       if (!profileData) {
         const defaultName = metaName || sessionUser.email?.split('@')[0] || 'Researcher';
         const initialLevels = challengeState?.levels?.length || 0;
@@ -387,8 +358,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         const initialRank = profile.rank && profile.rank !== 'Guest Chemist' ? profile.rank : 'Novice Alchemist';
 
         try {
-          // Attempt insert with both id and user_id to satisfy whichever schema exists
-          const { data: created, error: insertError } = await supabase
+          const { data: created } = await supabase
             .from('profiles')
             .insert({
               id: sessionUser.id,
@@ -403,43 +373,33 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             })
             .select()
             .maybeSingle();
-
-          if (insertError) {
-            // Fallback for minimalist Supabase schemas: only id, full_name, avatar_url
-            const { data: createdMin } = await supabase
-              .from('profiles')
-              .insert({
-                id: sessionUser.id,
-                full_name: defaultName,
-                avatar_url: metaAvatar || null,
-              })
-              .select()
-              .maybeSingle();
-            if (createdMin) profileData = createdMin;
-          } else if (created) {
-            profileData = created;
-          }
+          if (created) profileData = created;
         } catch (insErr) {
           console.warn('Auto-provision insert note:', insErr);
         }
       }
 
-      // Ensure avatar reflects user's actual photo
-      // Priority: user's Google/OAuth photo (metaAvatar) > profileData avatar > storage avatar > default
-      let resolvedAvatar = metaAvatar || profileData?.avatar_url;
-      if (!resolvedAvatar) {
-        try {
-          const { data: storageData } = supabase.storage.from('avatars').getPublicUrl(`${sessionUser.id}/avatar`);
-          if (storageData?.publicUrl) {
-            resolvedAvatar = storageData.publicUrl;
-          }
-        } catch {}
+      // Requirement B.6: Avatar Priority Bug Fix
+      // Strict order: profiles.avatar_url (user-chosen) > OAuth photo > storage fallback > /favicon.png
+      // Never overwrite an uploaded or user-chosen avatar with the OAuth photo!
+      let resolvedAvatar = profileData?.avatar_url;
+      if (!resolvedAvatar || resolvedAvatar === '/favicon.png') {
+        if (metaAvatar) {
+          resolvedAvatar = metaAvatar;
+        } else {
+          try {
+            const { data: storageData } = supabase.storage.from('avatars').getPublicUrl(`${sessionUser.id}/avatar`);
+            if (storageData?.publicUrl) {
+              resolvedAvatar = `${storageData.publicUrl}?v=${Date.now()}`;
+            }
+          } catch {}
+        }
       }
       if (!resolvedAvatar) {
         resolvedAvatar = '/favicon.png';
       }
 
-      // If user has a real avatar in metadata (like Google photo) but profiles.avatar_url is empty, persist it
+      // Only persist OAuth photo if profiles.avatar_url was completely empty/unset
       if (profileData && (!profileData.avatar_url || profileData.avatar_url === '/favicon.png') && metaAvatar) {
         Promise.allSettled([
           supabase.from('profiles').update({ avatar_url: metaAvatar }).eq('id', profileData.id || sessionUser.id),
@@ -472,92 +432,42 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         rank: accProfile.rank || 'Novice Alchemist',
         isLoggedIn: true,
       }));
+      setNameInput(fullName);
 
-      // 6. Load synced progress from profiles table or database
       if (profileData && (profileData.levels_cleared !== undefined || profileData.xp_earned !== undefined)) {
-        const dbLevels = Number(profileData.levels_cleared || 0);
-        const dbXp = Number(profileData.xp_earned || 0);
-        const dbStreak = Number(profileData.daily_streak || 0);
-
         setSyncedProgress({
           userId: sessionUser.id,
           experimentsCompleted: completedExperimentsCount,
-          challengesCompleted: dbLevels,
-          streakDays: dbStreak,
-          totalXp: dbXp,
+          challengesCompleted: Number(profileData.levels_cleared || 0),
+          streakDays: Number(profileData.daily_streak || 0),
+          totalXp: Number(profileData.xp_earned || 0),
           rankTitle: rankTitle,
           completedExperimentIds: [],
           lastActiveAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
         setLastDbSyncTime(new Date().toLocaleTimeString());
-
-        // If local user has earned achievements that are higher than database, update database
-        const localLevels = challengeState.levels.length;
-        const localXp = challengeState.xp;
-        const localStreak = streakState.currentStreak;
-        if (localLevels > dbLevels || localXp > dbXp || localStreak > dbStreak) {
-          Promise.resolve(
-            supabase
-              .from('profiles')
-              .update({
-                levels_cleared: Math.max(dbLevels, localLevels),
-                xp_earned: Math.max(dbXp, localXp),
-                daily_streak: Math.max(dbStreak, localStreak),
-              })
-              .eq('user_id', sessionUser.id)
-          ).catch(() => {});
-        }
-      } else {
-        try {
-          const cloudProg = await fetchResearcherProgressFromDatabase();
-          if (cloudProg?.progress) {
-            setSyncedProgress(cloudProg.progress);
-            setLastDbSyncTime(
-              cloudProg.progress.updatedAt
-                ? new Date(cloudProg.progress.updatedAt).toLocaleTimeString()
-                : new Date().toLocaleTimeString()
-            );
-          }
-        } catch (progErr) {
-          console.warn('Progress lookup from database note:', progErr);
-        }
       }
     } catch (err) {
       console.warn('Error syncing Supabase user profile:', err);
     }
   }, [challengeState, streakState, completedExperimentsCount, profile.rank]);
 
-  // Keep references to current callbacks and session cache to prevent infinite auth listener cycles
   const syncSupabaseSessionRef = useRef(syncSupabaseSession);
   syncSupabaseSessionRef.current = syncSupabaseSession;
   const refreshAccountRef = useRef(refreshAccount);
   refreshAccountRef.current = refreshAccount;
-  const lastSyncedSessionRef = useRef<{ userId?: string; token?: string }>({});
 
-  // Supabase Auth state listener: runs once on mount and cleanly handles session transitions
+  // Supabase Auth listener
   useEffect(() => {
-    // Initial hard safety timeout: if nothing finishes within 4 seconds, force UI available
     const mountSafetyTimer = setTimeout(() => {
-      console.warn('[AccountView] Mount auth check safety timeout reached (4000ms). Forcing UI availability.');
       setIsLoadingAuth(false);
       setAuthCheckTimedOut(true);
     }, 4000);
 
-    // Initial background diagnostics (non-blocking)
-    checkBackendStatus()
-      .then((status) => setIsBackendOnline(status.status === 'online'))
-      .catch(() => setIsBackendOnline(false));
-
-    fetchDatabaseDiagnostics()
-      .then((dbInfo) => { if (dbInfo) setDbDiagnostics(dbInfo); })
-      .catch(() => {});
-
-    // Subscribe to Supabase Auth state transitions
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          // If session is already actively synchronized with this user and token, do not re-run or spam logs
           if (
             moduleActiveSession.userId === session.user.id &&
             moduleActiveSession.token === session.access_token
@@ -566,24 +476,15 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             clearTimeout(mountSafetyTimer);
             return;
           }
-          if (event !== 'INITIAL_SESSION') {
-            console.log(`[Supabase Auth] State changed: ${event}`, session.user.email);
-          }
           moduleActiveSession = { userId: session.user.id, token: session.access_token };
-
-          // Lightweight state updates immediately
           setIsAuthenticated(true);
           setIsLoadingAuth(false);
           clearTimeout(mountSafetyTimer);
 
-          // CRITICAL: Defer the heavy async database sync outside callback to avoid supabase-js v2 deadlock
           setTimeout(() => {
-            syncSupabaseSessionRef.current(session.user, session.access_token).catch((err) => {
-              console.warn('[AccountView] Error in deferred syncSupabaseSession:', err);
-            });
+            syncSupabaseSessionRef.current(session.user, session.access_token).catch(() => {});
           }, 0);
         } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
-          console.log(`[Supabase Auth] State changed: ${event}`);
           moduleActiveSession = {};
           setAuthToken(null);
           setIsAuthenticated(false);
@@ -593,14 +494,12 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           setIsLoadingAuth(false);
           clearTimeout(mountSafetyTimer);
         } else {
-          // INITIAL_SESSION without active session
           setIsLoadingAuth(false);
           clearTimeout(mountSafetyTimer);
         }
       }
     );
 
-    // Initial active session verification (non-blocking mount trigger)
     refreshAccountRef.current();
 
     const handleStreakChange = () => setStreakState(getDailyStreak());
@@ -621,7 +520,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
     setIsSyncingDb(true);
     try {
-      // 1. Update in public.profiles table directly if session is active (with hard timeout)
       const { data: { session } } = await withTimeout(
         supabase.auth.getSession(),
         3000,
@@ -640,7 +538,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         ]);
       }
 
-      // 2. Also sync through backend proxy
       const res = await syncResearcherProgressToDatabase({
         experimentsCompleted: completedExperimentsCount,
         challengesCompleted: challengeState.levels.length,
@@ -652,7 +549,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       setSyncedProgress(res.progress);
       setLastDbSyncTime(new Date().toLocaleTimeString());
       triggerToast('Progress successfully synced to Supabase database!', 'success');
-      setAuthSuccess('Laboratory metrics synchronized with Supabase database.');
     } catch (err: any) {
       triggerToast(err.message || 'Database sync encountered an issue.', 'error');
     } finally {
@@ -660,7 +556,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Sign In with Supabase Auth
+  // Sign In
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword) {
@@ -673,17 +569,15 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setAuthSuccess(null);
 
     try {
-      // Sign in directly via Supabase client (onAuthStateChange will automatically sync session)
       const { data: sbData, error: sbError } = await supabase.auth.signInWithPassword({
         email: authEmail.trim(),
         password: authPassword,
       });
 
       if (sbError) {
-        // Direct Supabase error: Surface the exact issue to the user
         let msg = sbError.message;
         if (msg.toLowerCase().includes('invalid login credentials')) {
-          msg = 'Invalid email or password. Please verify your credentials, or click "Continue with Google" if you registered with Google.';
+          msg = 'Invalid email or password. Please verify your credentials.';
         } else if (msg.toLowerCase().includes('email not confirmed')) {
           msg = 'Email address not yet confirmed. Please verify your email via the confirmation link sent by Supabase.';
         }
@@ -700,7 +594,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         setAuthPassword('');
       }
     } catch (err: any) {
-      const msg = cleanErrorMessage(err.message || 'Authentication failed. Please verify your credentials.');
+      const msg = cleanErrorMessage(err.message || 'Authentication failed.');
       setAuthError(msg);
       triggerToast(msg, 'error');
     } finally {
@@ -708,7 +602,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Google OAuth Sign In
+  // Google OAuth Sign In
   const handleGoogleSignIn = async () => {
     setIsSubmittingAuth(true);
     setAuthError(null);
@@ -719,9 +613,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
           redirectTo: window.location.origin + window.location.pathname + '#account',
         },
       });
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
     } catch (err: any) {
       const msg = err.message || 'Google sign-in encountered an error.';
       setAuthError(msg);
@@ -730,7 +622,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Registration via Supabase Auth & backend fallback
+  // Sign Up
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword) {
@@ -755,17 +647,14 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         email: authEmail.trim(),
         password: authPassword,
         options: {
-          data: {
-            full_name: authFullName.trim() || 'Researcher',
-          },
+          data: { full_name: authFullName.trim() || 'Researcher' },
         },
       });
 
       if (sbError) {
-        console.warn('Direct Supabase sign-up note:', sbError.message, '- attempting backend proxy');
         const result = await signUpResearcher(authEmail.trim(), authPassword, authFullName.trim());
         if (result.requiresEmailConfirmation) {
-          setAuthSuccess(result.message || 'Registration successful! Please check your email to confirm your account.');
+          setAuthSuccess(result.message || 'Registration successful! Please check your email.');
           triggerToast('Registration email sent! Please check your inbox.', 'info');
         } else {
           setAuthSuccess('Welcome to CHEMORA! Your researcher account has been created.');
@@ -774,7 +663,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         }
       } else {
         if (!sbData.session) {
-          setAuthSuccess('Account created! Please check your email to confirm your address, then sign in.');
+          setAuthSuccess('Account created! Please check your email to confirm your address.');
           triggerToast('Confirmation email sent! Please check your inbox.', 'info');
         } else {
           setAuthSuccess('Welcome to CHEMORA! Your researcher account has been created.');
@@ -791,136 +680,229 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Handle Password Reset Request
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!authEmail.trim()) {
-      setAuthError('Please enter the email address linked to your researcher account.');
-      return;
-    }
-
-    setIsSubmittingAuth(true);
-    setAuthError(null);
-    setAuthSuccess(null);
-
-    try {
-      await supabase.auth.resetPasswordForEmail(authEmail.trim()).catch(() => {});
-      const msg = await requestPasswordReset(authEmail.trim());
-      setAuthSuccess(msg);
-      triggerToast(msg, 'info');
-    } catch (err: any) {
-      const msg = cleanErrorMessage(err.message || 'Failed to request password reset.');
-      setAuthError(msg);
-      triggerToast(msg, 'error');
-    } finally {
-      setIsSubmittingAuth(false);
-    }
-  };
-
-  // Handle Sign Out: triggers Supabase Auth listener to sync logged-out state
+  // Sign Out
   const handleSignOut = async () => {
     setIsLoadingAuth(true);
     setAuthError(null);
     setAuthSuccess(null);
 
     try {
-      // 1. Sign out from Supabase client (triggers onAuthStateChange 'SIGNED_OUT')
-      await supabase.auth.signOut().catch((err: any) => console.warn('Supabase signout note:', err));
-      // 2. Sign out from backend
+      await supabase.auth.signOut().catch(() => {});
       await signOutResearcher().catch(() => {});
 
       setIsAuthenticated(false);
       setAccountProfile(null);
       setSyncedProgress(null);
       setProfile((prev) => ({ ...GUEST_PROFILE, preferences: prev.preferences }));
-      setAuthSuccess('Signed out of researcher session.');
       triggerToast('Signed out of laboratory session.', 'info');
     } catch (err: any) {
-      const msg = 'Sign out failed: ' + (err.message || 'Network error');
-      setAuthError(msg);
-      triggerToast(msg, 'error');
+      triggerToast('Sign out failed: ' + (err.message || 'Network error'), 'error');
     } finally {
       setIsLoadingAuth(false);
     }
   };
 
-  // Save Profile Edits via backend & direct Supabase
-  const handleSaveProfile = async () => {
-    if (!nameInput.trim()) return;
+  // File Picker & Validation for Profile Picture (Part B.1 & B.2)
+  const handleFileCandidate = (file: File) => {
+    const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      const msg = 'Unsupported file format. Please upload JPEG, PNG, or WebP.';
+      setUploadError(msg);
+      triggerToast(msg, 'error');
+      return;
+    }
 
+    // 5 MB limit before compression
+    if (file.size > 5 * 1024 * 1024) {
+      const msg = 'File size exceeds 5 MB. Please select a smaller photo.';
+      setUploadError(msg);
+      triggerToast(msg, 'error');
+      return;
+    }
+
+    setUploadError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setSelectedCropImage(reader.result);
+        setIsCropModalOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileCandidate(file);
+    }
+    // Clear input value so same file can be re-selected if cancelled
+    e.target.value = '';
+  };
+
+  // Drag & drop handlers
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileCandidate(file);
+    }
+  };
+
+  // Crop & Upload Execution (Part B.3 & B.4)
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setIsUploadingAvatar(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || accountProfile?.user_id || accountProfile?.id;
+      if (!userId) {
+        throw new Error('User session not found. Please sign in again.');
+      }
+
+      // 1. Upload to Supabase Storage: avatars bucket under `<user_id>/avatar`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(`${userId}/avatar`, croppedBlob, {
+          upsert: true,
+          contentType: 'image/webp',
+          cacheControl: '3600',
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || 'Failed to upload photo to storage.');
+      }
+
+      // 2. Build public URL with cache-busting timestamp
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(`${userId}/avatar`);
+
+      const finalAvatarUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+      // 3. Persist to profiles.avatar_url in Supabase database & backend route
+      await Promise.allSettled([
+        supabase.from('profiles').update({ avatar_url: finalAvatarUrl }).eq('id', userId),
+        supabase.from('profiles').update({ avatar_url: finalAvatarUrl }).eq('user_id', userId),
+      ]);
+
+      try {
+        await updateResearcherProfile({ avatar_url: finalAvatarUrl });
+      } catch (proxyErr) {
+        console.warn('Backend proxy avatar update note:', proxyErr);
+      }
+
+      // 4. Update local profile state immediately so header, dock, and insignia refresh
+      setProfile((prev) => ({ ...prev, avatar: finalAvatarUrl }));
+      setAccountProfile((prev) => prev ? { ...prev, avatar_url: finalAvatarUrl } : null);
+
+      // Dispatch global profile update event for live UI synchronization
+      window.dispatchEvent(
+        new CustomEvent('chemora:profile_update', { detail: { avatar: finalAvatarUrl } })
+      );
+
+      triggerToast('Profile picture updated successfully!', 'success');
+      setIsCropModalOpen(false);
+      setSelectedCropImage(null);
+    } catch (err: any) {
+      const msg = err.message || 'Failed to upload profile picture.';
+      triggerToast(msg, 'error');
+      throw err;
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  // Remove Photo (Part B.1)
+  const handleRemovePhoto = async () => {
     setIsSavingProfile(true);
-    setAuthError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || accountProfile?.user_id || accountProfile?.id;
+
+      if (userId) {
+        // Delete avatar object from Supabase storage
+        await supabase.storage.from('avatars').remove([`${userId}/avatar`]).catch(() => {});
+
+        // Reset database avatar_url to default
+        await Promise.allSettled([
+          supabase.from('profiles').update({ avatar_url: '/favicon.png' }).eq('id', userId),
+          supabase.from('profiles').update({ avatar_url: '/favicon.png' }).eq('user_id', userId),
+        ]);
+      }
+
+      await updateResearcherProfile({ avatar_url: '/favicon.png' }).catch(() => {});
+
+      setProfile((prev) => ({ ...prev, avatar: '/favicon.png' }));
+      setAccountProfile((prev) => prev ? { ...prev, avatar_url: '/favicon.png' } : null);
+
+      window.dispatchEvent(
+        new CustomEvent('chemora:profile_update', { detail: { avatar: '/favicon.png' } })
+      );
+
+      triggerToast('Profile photo removed. Restored laboratory emblem.', 'info');
+    } catch (err: any) {
+      triggerToast('Failed to remove photo: ' + (err.message || 'Error'), 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Choose preset insignia
+  const handleSelectPresetAvatar = async (presetUrl: string) => {
+    setIsSavingProfile(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || accountProfile?.user_id || accountProfile?.id;
+
+      if (userId) {
+        await Promise.allSettled([
+          supabase.from('profiles').update({ avatar_url: presetUrl }).eq('id', userId),
+          supabase.from('profiles').update({ avatar_url: presetUrl }).eq('user_id', userId),
+        ]);
+      }
+
+      await updateResearcherProfile({ avatar_url: presetUrl }).catch(() => {});
+
+      setProfile((prev) => ({ ...prev, avatar: presetUrl }));
+      setAccountProfile((prev) => prev ? { ...prev, avatar_url: presetUrl } : null);
+
+      window.dispatchEvent(
+        new CustomEvent('chemora:profile_update', { detail: { avatar: presetUrl } })
+      );
+
+      triggerToast('Laboratory insignia updated.', 'success');
+    } catch (err: any) {
+      triggerToast('Failed to update insignia.', 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Save Profile Name & details
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) return;
+    setIsSavingProfile(true);
 
     try {
-      const chosenAvatar = avatarInput || profile.avatar;
-      let directSuccess = false;
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || accountProfile?.user_id || accountProfile?.id;
 
-      // 1. Direct update to public.profiles table in Supabase
-      try {
-        const { data: { session } } = await withTimeout(
-          supabase.auth.getSession(),
-          3000,
-          { data: { session: null }, error: null }
-        );
-        if (session?.user) {
-          const updatePayload = {
-            full_name: nameInput.trim(),
-            avatar_url: chosenAvatar,
-          };
-          const [resId, resUserId] = await Promise.allSettled([
-            supabase.from('profiles').update(updatePayload).eq('id', session.user.id),
-            supabase.from('profiles').update(updatePayload).eq('user_id', session.user.id),
-          ]);
-          if (
-            (resId.status === 'fulfilled' && !(resId.value as any)?.error) ||
-            (resUserId.status === 'fulfilled' && !(resUserId.value as any)?.error)
-          ) {
-            directSuccess = true;
-          }
-        }
-      } catch (sbErr) {
-        console.warn('Direct Supabase profile update note:', sbErr);
+      if (userId) {
+        await Promise.allSettled([
+          supabase.from('profiles').update({ full_name: nameInput.trim() }).eq('id', userId),
+          supabase.from('profiles').update({ full_name: nameInput.trim() }).eq('user_id', userId),
+        ]);
       }
 
-      // 2. Also update via backend proxy (non-blocking if direct update already succeeded)
-      let updatedBackendProfile: AccountProfile | null = null;
-      try {
-        updatedBackendProfile = await updateResearcherProfile({
-          full_name: nameInput.trim(),
-          avatar_url: chosenAvatar,
-        });
-      } catch (proxyErr) {
-        console.warn('Backend proxy update note:', proxyErr);
-        if (!directSuccess) {
-          throw proxyErr;
-        }
-      }
+      await updateResearcherProfile({ full_name: nameInput.trim() }).catch(() => {});
 
-      const updatedName = updatedBackendProfile?.full_name || nameInput.trim();
-      const updatedAvatar = updatedBackendProfile?.avatar_url || chosenAvatar;
+      setProfile((prev) => ({ ...prev, name: nameInput.trim() }));
+      setAccountProfile((prev) => prev ? { ...prev, full_name: nameInput.trim() } : null);
 
-      if (accountProfile) {
-        setAccountProfile({
-          ...accountProfile,
-          full_name: updatedName,
-          avatar_url: updatedAvatar,
-        });
-      }
-
-      const updated: UserProfile = {
-        ...profile,
-        name: updatedName,
-        avatar: updatedAvatar,
-      };
-
-      setProfile(updated);
-      setIsEditing(false);
-      setAuthSuccess('Researcher profile updated successfully in database.');
-      triggerToast('Researcher profile saved to database!', 'success');
+      triggerToast('Researcher profile name updated!', 'success');
     } catch (err: any) {
-      const msg = cleanErrorMessage('Failed to save profile: ' + (err.message || 'Server error'));
-      setAuthError(msg);
-      triggerToast(msg, 'error');
+      triggerToast('Failed to save name: ' + (err.message || 'Error'), 'error');
     } finally {
       setIsSavingProfile(false);
     }
@@ -942,7 +924,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     setPasswordStatus(null);
 
     try {
-      // 1. Direct Supabase auth update
       try {
         const { data: { session } } = await withTimeout(
           supabase.auth.getSession(),
@@ -952,17 +933,13 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         if (session) {
           await supabase.auth.updateUser({ password: newPassword });
         }
-      } catch (sbErr) {
-        console.warn('Direct Supabase password update note:', sbErr);
-      }
+      } catch {}
 
-      // 2. Backend update
       await updateResearcherPassword(newPassword);
       setPasswordStatus({ success: 'Laboratory password successfully updated.' });
       triggerToast('Laboratory password updated successfully.', 'success');
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => setShowPasswordChange(false), 2000);
     } catch (err: any) {
       const msg = cleanErrorMessage(err.message || 'Failed to update password.');
       setPasswordStatus({ error: msg });
@@ -972,7 +949,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Update Preferences locally (only non-sensitive UI settings, zero account data)
+  // Update Preferences locally
   const updatePreference = <K extends keyof UserProfile['preferences']>(
     key: K,
     value: UserProfile['preferences'][K]
@@ -992,7 +969,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Reset Progress Data
+  // Delete Account
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
       triggerToast('Please enter your account password to confirm deletion.', 'error');
@@ -1011,7 +988,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
       setIsAuthenticated(false);
       setShowDeleteConfirm(false);
       setDeletePassword('');
-      triggerToast('Researcher account and personal data permanently erased.', 'success');
+      triggerToast('Researcher account permanently erased.', 'success');
       await refreshAccount();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete account', 'error');
@@ -1029,18 +1006,80 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     window.dispatchEvent(new CustomEvent('chemora:progress'));
   };
 
+  // Helper to determine panel position for sliding transition
+  const getPanelPositionClass = (sec: AccountSection) => {
+    const currentIndex = SECTIONS.indexOf(activeSection);
+    const secIndex = SECTIONS.indexOf(sec);
+    if (secIndex === currentIndex) return 'active';
+    if (secIndex < currentIndex) return 'prev';
+    return 'next';
+  };
+
+  const isCustomPhotoActive = Boolean(
+    profile.avatar &&
+    profile.avatar !== '/favicon.png' &&
+    !AVATAR_OPTIONS.some((av) => av.url === profile.avatar)
+  );
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 relative">
-      {/* Animated Floating Toast Notification Popup */}
+    <div className="relative w-full min-h-[100dvh] pb-[calc(96px+env(safe-area-inset-bottom,24px))]">
+      {/* ========================================================
+          1. REUSABLE FIXED PAGE BACKGROUND: GradientWaves
+             Fixed, pointer-events: none, dark Chemora palette:
+             horizon: #032b38, wave: #14a3c4, crest: #7fdcef, low amplitude, 30fps
+             Renders static background under prefers-reduced-motion
+          ======================================================== */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <GradientWaves
+          horizonColor="#032b38"
+          waveColor="#14a3c4"
+          crestColor="#7fdcef"
+          amplitude={2.6}
+          fogDepth={26}
+          brightness={0.95}
+          mouseInteraction={false}
+          grain={false}
+        />
+      </div>
+
+      {/* Hidden File Picker Input for Camera/Gallery Photo Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleFileInputChange}
+        className="hidden"
+        aria-hidden="true"
+      />
+
+      {/* Circular Crop & Processing Modal (Part B.3 & B.4) */}
+      {selectedCropImage && (
+        <AvatarCropModal
+          isOpen={isCropModalOpen}
+          imageSrc={selectedCropImage}
+          isUploading={isUploadingAvatar}
+          onClose={() => {
+            setIsCropModalOpen(false);
+            setSelectedCropImage(null);
+          }}
+          onCropComplete={handleCropComplete}
+        />
+      )}
+
+      {/* Animated Floating Toast Notification Popup (Auto-dismisses in 4s) */}
       {toast && (
-        <div className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm w-[90%] anim-slide-down anim-popup pointer-events-auto">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-20 right-4 sm:right-8 z-50 max-w-sm w-[90%] anim-slide-down anim-popup pointer-events-auto"
+        >
           <div
             className={`p-4 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 ${
               toast.type === 'success'
                 ? 'bg-emerald-950/95 border-emerald-500/60 text-emerald-200 shadow-[0_10px_30px_rgba(16,185,129,0.3)]'
                 : toast.type === 'error'
                 ? 'bg-rose-950/95 border-rose-500/60 text-rose-200 shadow-[0_10px_30px_rgba(244,63,94,0.3)]'
-                : 'bg-[#091830]/95 border-cyan-500/60 text-cyan-200 shadow-[0_10px_30px_rgba(6,182,212,0.3)]'
+                : 'bg-[#04212b]/95 border-cyan-500/60 text-cyan-200 shadow-[0_10px_30px_rgba(6,182,212,0.3)]'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -1052,7 +1091,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             <button
               onClick={() => setToast(null)}
               className="text-slate-400 hover:text-white p-1 rounded-lg transition"
-              aria-label="Dismiss toast"
+              aria-label="Dismiss notification"
             >
               &times;
             </button>
@@ -1060,7 +1099,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         </div>
       )}
 
-      {/* Animated Reset Progress Modal Popup / Bottom Sheet */}
+      {/* Reset Progress Confirmation Dialog */}
       {showResetConfirm && (
         <div
           role="dialog"
@@ -1072,9 +1111,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
             onClick={(e) => e.stopPropagation()}
             className="max-w-md w-full bg-[#0a1220] border-t sm:border-2 border-rose-500/60 rounded-t-3xl sm:rounded-3xl p-6 sm:p-7 shadow-[0_20px_60px_rgba(244,63,94,0.35)] anim-popup pb-[env(safe-area-inset-bottom,20px)] sm:pb-7"
           >
-            {/* Mobile Drag/Indicator Handle */}
             <div className="w-12 h-1.5 rounded-full bg-slate-600/80 mx-auto mb-4 sm:hidden" />
-
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 mb-4 mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
@@ -1104,725 +1141,616 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         </div>
       )}
 
-      {/* Full-screen fixed page background (z-index 0, pointer-events none) with animated wave canvas */}
-      {!isAuthenticated && (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-          <GradientWaves
-            horizonColor="#cfd8df"
-            waveColor="#a8bcc7"
-            crestColor="#e2ecf2"
-            amplitude={2.8}
-            fogDepth={34}
-            brightness={1.1}
-            mouseInteraction={false}
-            grain={false}
-          />
-        </div>
-      )}
-
-      {/* Header (displayed when authenticated in laboratory workspace) */}
-      {isAuthenticated && (
-        <div className="text-center max-w-2xl mx-auto mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800/50 text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase mb-3">
-            <Shield className="w-3.5 h-3.5" />
-            RESEARCHER ACCOUNT &amp; LABORATORY
+      {/* Main Content Container (clearing floating dock) */}
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 relative z-10 pt-4">
+        {/* Loading state indicator */}
+        {isLoadingAuth && (
+          <div className="p-8 text-center bg-[#04212b]/80 border border-cyan-900/40 rounded-3xl mb-8 flex items-center justify-center gap-3.5 text-cyan-300 text-sm anim-popup" role="status" aria-live="polite">
+            <PhRing size="sm" label="Synchronizing credentials..." />
+            <span>Synchronizing with laboratory authentication services...</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Account &amp; Workspace</h1>
-          <p className="text-slate-300 text-xs sm:text-sm mt-2">
-            Manage your chemist identity, cloud research credentials, and verified experiment achievements.
-          </p>
-        </div>
-      )}
+        )}
 
-      {/* Global Alerts */}
-      {authSuccess && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-200 text-xs font-bold flex items-center justify-between gap-2 shadow-lg anim-slide-down">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{authSuccess}</span>
+        {/* Unauthenticated View: Sliding AuthCard Portal (Untouched as requested) */}
+        {!isLoadingAuth && !isAuthenticated && (
+          <div className="space-y-10 anim-slide-up">
+            <ErrorBoundary tabName="Account Authentication Card">
+              <AuthCard
+                isRegister={authMode === 'signup'}
+                onToggleMode={(isReg) => {
+                  setAuthMode(isReg ? 'signup' : 'signin');
+                  setAuthError(null);
+                  setAuthSuccess(null);
+                }}
+                email={authEmail}
+                onEmailChange={setAuthEmail}
+                password={authPassword}
+                onPasswordChange={setAuthPassword}
+                fullName={authFullName}
+                onFullNameChange={setAuthFullName}
+                agreeTerms={agreeTerms}
+                onAgreeTermsChange={setAgreeTerms}
+                confirmAge={confirmAge}
+                onConfirmAgeChange={setConfirmAge}
+                rememberMe={true}
+                isSubmitting={isSubmittingAuth}
+                error={authError}
+                onClearError={() => setAuthError(null)}
+                success={authSuccess}
+                onClearSuccess={() => setAuthSuccess(null)}
+                onSignIn={handleSignIn}
+                onSignUp={handleSignUp}
+                onGoogleSignIn={handleGoogleSignIn}
+                onForgotPassword={async (recoveryEmail) => {
+                  if (!recoveryEmail.trim()) {
+                    setAuthError('Please enter an email address.');
+                    return;
+                  }
+                  setIsSubmittingAuth(true);
+                  setAuthError(null);
+                  setAuthSuccess(null);
+                  try {
+                    await supabase.auth.resetPasswordForEmail(recoveryEmail.trim()).catch(() => {});
+                    const msg = await requestPasswordReset(recoveryEmail.trim());
+                    setAuthSuccess(msg);
+                    triggerToast(msg, 'info');
+                  } catch (err: any) {
+                    const msg = cleanErrorMessage(err.message || 'Failed to request password reset.');
+                    setAuthError(msg);
+                    triggerToast(msg, 'error');
+                  } finally {
+                    setIsSubmittingAuth(false);
+                  }
+                }}
+              />
+            </ErrorBoundary>
           </div>
-          <button
-            onClick={() => setAuthSuccess(null)}
-            className="text-emerald-400 hover:text-emerald-200 font-mono text-xs"
-          >
-            &times;
-          </button>
-        </div>
-      )}
+        )}
 
-      {authError && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs font-bold flex items-center justify-between gap-2 shadow-lg anim-slide-down">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{authError}</span>
-          </div>
-          <button
-            onClick={() => setAuthError(null)}
-            className="text-rose-400 hover:text-rose-200 font-mono text-xs"
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
-      {/* Loading state indicator */}
-      {isLoadingAuth && (
-        <div className="p-8 text-center bg-[#0b1320] border border-cyan-900/40 rounded-2xl mb-8 flex items-center justify-center gap-3.5 text-cyan-300 text-sm anim-popup" role="status" aria-live="polite">
-          <PhRing size="sm" label="Synchronizing credentials..." />
-          <span>Synchronizing with laboratory authentication services...</span>
-        </div>
-      )}
-
-      {/* Authenticated View */}
-      {!isLoadingAuth && isAuthenticated && accountProfile && (
-        <div className="space-y-8">
-          {/* Authenticated Profile Card */}
-          <div className="chemora-card p-5 sm:p-8">
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              {/* Avatar Ring */}
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-cyan-500/20 via-blue-500/20 to-purple-500/20 border-2 border-cyan-500/50 p-2 flex items-center justify-center shadow-lg shadow-cyan-500/10">
-                  <img
-                    src={profile.avatar}
-                    alt={profile.name}
-                    className="w-full h-full object-contain filter drop-shadow"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = '/favicon.png';
-                    }}
-                  />
-                </div>
-                <div className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-md bg-emerald-950 border border-emerald-500 text-[10px] font-mono text-emerald-300 font-bold flex items-center gap-1 shadow">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  ONLINE
-                </div>
+        {/* ========================================================
+            UPGRADED LOGGED-IN ACCOUNT CARD:
+            - Rounded (32px) card
+            - Left half: dark teal (#04212b) panel with own subtle wave background,
+              avatar with ONLINE badge & camera button, name, rank, email, glass pill buttons
+            - Right half: sliding section panels (Profile, Security, Lab Data)
+              0.65s translate transition, opacity + visibility
+            ======================================================== */}
+        {!isLoadingAuth && isAuthenticated && accountProfile && (
+          <div className="chemora-account-card">
+            {/* 1. DARK TEAL (#04212b) SIDE PANEL WITH WAVES */}
+            <div className="dark-side-panel">
+              {/* Subtle Wave Background inside the Dark Teal Panel */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+                <GradientWaves
+                  horizonColor="#032b38"
+                  waveColor="#14a3c4"
+                  crestColor="#7fdcef"
+                  amplitude={2.4}
+                  fogDepth={22}
+                  brightness={0.85}
+                  mouseInteraction={false}
+                  grain={false}
+                />
               </div>
 
-              {/* Researcher Details */}
-              <div className="flex-1 text-center sm:text-left">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-                  <h2 className="text-2xl font-black text-white">{profile.name}</h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-950/80 border border-cyan-800 text-cyan-300">
-                    {profile.rank}
-                  </span>
-                </div>
-
-                <p className="text-xs font-mono text-slate-400 flex items-center justify-center sm:justify-start gap-1.5 mb-3">
-                  <Mail className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{accountProfile.email}</span>
-                </p>
-
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                  {!isEditing ? (
-                    <button
-                      onClick={() => {
-                        setNameInput(profile.name);
-                        setAvatarInput(profile.avatar);
-                        setIsEditing(true);
+              {/* Panel Content (Z-10 relative) */}
+              <div className="relative z-10 flex flex-col items-center sm:items-start text-center sm:text-left">
+                {/* Avatar with ONLINE Badge & Camera Upload Button */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+                  onDragLeave={() => setIsDraggingFile(false)}
+                  onDrop={handleDrop}
+                  className={`relative mb-4 group cursor-pointer ${isDraggingFile ? 'ring-4 ring-cyan-400 rounded-3xl' : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Click or drag a photo to update your avatar"
+                >
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-cyan-500/30 via-blue-500/20 to-purple-500/30 border-2 border-cyan-400/80 p-2 flex items-center justify-center shadow-xl shadow-cyan-950/40 relative overflow-hidden">
+                    <img
+                      src={profile.avatar}
+                      alt={`${profile.name}'s profile avatar`}
+                      className="w-full h-full object-contain filter drop-shadow rounded-2xl"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/favicon.png';
                       }}
-                      className="px-3.5 py-1.5 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-xs font-bold text-cyan-300 flex items-center gap-1.5 transition"
-                    >
-                      <User className="w-3.5 h-3.5" />
-                      <span>Edit Profile</span>
-                    </button>
-                  ) : null}
+                    />
+                    {/* Hover overlay hint */}
+                    <div className="absolute inset-0 bg-[#04212b]/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-cyan-300">
+                      <Camera className="w-6 h-6 mb-1" />
+                      <span className="text-[10px] font-bold">Change</span>
+                    </div>
+                  </div>
 
-                  <button
-                    onClick={() => setShowPasswordChange(!showPasswordChange)}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 flex items-center gap-1.5 transition"
-                  >
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Security</span>
-                  </button>
+                  {/* Online Status Badge */}
+                  <div className="absolute -top-1.5 -left-1.5 px-2 py-0.5 rounded-md bg-emerald-950/95 border border-emerald-500 text-[10px] font-mono text-emerald-300 font-bold flex items-center gap-1 shadow">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    ONLINE
+                  </div>
 
+                  {/* Camera Button on the Avatar Corner (Part B.1) */}
                   <button
-                    onClick={handleSignOut}
-                    className="px-3.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-xs font-bold text-rose-300 flex items-center gap-1.5 transition"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={isUploadingAvatar}
+                    aria-label="Upload profile photo"
+                    title="Upload profile photo (JPEG, PNG, WebP up to 5 MB)"
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-cyan-400 hover:bg-cyan-300 text-[#04212b] border-2 border-[#04212b] shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer z-20"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
+                    <Camera className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Researcher Name & Rank Chip */}
+                <div className="mb-2 w-full">
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
+                    {profile.name}
+                  </h2>
+                  <div className="mt-1 flex items-center justify-center sm:justify-start gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-950/90 border border-cyan-400/50 text-cyan-300 shadow-sm">
+                      {profile.rank}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Email Address */}
+                <p className="text-xs font-mono text-cyan-200/80 flex items-center justify-center sm:justify-start gap-1.5 mb-6">
+                  <Mail className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="truncate max-w-[200px]">{accountProfile.email}</span>
+                </p>
+              </div>
+
+              {/* Action Buttons in Glass Pill Style (Part A.2) */}
+              <div className="relative z-10 flex flex-col gap-2.5 w-full pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => handleSelectSection('profile')}
+                  className={`glass-pill-btn ${activeSection === 'profile' ? 'active' : ''}`}
+                >
+                  <User className="w-4 h-4" />
+                  <span>Edit Profile</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSection('security')}
+                  className={`glass-pill-btn ${activeSection === 'security' ? 'active' : ''}`}
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Security</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSection('labdata')}
+                  className={`glass-pill-btn ${activeSection === 'labdata' ? 'active' : ''}`}
+                >
+                  <Activity className="w-4 h-4" />
+                  <span>Lab Data</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="glass-pill-btn danger"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
               </div>
             </div>
 
-            {/* Inline Profile Edit Form */}
-            {isEditing && (
-              <div className="mt-6 pt-6 border-t border-cyan-950/80 anim-slide-down anim-popup">
-                <h3 className="text-sm font-bold text-white mb-3">Edit Researcher Profile</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {/* 2. SECTIONS VIEWPORT WITH SLIDING TRANSITION (Part A.3) */}
+            <div className="sections-viewport" role="region" aria-label="Account details">
+              {/* SECTION 1: PROFILE & INSIGNIA */}
+              <div
+                className={`section-panel ${getPanelPositionClass('profile')}`}
+                aria-hidden={activeSection !== 'profile'}
+              >
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-[#04212b] tracking-tight">Researcher Identity</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Customize your chemist name, insignia, and environment preferences.
+                  </p>
+                </div>
+
+                {/* Profile Edit Fields */}
+                <div className="space-y-5">
+                  {/* Name Input */}
                   <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">Researcher Full Name</label>
-                    <input
-                      type="text"
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      placeholder="e.g. Dr. Marie Curie"
-                      className="w-full px-3 py-2 rounded-xl bg-[#070b13] border border-cyan-900 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">Choose Laboratory Insignia</label>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Researcher Name
+                    </label>
                     <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        placeholder="e.g. Marie Curie"
+                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[16px] sm:text-sm text-slate-900 focus:bg-white focus:border-[#04212b] focus-visible:outline-none transition min-h-[44px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveName}
+                        disabled={isSavingProfile || nameInput.trim() === profile.name}
+                        className="px-4 py-2.5 rounded-xl bg-[#04212b] hover:bg-[#073646] text-white text-xs font-bold transition disabled:opacity-40 min-h-[44px]"
+                      >
+                        {isSavingProfile ? <BubbleDots label="Saving..." /> : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Profile Picture Actions (Part B.1 & B.2) */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Profile Picture (Supabase Avatars Bucket)
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                        className="px-4 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold flex items-center gap-2 transition min-h-[44px] shadow-sm"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Upload photo</span>
+                      </button>
+
+                      {isCustomPhotoActive && (
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          disabled={isSavingProfile || isUploadingAvatar}
+                          className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 transition min-h-[44px]"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-500" />
+                          <span>Remove photo</span>
+                        </button>
+                      )}
+                    </div>
+                    {uploadError && (
+                      <p className="text-xs text-rose-600 mt-2 font-medium">{uploadError}</p>
+                    )}
+                    <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                      Accepts JPEG, PNG, or WebP up to 5 MB. Crops to 512×512 WebP with canvas privacy protection (strips EXIF location metadata).
+                    </p>
+                  </div>
+
+                  {/* Preset Insignia Alternatives (Part B.1) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Alternative Laboratory Insignia
+                    </label>
+                    <div className="grid grid-cols-3 gap-2.5">
                       {AVATAR_OPTIONS.map((av) => (
                         <button
                           key={av.url}
                           type="button"
-                          onClick={() => setAvatarInput(av.url)}
-                          className={`flex-1 p-2 rounded-xl border flex items-center justify-center gap-1.5 text-xs font-mono transition-all duration-200 hover:scale-105 active:scale-95 ${
-                            avatarInput === av.url
-                              ? 'bg-cyan-950/90 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/50'
-                              : 'bg-[#070b13] border-slate-800 text-slate-400 hover:border-cyan-800'
+                          onClick={() => handleSelectPresetAvatar(av.url)}
+                          className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-medium transition min-h-[64px] ${
+                            profile.avatar === av.url
+                              ? 'bg-cyan-50 border-cyan-500 text-cyan-900 ring-2 ring-cyan-500/40 shadow-sm'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
                           }`}
                         >
-                          <img src={av.url} alt={av.label} className="w-5 h-5 object-contain" />
-                          <span>{av.label}</span>
+                          <img src={av.url} alt={av.label} className="w-6 h-6 object-contain" />
+                          <span className="font-semibold">{av.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 transition hover:scale-102 active:scale-98"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSavingProfile}
-                    aria-busy={isSavingProfile}
-                    onClick={handleSaveProfile}
-                    className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-bold text-white flex items-center gap-1.5 transition disabled:opacity-50 shadow-md hover:scale-102 active:scale-98"
-                  >
-                    {isSavingProfile ? (
-                      <BubbleDots label="Saving profile to database..." />
-                    ) : (
-                      <Check className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isSavingProfile ? 'Saving...' : 'Save to Database'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
+                  {/* Laboratory Environment Preferences */}
+                  <div className="pt-4 border-t border-slate-200">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-cyan-700" />
+                      <span>Environment Preferences</span>
+                    </h4>
 
-            {/* Change Password Panel */}
-            {showPasswordChange && (
-              <form onSubmit={handleChangePassword} className="mt-6 pt-6 border-t border-cyan-950/80 anim-slide-down anim-popup">
-                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-cyan-400" />
-                  <span>Update Laboratory Password</span>
-                </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div>
+                          <div className="text-xs font-bold text-slate-800">Laboratory Sound Effects</div>
+                          <div className="text-[11px] text-slate-500">Audio feedback on reaction tests.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={profile.preferences.soundEffects}
+                          onChange={(e) => updatePreference('soundEffects', e.target.checked)}
+                          className="w-5 h-5 rounded accent-[#04212b] cursor-pointer"
+                        />
+                      </div>
 
-                {passwordStatus?.error && (
-                  <p className="text-xs text-rose-400 mb-3 font-semibold anim-slide-down">{passwordStatus.error}</p>
-                )}
-                {passwordStatus?.success && (
-                  <p className="text-xs text-emerald-400 mb-3 font-semibold anim-slide-down">{passwordStatus.success}</p>
-                )}
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div>
+                          <div className="text-xs font-bold text-slate-800">Auto-Explain Reaction Mechanisms</div>
+                          <div className="text-[11px] text-slate-500">Show chemical explanations automatically.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={profile.preferences.autoExplain}
+                          onChange={(e) => updatePreference('autoExplain', e.target.checked)}
+                          className="w-5 h-5 rounded accent-[#04212b] cursor-pointer"
+                        />
+                      </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">New Password (6+ chars)</label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2 rounded-xl bg-[#070b13] border border-cyan-900 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2 rounded-xl bg-[#070b13] border border-cyan-900 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordChange(false)}
-                    className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 transition"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isChangingPassword}
-                    aria-busy={isChangingPassword}
-                    className="px-4 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white flex items-center gap-1.5 transition disabled:opacity-50"
-                  >
-                    {isChangingPassword ? <BubbleDots label="Updating password..." /> : null}
-                    <span>{isChangingPassword ? 'Updating...' : 'Update Password'}</span>
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-
-          {/* API Supabase Database System Panel */}
-          <div className="bg-[#0b1320] border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_10px_35px_rgba(6,182,212,0.12)] anim-popup relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-cyan-950/80">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-md shadow-cyan-500/10">
-                  <Database className="w-6 h-6 animate-pulse" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-black text-white">API Supabase Database System</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-950 border border-cyan-700 text-cyan-300">
-                      v2.0 PostgreSQL
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Real-time cloud database persistence with zero local storage of account credentials.
-                  </p>
-                </div>
-              </div>
-
-              {/* Live Status Badge & Sync Action */}
-              <div className="flex items-center gap-3 self-start sm:self-auto">
-                <div className="px-3 py-1.5 rounded-xl bg-[#070b13] border border-cyan-900 flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isBackendOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                  <span className="text-xs font-mono font-bold text-slate-300">
-                    {dbDiagnostics?.databaseConnected ? 'Supabase Connected' : 'DB Engine Online'}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={isSyncingDb}
-                  aria-busy={isSyncingDb}
-                  onClick={handleSyncProgressToSupabase}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-xs font-black text-white shadow-lg shadow-cyan-600/25 flex items-center gap-2 transition hover:scale-102 active:scale-98 disabled:opacity-50"
-                >
-                  {isSyncingDb ? <BubbleDots label="Syncing lab data..." /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  <span>{isSyncingDb ? 'Syncing...' : 'Sync Lab Data'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Architecture Metrics & Tables Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-              {/* Table 1: profiles */}
-              <div className="p-4 rounded-2xl bg-[#070b13]/80 border border-cyan-950/90">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono font-bold text-cyan-400 flex items-center gap-1.5">
-                    <Server className="w-3.5 h-3.5" />
-                    public.profiles
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                    Active
-                  </span>
-                </div>
-                <div className="text-xs text-slate-300 font-semibold mb-1">Chemist Profile &amp; Metadata</div>
-                <div className="text-[11px] font-mono text-slate-400 space-y-0.5">
-                  <div className="truncate">User UUID: <span className="text-cyan-300">{accountProfile.user_id || accountProfile.id}</span></div>
-                  <div>Rank: <span className="text-amber-300">{profile.rank}</span></div>
-                </div>
-              </div>
-
-              {/* Table 2: researcher_progress */}
-              <div className="p-4 rounded-2xl bg-[#070b13]/80 border border-cyan-950/90">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono font-bold text-teal-400 flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5" />
-                    public.researcher_progress
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                    Synced
-                  </span>
-                </div>
-                <div className="text-xs text-slate-300 font-semibold mb-1">Laboratory Stats &amp; Streaks</div>
-                <div className="text-[11px] font-mono text-slate-400 space-y-0.5">
-                  <div>Experiments: <span className="text-emerald-300">{completedExperimentsCount} recorded</span></div>
-                  <div>Total XP: <span className="text-cyan-300">{challengeState.xp} XP</span></div>
-                </div>
-              </div>
-
-              {/* Zero-LocalStorage Audit Badge */}
-              <div className="p-4 rounded-2xl bg-[#070b13]/80 border border-emerald-950/80">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5" />
-                    Zero LocalStorage
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-900/60 text-emerald-200 border border-emerald-700/60">
-                    Audited
-                  </span>
-                </div>
-                <div className="text-xs text-slate-300 font-semibold mb-1">Client Security Policy</div>
-                <div className="text-[11px] text-slate-400 leading-snug">
-                  0 bytes account PII stored locally. Auth tokens use secure session isolation.
-                </div>
-              </div>
-            </div>
-
-            {/* Sync Timestamp and Senior Engineer Badge */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-cyan-950/60 text-[11px] font-mono text-slate-400">
-              <div className="flex items-center gap-2">
-                <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Last Cloud Database Sync: {lastDbSyncTime || 'Just now (Session active)'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
-                <Cpu className="w-3.5 h-3.5" />
-                <span>Verified by Senior Engineer • Production Architecture</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Research Metrics & Lab Bench Stats */}
-          <div>
-            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-400" />
-              <span>Laboratory Activity &amp; Streak Metrics</span>
-            </h3>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-[#0b1320] border border-cyan-900/50 hover:border-amber-500/50 rounded-2xl p-4 text-center transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(245,158,11,0.15)] group cursor-default">
-                <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-                  <Flame className="w-4 h-4 animate-bounce-subtle" />
-                </div>
-                <div className="text-2xl font-black text-amber-300">{streakState.currentStreak}d</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-1 uppercase font-semibold">Daily Streak</div>
-                <div className="text-[10px] text-amber-400/80 mt-0.5">{streakState.streakLevel}</div>
-              </div>
-
-              <div className="bg-[#0b1320] border border-cyan-900/50 hover:border-cyan-500/50 rounded-2xl p-4 text-center transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(6,182,212,0.15)] group cursor-default">
-                <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="text-2xl font-black text-cyan-300">{challengeState.xp}</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-1 uppercase font-semibold">Experience XP</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Laboratory Knowledge</div>
-              </div>
-
-              <div className="bg-[#0b1320] border border-cyan-900/50 hover:border-blue-500/50 rounded-2xl p-4 text-center transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(59,130,246,0.15)] group cursor-default">
-                <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                  <Award className="w-4 h-4" />
-                </div>
-                <div className="text-2xl font-black text-blue-300">{challengeState.levels.length}</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-1 uppercase font-semibold">Challenges</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Quizzes Mastered</div>
-              </div>
-
-              <div className="bg-[#0b1320] border border-cyan-900/50 hover:border-emerald-500/50 rounded-2xl p-4 text-center transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(16,185,129,0.15)] group cursor-default">
-                <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                  <Beaker className="w-4 h-4" />
-                </div>
-                <div className="text-2xl font-black text-emerald-300">{completedExperimentsCount}</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-1 uppercase font-semibold">Practicals</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Lab Tests Recorded</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Preferences Section */}
-          <div className="bg-[#0b1320] border border-cyan-900/50 rounded-3xl p-6 sm:p-7 shadow-lg">
-            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-cyan-400" />
-              <span>Laboratory Environment Preferences</span>
-            </h3>
-
-            <div className="divide-y divide-cyan-950/60">
-              <div className="py-3.5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Laboratory Sound Effects</h4>
-                  <p className="text-xs text-slate-400">Audio cues during successful chemical reactions and level clears.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={profile.preferences.soundEffects}
-                  onChange={(e) => updatePreference('soundEffects', e.target.checked)}
-                  className="w-5 h-5 rounded accent-cyan-500 cursor-pointer"
-                />
-              </div>
-
-              <div className="py-3.5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Auto-Explain Reaction Mechanisms</h4>
-                  <p className="text-xs text-slate-400">Automatically display balanced equations and safety context after combining reagents.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={profile.preferences.autoExplain}
-                  onChange={(e) => updatePreference('autoExplain', e.target.checked)}
-                  className="w-5 h-5 rounded accent-cyan-500 cursor-pointer"
-                />
-              </div>
-
-              <div className="py-3.5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-semibold text-white">High Contrast Laboratory View</h4>
-                  <p className="text-xs text-slate-400">Enhance periodic table cell borders and molecular bonds for increased visibility.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={profile.preferences.highContrast}
-                  onChange={(e) => updatePreference('highContrast', e.target.checked)}
-                  className="w-5 h-5 rounded accent-cyan-500 cursor-pointer"
-                />
-              </div>
-
-              <div className="py-3.5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Theme Mode</h4>
-                  <p className="text-xs text-slate-400">Select deep cosmic dark laboratory styling or light aesthetic.</p>
-                </div>
-                <select
-                  value={profile.preferences.theme}
-                  onChange={(e) => updatePreference('theme', e.target.value as 'dark' | 'light')}
-                  className="px-3 py-1.5 rounded-xl bg-[#070b13] border border-cyan-900 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500"
-                >
-                  <option value="dark">Cosmic Dark</option>
-                  <option value="light">Solar Light</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Privacy & Account Deletion Controls (GDPR / CCPA Article 17 Right to Erasure) */}
-          <div className="bg-rose-950/20 border border-rose-900/40 rounded-3xl p-6 space-y-5">
-            <div>
-              <h3 className="text-sm font-bold text-rose-300 mb-1">Data Privacy &amp; Deletion Controls</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Manage your stored chemistry achievements or exercise your right to permanent account erasure.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              {!showResetConfirm ? (
-                <button
-                  type="button"
-                  onClick={() => setShowResetConfirm(true)}
-                  className="px-4 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-rose-900/60 text-xs font-bold text-rose-300 transition flex items-center gap-2"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Reset Local Study Cache</span>
-                </button>
-              ) : (
-                <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 flex flex-wrap items-center gap-3">
-                  <span className="text-xs text-rose-200">Reset local offline progress only?</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowResetConfirm(false)}
-                    className="px-3 py-1 rounded-lg bg-slate-900 text-xs text-slate-300 font-bold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetData}
-                    className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs text-white font-bold"
-                  >
-                    Confirm Reset
-                  </button>
-                </div>
-              )}
-
-              {isAuthenticated && !showDeleteConfirm && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900/80 border border-rose-600/80 text-xs font-bold text-rose-200 transition flex items-center gap-2 shadow-sm"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Delete Researcher Account &amp; Data</span>
-                </button>
-              )}
-
-              {isAuthenticated && showDeleteConfirm && (
-                <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-500 w-full flex flex-col gap-3 animate-popup">
-                  <div>
-                    <h5 className="text-xs font-bold text-rose-100">Permanently delete your account?</h5>
-                    <p className="text-[11px] text-rose-300/90 mt-0.5">
-                      Please enter your password to confirm. This will permanently erase your profile and synced progress.
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center gap-2">
-                    <input
-                      type="password"
-                      placeholder="Enter your account password"
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                      className="w-full sm:w-64 px-3 py-1.5 rounded-lg bg-slate-900 border border-rose-700/60 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-400"
-                    />
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                      <button
-                        type="button"
-                        disabled={isDeletingAccount}
-                        onClick={() => {
-                          setShowDeleteConfirm(false);
-                          setDeletePassword('');
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-300"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isDeletingAccount || !deletePassword}
-                        aria-busy={isDeletingAccount}
-                        onClick={handleDeleteAccount}
-                        className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white shadow flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {isDeletingAccount && <BubbleDots label="Deleting account data..." />}
-                        <span>{isDeletingAccount ? 'Erasing...' : 'Confirm Delete'}</span>
-                      </button>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div>
+                          <div className="text-xs font-bold text-slate-800">High Contrast Laboratory View</div>
+                          <div className="text-[11px] text-slate-500">Enhanced borders for molecular charts.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={profile.preferences.highContrast}
+                          onChange={(e) => updatePreference('highContrast', e.target.checked)}
+                          className="w-5 h-5 rounded accent-[#04212b] cursor-pointer"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div className="pt-3 border-t border-rose-950/60 text-[11px] text-slate-400 space-y-1">
-              <p>
-                <strong>Need manual deletion or data export?</strong> Email us at{" "}
-                <a href="mailto:privacy@chemora.work.gd?subject=Account%20Erasure%20Request" className="text-cyan-400 underline">
-                  privacy@chemora.work.gd
-                </a>{" "}
-                to request complete erasure within 30 days under GDPR/CCPA.
-              </p>
-              <div className="flex items-center gap-4 pt-1 font-mono text-[10px]">
-                <a href="/privacy.html" className="text-slate-400 hover:text-cyan-300 underline">Privacy Policy</a>
-                <span>&bull;</span>
-                <a href="/terms.html" className="text-slate-400 hover:text-cyan-300 underline">Terms of Service</a>
-                <span>&bull;</span>
-                <a href="/cookie-policy.html" className="text-slate-400 hover:text-cyan-300 underline">Cookie Policy</a>
+              {/* SECTION 2: SECURITY & DATA PRIVACY */}
+              <div
+                className={`section-panel ${getPanelPositionClass('security')}`}
+                aria-hidden={activeSection !== 'security'}
+              >
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-[#04212b] tracking-tight">Security &amp; Privacy</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Update your password and manage data deletion rights.
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Change Password Form */}
+                  <form onSubmit={handleChangePassword} className="space-y-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-cyan-700" />
+                      <span>Update Password</span>
+                    </h4>
+
+                    {passwordStatus?.error && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                        {passwordStatus.error}
+                      </div>
+                    )}
+                    {passwordStatus?.success && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                        {passwordStatus.success}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        New Password (min 10 characters)
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={10}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••••"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-[16px] sm:text-sm text-slate-900 focus:border-[#04212b] focus-visible:outline-none min-h-[44px]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={10}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••••"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-[16px] sm:text-sm text-slate-900 focus:border-[#04212b] focus-visible:outline-none min-h-[44px]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isChangingPassword || !newPassword || !confirmPassword}
+                      className="w-full py-2.5 rounded-xl bg-[#04212b] hover:bg-[#073646] text-white text-xs font-bold transition disabled:opacity-40 min-h-[44px]"
+                    >
+                      {isChangingPassword ? <BubbleDots label="Updating password..." /> : 'Update Password'}
+                    </button>
+                  </form>
+
+                  {/* Data Privacy & Deletion (GDPR / CCPA) */}
+                  <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3">
+                    <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Data Privacy &amp; Deletion Controls</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Manage your stored chemistry achievements or exercise your right to permanent account erasure under GDPR Article 17.
+                    </p>
+
+                    <div className="flex flex-wrap gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowResetConfirm(true)}
+                        className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold flex items-center gap-1.5 min-h-[44px]"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Reset Study Cache</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 min-h-[44px]"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Account</span>
+                      </button>
+                    </div>
+
+                    {showDeleteConfirm && (
+                      <div className="p-3.5 rounded-xl bg-white border border-rose-300 space-y-2.5 animate-popup mt-2">
+                        <div className="text-xs font-bold text-rose-900">
+                          Confirm permanent account erasure
+                        </div>
+                        <input
+                          type="password"
+                          placeholder="Enter your account password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-rose-500 focus-visible:outline-none min-h-[44px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              setDeletePassword('');
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isDeletingAccount || !deletePassword}
+                            onClick={handleDeleteAccount}
+                            className="px-3.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold disabled:opacity-50"
+                          >
+                            {isDeletingAccount ? 'Erasing...' : 'Confirm Erase'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: LAB DATA & ADVANCED ARCHITECTURE */}
+              <div
+                className={`section-panel ${getPanelPositionClass('labdata')}`}
+                aria-hidden={activeSection !== 'labdata'}
+              >
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-[#04212b] tracking-tight">Laboratory Metrics</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Your synchronized chemistry benchmarks and practical laboratory progress.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSyncProgressToSupabase}
+                    disabled={isSyncingDb}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-2 shadow-sm min-h-[44px]"
+                  >
+                    {isSyncingDb ? <BubbleDots label="Syncing..." /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    <span>{isSyncingDb ? 'Syncing...' : 'Sync Lab Data'}</span>
+                  </button>
+                </div>
+
+                {/* 4 Laboratory Metric Cards */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                    <Flame className="w-5 h-5 mx-auto mb-1 text-amber-600" />
+                    <div className="text-2xl font-black text-amber-900">{streakState.currentStreak}d</div>
+                    <div className="text-[11px] font-bold text-amber-800 uppercase">Daily Streak</div>
+                    <div className="text-[10px] text-amber-700">{streakState.streakLevel}</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-cyan-50 border border-cyan-200 text-center">
+                    <Sparkles className="w-5 h-5 mx-auto mb-1 text-cyan-600" />
+                    <div className="text-2xl font-black text-cyan-900">{challengeState.xp}</div>
+                    <div className="text-[11px] font-bold text-cyan-800 uppercase">Experience XP</div>
+                    <div className="text-[10px] text-cyan-700">Mastery Points</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+                    <Award className="w-5 h-5 mx-auto mb-1 text-blue-600" />
+                    <div className="text-2xl font-black text-blue-900">{challengeState.levels.length}</div>
+                    <div className="text-[11px] font-bold text-blue-800 uppercase">Challenges</div>
+                    <div className="text-[10px] text-blue-700">Quizzes Cleared</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                    <Beaker className="w-5 h-5 mx-auto mb-1 text-emerald-600" />
+                    <div className="text-2xl font-black text-emerald-900">{completedExperimentsCount}</div>
+                    <div className="text-[11px] font-bold text-emerald-800 uppercase">Practicals</div>
+                    <div className="text-[10px] text-emerald-700">Labs Completed</div>
+                  </div>
+                </div>
+
+                {/* ========================================================
+                    5. ADVANCED DATABASE SYSTEM (Collapsed by default - Part A.5)
+                    ======================================================== */}
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 transition">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                    aria-expanded={isAdvancedOpen}
+                    className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-100 transition min-h-[44px]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Database className="w-4 h-4 text-cyan-700" />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">
+                          Advanced: API Supabase Database System
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          v2.0 PostgreSQL • Zero-LocalStorage Engine
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        {isBackendOnline ? 'Online' : 'Active'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isAdvancedOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                  </button>
+
+                  {isAdvancedOpen && (
+                    <div className="p-4 pt-1 border-t border-slate-200 space-y-3 anim-slide-down">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px] font-mono text-slate-600">
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                          <div className="font-bold text-slate-800 flex items-center gap-1 mb-0.5">
+                            <Server className="w-3 h-3 text-cyan-600" />
+                            public.profiles
+                          </div>
+                          <div>User UUID: <span className="text-cyan-800 font-bold truncate block">{accountProfile.user_id || accountProfile.id}</span></div>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                          <div className="font-bold text-slate-800 flex items-center gap-1 mb-0.5">
+                            <Activity className="w-3 h-3 text-teal-600" />
+                            public.researcher_progress
+                          </div>
+                          <div>Status: <span className="text-emerald-700 font-bold">Synced Cloud Persistence</span></div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 text-[10px] font-mono text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Last sync: {lastDbSyncTime || 'Session active'}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-cyan-800 font-semibold">
+                          <Cpu className="w-3 h-3" />
+                          <span>Audited Zero-LocalStorage Policy</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Subtle fallback notice if session verification timed out or couldn't reach auth service */}
-      {!isLoadingAuth && !isAuthenticated && authCheckTimedOut && (
-        <div className="max-w-md mx-auto mb-6 p-3.5 rounded-2xl bg-[#0b1320]/90 border border-amber-500/40 text-slate-300 text-xs flex items-center justify-between gap-3 shadow-lg anim-slide-down">
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Couldn't verify your session, you can still sign in</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setAuthCheckTimedOut(false);
-              refreshAccount();
-            }}
-            className="px-3 py-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shrink-0"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span>Retry</span>
-          </button>
-        </div>
-      )}
-
-      {/* Unauthenticated View: Sliding AuthCard Portal */}
-      {!isLoadingAuth && !isAuthenticated && (
-        <div className="space-y-10 anim-slide-up">
-          <ErrorBoundary tabName="Account Authentication Card">
-            <AuthCard
-              isRegister={authMode === 'signup'}
-              onToggleMode={(isReg) => {
-                setAuthMode(isReg ? 'signup' : 'signin');
-                setAuthError(null);
-                setAuthSuccess(null);
-              }}
-              email={authEmail}
-              onEmailChange={setAuthEmail}
-              password={authPassword}
-              onPasswordChange={setAuthPassword}
-              fullName={authFullName}
-              onFullNameChange={setAuthFullName}
-              agreeTerms={agreeTerms}
-              onAgreeTermsChange={setAgreeTerms}
-              confirmAge={confirmAge}
-              onConfirmAgeChange={setConfirmAge}
-              rememberMe={true}
-              isSubmitting={isSubmittingAuth}
-              error={authError}
-              onClearError={() => setAuthError(null)}
-              success={authSuccess}
-              onClearSuccess={() => setAuthSuccess(null)}
-              onSignIn={handleSignIn}
-              onSignUp={handleSignUp}
-              onGoogleSignIn={handleGoogleSignIn}
-              onForgotPassword={async (recoveryEmail) => {
-                if (!recoveryEmail.trim()) {
-                  setAuthError('Please enter an email address.');
-                  return;
-                }
-                setIsSubmittingAuth(true);
-                setAuthError(null);
-                setAuthSuccess(null);
-                try {
-                  await supabase.auth.resetPasswordForEmail(recoveryEmail.trim()).catch(() => {});
-                  const msg = await requestPasswordReset(recoveryEmail.trim());
-                  setAuthSuccess(msg);
-                  triggerToast(msg, 'info');
-                } catch (err: any) {
-                  const msg = cleanErrorMessage(err.message || 'Failed to request password reset.');
-                  setAuthError(msg);
-                  triggerToast(msg, 'error');
-                } finally {
-                  setIsSubmittingAuth(false);
-                }
-              }}
-            />
-          </ErrorBoundary>
-
-          {/* Guest Exploration Option */}
-          <div className="max-w-md mx-auto text-center">
-            <p className="text-xs text-slate-400 mb-2">Want to experiment without signing in?</p>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-300 shadow-sm">
-              <Beaker className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Guest Exploration (In-Memory Session • Zero Account LocalStorage)</span>
-            </div>
-          </div>
-
-          {/* Feature Highlights Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            <div className="p-4 rounded-2xl bg-[#0b1320]/60 border border-cyan-950/80 text-center">
-              <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                <Database className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">API Supabase Database</h4>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                PostgreSQL cloud database system storing chemist credentials, profiles, and bench achievements.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#0b1320]/60 border border-cyan-950/80 text-center">
-              <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Shield className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Zero LocalStorage Policy</h4>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                0 bytes account data stored locally. Verified by Senior Engineer for data privacy and security.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-[#0b1320]/60 border border-cyan-950/80 text-center">
-              <div className="w-8 h-8 mx-auto mb-2 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                <Server className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Cloud Laboratory Sync</h4>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                Instant sync across devices for your experiments, streaks, and chemical knowledge XP.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

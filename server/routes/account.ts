@@ -77,6 +77,48 @@ export const LoginSchema = z.object({
   password: z.string().min(10, 'Password must be at least 10 characters').max(120),
 });
 
+export const ALLOWED_PRESET_AVATARS = new Set([
+  '/favicon.png',
+  '/assets/chemistry/carbon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/assets/chemistry/oxygen.svg',
+  '/assets/chemora-mark.svg',
+]);
+
+/**
+ * Requirement B.7: Server validation for avatar_url
+ * Allow only:
+ * (a) a URL starting with the project's Supabase public path "/storage/v1/object/public/avatars/<current user id>/"
+ * (b) one of the preset avatar URLs
+ * (c) /favicon.png
+ * (d) https://lh3.googleusercontent.com/ for Google photos
+ * Reject everything else. Max length 255.
+ */
+export function isValidAvatarUrl(url: string, userId: string): boolean {
+  if (!url || typeof url !== 'string' || url.length > 255) return false;
+  const trimmed = url.trim();
+
+  // (b) & (c) preset avatar URLs & /favicon.png
+  if (ALLOWED_PRESET_AVATARS.has(trimmed)) return true;
+
+  // (d) Google user profile photos
+  if (trimmed.startsWith('https://lh3.googleusercontent.com/')) return true;
+
+  // (a) Supabase storage URL starting with project's Supabase public path /storage/v1/object/public/avatars/<current user id>/
+  const expectedPrefix = `/storage/v1/object/public/avatars/${userId}/`;
+  if (trimmed.startsWith(expectedPrefix)) return true;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname.startsWith(expectedPrefix)) return true;
+  } catch {
+    // Not a valid URL
+  }
+
+  return false;
+}
+
 export const ProfileUpdateSchema = z.object({
   full_name: z.string().trim().max(80).optional(),
   avatar_url: z.string().trim().max(255).optional(),
@@ -344,6 +386,12 @@ router.put('/profile', async (req: Request, res: Response) => {
     const parsed = ProfileUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid profile update format' });
+    }
+
+    if (parsed.data.avatar_url !== undefined && !isValidAvatarUrl(parsed.data.avatar_url, verified.id)) {
+      return res.status(400).json({
+        error: 'Invalid avatar URL. Allowed: your uploaded avatar, preset badges, or Google photo.',
+      });
     }
 
     const updatedProfile = await backendUpdateProfile(

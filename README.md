@@ -69,4 +69,29 @@ An administrative command center modeled after an AI dashboard with floating nav
 node scripts/test-admin.mjs
 ```
 
+---
+
+## 🖼️ Avatar Storage (`avatars` Bucket)
+
+Profile pictures are hosted in a public Supabase Storage bucket named `avatars`.
+
+### Storage Architecture & Security
+- **Bucket Configuration:** Public read bucket restricted to image formats (`image/jpeg`, `image/png`, `image/webp`) with a 5 MB raw file size limit.
+- **Folder Isolation (RLS):** Authenticated researchers can only upload, update, and delete objects within their own designated folder: `<user_id>/avatar`. Cross-user folder access is strictly blocked at the database level.
+- **Client Processing:** The web application provides circular crop preview with zoom/pan and renders a 512×512 square WebP image at 0.85 quality using an HTML5 Canvas, automatically stripping EXIF and GPS location metadata for privacy.
+- **Server Validation:** The backend API (`server/routes/account.ts`) strictly verifies that `avatar_url` starts with the user's own storage folder (`/storage/v1/object/public/avatars/<user_id>/`), is one of the preset lab emblems, or originates from a verified Google account photo.
+
+### SQL Migration
+To provision the `avatars` bucket and configure the Row Level Security (RLS) policies in Supabase, execute:
+```sql
+-- Run in Supabase SQL Editor:
+-- supabase/migrations/20261022010000_avatar_storage.sql
+```
+
+### Running Avatar Storage Verification Tests
+```bash
+npm run test:avatar
+```
+
+
 

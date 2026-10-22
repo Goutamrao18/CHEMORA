@@ -19,6 +19,7 @@
     "test:rate-limit": "node scripts/test-rate-limit.mjs",
     "test:security": "node scripts/test-phase7.mjs",
     "test:experiments": "node scripts/test-experiments.mjs",
+    "test:avatar": "node scripts/test-avatar-upload.mjs",
     "upload:videos": "node scripts/upload-videos.mjs"
   },
   "dependencies": {
