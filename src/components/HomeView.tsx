@@ -165,13 +165,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
         ref={heroCardRef}
         onMouseMove={handleHeroMouseMove}
         onMouseLeave={handleHeroMouseLeave}
-        className="relative rounded-[28px] sm:rounded-[34px] overflow-hidden border border-cyan-500/35 bg-[#030d1d] shadow-[0_30px_90px_rgba(0,0,0,0.65)] min-h-[100dvh] sm:min-h-[530px] lg:min-h-[570px] flex items-center p-5 sm:p-12 lg:p-16 transition-shadow duration-300"
+        className="relative rounded-[28px] sm:rounded-[34px] overflow-hidden border border-cyan-500/35 bg-[#030d1d] shadow-[0_30px_90px_rgba(0,0,0,0.65)] min-h-[360px] sm:min-h-[530px] lg:min-h-[570px] flex items-center p-6 py-9 sm:p-12 lg:p-16 transition-shadow duration-300"
       >
         {/* Top Specular Edge Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent pointer-events-none z-30" />
 
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Video Background - Landscape-calibrated on Mobile & Desktop */}
+        <div className="absolute inset-x-0 top-0 h-[260px] xs:h-[300px] sm:inset-0 sm:h-full z-0 overflow-hidden pointer-events-none">
           <Skeleton variant="video" className="absolute inset-0 w-full h-full opacity-20" />
           <video
             ref={heroVideoRef}
@@ -180,7 +180,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             playsInline
             preload="none"
             poster={heroFallback ? localVideoUrl('chemora-intro-poster.webp') : videoUrl('chemora-intro', 'poster')}
-            className="w-full h-full object-cover object-center transform-gpu opacity-70 scale-105"
+            className="w-full h-full object-cover object-center transform-gpu opacity-75 scale-105"
             onError={() => {
               if (!heroFallback) setHeroFallback(true);
             }}
@@ -197,11 +197,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
               }}
             />
           </video>
+          {/* Mobile Bottom Fade: seamless blend of landscape video into the dark hero card surface */}
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#030d1d] via-[#030d1d]/85 to-transparent sm:hidden pointer-events-none" />
         </div>
 
         {/* Enhanced High-Contrast Scrim Gradient Overlays for Phone & Desktop */}
-        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#020816]/98 via-[#020918]/92 sm:from-[#020816]/95 sm:via-[#020918]/85 to-[#020814]/50" />
-        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-[#020816]/98 via-[#020816]/40 to-[#020816]/80 sm:from-[#020816]/90 sm:via-transparent sm:to-[#020816]/60" />
+        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#020816]/95 via-[#020918]/80 sm:from-[#020816]/95 sm:via-[#020918]/85 to-[#020814]/50" />
+        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-[#020816]/95 via-[#020816]/35 to-[#020816]/70 sm:from-[#020816]/90 sm:via-transparent sm:to-[#020816]/60" />
         <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_25%_45%,rgba(20,163,196,0.3),transparent_70%)]" />
 
         {/* Foreground Content with Subtle Mouse Parallax & Staggered Reveal */}
