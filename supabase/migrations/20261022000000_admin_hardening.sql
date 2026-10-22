@@ -11,9 +11,13 @@ CREATE TABLE IF NOT EXISTS admin_users (
   role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('super_admin', 'admin', 'moderator')),
   two_factor_secret TEXT,
   two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  sessions_valid_after TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure sessions_valid_after exists on existing tables
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS sessions_valid_after TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- Index on role for fast lookups
 CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
@@ -87,7 +91,7 @@ COMMIT;
 -- ============================================================================
 -- HOW TO CREATE THE FIRST ADMIN IN SUPABASE:
 -- 1. Sign up the user account in Chemora or create a user in Supabase Auth -> Users
---    (e.g., admin@chemora.edu with a strong 12+ character password).
+--    (e.g., your-admin@yourdomain.edu with a strong 12+ character password).
 -- 2. Copy the newly created user's UUID (id column in auth.users).
 -- 3. Run the following SQL command in Supabase SQL Editor:
 --

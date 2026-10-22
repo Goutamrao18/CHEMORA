@@ -2,6 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import accountRouter from '../server/routes/account.ts';
 import reviewsRouter from '../server/routes/reviews.ts';
+import adminRouter, { adminLoginRateLimiter } from '../server/routes/admin.ts';
 import {
   apiRateLimiter,
   authRateLimiter,
@@ -24,10 +25,13 @@ app.use('/api/account/reset-password', authRateLimiter);
 app.use('/api/account/password', authRateLimiter);
 app.use('/api/account', databaseRateLimiter);
 app.use('/api/reviews', databaseRateLimiter);
+app.use('/api/admin/login', adminLoginRateLimiter);
+app.use('/api/admin/verify-2fa', adminLoginRateLimiter);
 
 // API routes
 app.use('/api/account', accountRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/admin', adminRouter);
 
 // PubChem Compound proxy route with timeout & cache (M10 fix)
 app.get('/api/science/compound', async (req, res) => {

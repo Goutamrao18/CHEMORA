@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import accountRouter from './server/routes/account.ts';
 import reviewsRouter from './server/routes/reviews.ts';
-import adminRouter from './server/routes/admin.ts';
+import adminRouter, { adminLoginRateLimiter, isRedisRateLimitConfigured } from './server/routes/admin.ts';
 import {
   apiRateLimiter,
   aiRateLimiter,
@@ -160,6 +160,8 @@ async function startServer() {
   // Mount backend API routes
   app.use('/api/account', accountRouter);
   app.use('/api/reviews', reviewsRouter);
+  app.use('/api/admin/login', adminLoginRateLimiter);
+  app.use('/api/admin/verify-2fa', adminLoginRateLimiter);
   app.use('/api/admin', adminRouter);
 
   // Mount assistant route handler if available (with its own 12MB limit for homework images)
@@ -272,9 +274,16 @@ async function startServer() {
   process.on('SIGINT', gracefulShutdown);
 
   server.listen(PORT, '0.0.0.0', () => {
+    const isRedisConfigured = isRedisRateLimitConfigured();
     console.log(`\n🧪 CHEMORA Server online at http://0.0.0.0:${PORT} [mode: ${isProd ? 'production' : 'development'}]`);
     console.log(`📡 Backend account endpoints active at /api/account`);
-    console.log(`🛡️ Rate limiting middleware active across /api routes (AI: 20/min, DB: 60/min, Auth: 25/15min, API: 120/min)\n`);
+    console.log(`🔒 Security Environment Configuration (boolean flags only):`);
+    console.log(`   - SUPABASE_URL: ${Boolean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)}`);
+    console.log(`   - SUPABASE_ANON_KEY: ${Boolean(process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY)}`);
+    console.log(`   - SUPABASE_SERVICE_ROLE_KEY: ${Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)}`);
+    console.log(`   - ADMIN_SESSION_SECRET: ${Boolean(process.env.ADMIN_SESSION_SECRET)}`);
+    console.log(`   - RATE_LIMIT_STORE: ${isRedisConfigured ? 'redis (configured: true)' : 'memory (configured: false)'}`);
+    console.log(`🛡️ Rate limiting middleware active across /api routes (AI: 20/min, DB: 60/min, Auth: 25/15min, Admin: 5/15min, API: 120/min)\n`);
   });
 }
 

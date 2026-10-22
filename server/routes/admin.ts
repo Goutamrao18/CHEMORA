@@ -8,16 +8,18 @@ import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateSecret, generateURI, verifySync } from 'otplib';
+import QRCode from 'qrcode';
+import { Redis } from '@upstash/redis';
 import {
   getSupabaseAdminClient,
   getSupabaseAnonClient,
   isSupabaseAdminConfigured,
-  isDevFallbackAllowed,
   safeLogError,
   safeLogInfo,
   safeLogWarn,
 } from '../supabase.ts';
-import { createRateLimiter } from '../middleware/rateLimit.ts';
+import { getClientIp } from '../middleware/rateLimit.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,91 +32,362 @@ const purify = DOMPurify(window);
 
 const router = express.Router();
 const isProd = process.env.NODE_ENV === 'production';
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-// ============================================================================
-// Rate Limiters: 5 login attempts / 15 min per IP and per email
-// ============================================================================
-export const adminLoginRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  name: 'admin-login-ip',
-  message: { error: 'Too many admin login attempts. Account temporarily locked for 15 minutes.' },
-});
-
-const emailLoginAttempts = new Map<string, { count: number; resetAt: number }>();
-function checkEmailRateLimit(email: string): boolean {
-  const norm = email.toLowerCase().trim();
-  const now = Date.now();
-  const record = emailLoginAttempts.get(norm);
-  if (!record || now > record.resetAt) {
-    emailLoginAttempts.set(norm, { count: 1, resetAt: now + 15 * 60 * 1000 });
-    return true;
-  }
-  if (record.count >= 5) {
+/**
+ * Validates a 6-digit TOTP code against a decrypted base32 secret.
+ */
+export function verifyTotpToken(token: string, secret: string): boolean {
+  if (!token || !secret) return false;
+  try {
+    const result = verifySync({ token: token.trim(), secret: secret.trim() });
+    return result?.valid === true;
+  } catch {
     return false;
   }
-  record.count += 1;
-  return true;
-}
-function resetEmailRateLimit(email: string): void {
-  emailLoginAttempts.delete(email.toLowerCase().trim());
 }
 
 // ============================================================================
-// In-Memory Dev / Fallback Admin & Session Store
-// (Active when Supabase is in fallback mode or for automated tests)
+// 1. Session & 2FA Secrets Management (Stateless HMAC & AES-256-GCM)
 // ============================================================================
-interface AdminSession {
-  token: string;
+export interface AdminSessionPayload {
   userId: string;
   email: string;
   fullName: string;
   role: 'super_admin' | 'admin' | 'moderator';
-  createdAt: number;
-  lastActiveAt: number;
+  sessionId: string;
+  iat: number; // issued-at timestamp in ms
+  exp: number; // expiration timestamp in ms
 }
 
-const activeAdminSessions = new Map<string, AdminSession>(); // token -> AdminSession
-const userAdminSessions = new Map<string, Set<string>>(); // userId -> Set<token>
-
-// Pre-seeded dev admin for local testing if external Supabase is offline
-interface FallbackAdminUser {
-  id: string;
+export interface Temp2faPayload {
+  userId: string;
   email: string;
-  passwordHash: string;
   fullName: string;
   role: 'super_admin' | 'admin' | 'moderator';
+  type: 'temp_2fa';
+  exp: number;
+}
+
+/**
+ * Retrieves the session signing secret.
+ * Fails closed if ADMIN_SESSION_SECRET is missing.
+ */
+export function getAdminSessionSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET?.trim();
+  if (!secret) {
+    throw new Error('ADMIN_SESSION_SECRET is missing. Admin operations fail closed.');
+  }
+  return secret;
+}
+
+/**
+ * Derives a 32-byte key for AES-256-GCM 2FA secret encryption.
+ */
+function get2faEncryptionKey(): Buffer {
+  const keySource = process.env.ADMIN_2FA_ENCRYPTION_KEY?.trim() || process.env.ADMIN_SESSION_SECRET?.trim();
+  if (!keySource) {
+    throw new Error('ADMIN_2FA_ENCRYPTION_KEY or ADMIN_SESSION_SECRET is required to encrypt 2FA secrets.');
+  }
+  return crypto.createHash('sha256').update(keySource).digest();
+}
+
+/**
+ * Encrypts a TOTP secret at rest with AES-256-GCM.
+ * Output format: enc:<ivHex>:<tagHex>:<ciphertextHex>
+ */
+export function encrypt2faSecret(plainSecret: string): string {
+  const key = get2faEncryptionKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  let encrypted = cipher.update(plainSecret, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const tag = cipher.getAuthTag().toString('hex');
+  return `enc:${iv.toString('hex')}:${tag}:${encrypted}`;
+}
+
+/**
+ * Decrypts an AES-256-GCM encrypted TOTP secret.
+ * Handles backward-compatibility for unencrypted base32 strings.
+ */
+export function decrypt2faSecret(storedSecret: string): string {
+  if (!storedSecret) return '';
+  if (!storedSecret.startsWith('enc:')) {
+    // Unencrypted legacy base32 fallback
+    return storedSecret;
+  }
+  const parts = storedSecret.split(':');
+  if (parts.length !== 4) {
+    throw new Error('Malformed encrypted 2FA secret format.');
+  }
+  const [, ivHex, tagHex, cipherHex] = parts;
+  const key = get2faEncryptionKey();
+  const iv = Buffer.from(ivHex, 'hex');
+  const tag = Buffer.from(tagHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+/**
+ * Signs a stateless admin session token with HMAC-SHA256.
+ */
+export function signAdminToken(payload: AdminSessionPayload): string {
+  const secret = getAdminSessionSecret();
+  const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
+  return `${payloadStr}.${signature}`;
+}
+
+/**
+ * Verifies and decodes an HMAC-SHA256 admin session token.
+ */
+export function verifyAdminToken(token: string): AdminSessionPayload | null {
+  try {
+    const secret = getAdminSessionSecret();
+    const parts = token.split('.');
+    if (parts.length !== 2) return null;
+    const [payloadStr, signature] = parts;
+
+    const expectedSig = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+
+    const payload: AdminSessionPayload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
+    if (!payload.userId || !payload.exp || Date.now() > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Signs a short-lived (5 min) temporary 2FA pending token.
+ */
+export function signTemp2faToken(payload: Omit<Temp2faPayload, 'type' | 'exp'>): string {
+  const secret = getAdminSessionSecret();
+  const fullPayload: Temp2faPayload = {
+    ...payload,
+    type: 'temp_2fa',
+    exp: Date.now() + 5 * 60 * 1000,
+  };
+  const payloadStr = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
+  return `${payloadStr}.${signature}`;
+}
+
+export function verifyTemp2faToken(token: string): Temp2faPayload | null {
+  try {
+    const secret = getAdminSessionSecret();
+    const parts = token.split('.');
+    if (parts.length !== 2) return null;
+    const [payloadStr, signature] = parts;
+    const expectedSig = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+    const payload: Temp2faPayload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
+    if (payload.type !== 'temp_2fa' || Date.now() > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// In-memory revocation tracking fallback (for dev or if sessions_valid_after is used across restarts)
+const devRevokedSessionsAfter = new Map<string, number>();
+
+// ============================================================================
+// 2. Dev Fallback: Allowed ONLY in development with explicit ALLOW_DEV_ADMIN=true
+//    In production, dev fallback is STRICTLY IMPOSSIBLE.
+// ============================================================================
+export interface DevAdminAccount {
+  id: string;
+  email: string;
+  fullName: string;
+  role: 'super_admin';
+  passwordHash: string;
   twoFactorSecret?: string;
   twoFactorEnabled?: boolean;
 }
 
-const fallbackAdmins = new Map<string, FallbackAdminUser>();
+// Mutable dev state for local testing (only active when ALLOW_DEV_ADMIN=true in development)
+let devAdminState: DevAdminAccount | null = null;
 
-// Initialize default dev admin
-(async () => {
-  try {
-    const devHash = await bcrypt.hash('ChemoraAdmin2026!', 10);
-    fallbackAdmins.set('admin@chemora.edu', {
-      id: 'admin_root_curie',
-      email: 'admin@chemora.edu',
-      passwordHash: devHash,
-      fullName: 'Dr. Marie Curie',
+export function getDevAdmin(): DevAdminAccount | null {
+  // Hard barrier: in production, dev fallback is impossible
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+  if (process.env.NODE_ENV !== 'development' || process.env.ALLOW_DEV_ADMIN !== 'true') {
+    return null;
+  }
+
+  const password = process.env.DEV_ADMIN_PASSWORD?.trim();
+  if (!password || password.length < 6) {
+    return null;
+  }
+
+  const email = (process.env.DEV_ADMIN_EMAIL || 'dev-admin@chemora.local').toLowerCase().trim();
+
+  if (!devAdminState || devAdminState.email !== email) {
+    devAdminState = {
+      id: 'admin_dev_local',
+      email,
+      fullName: 'Development Administrator',
       role: 'super_admin',
-      twoFactorEnabled: false,
+      passwordHash: bcrypt.hashSync(password, 10),
+      twoFactorSecret: process.env.DEV_ADMIN_2FA_SECRET || undefined,
+      twoFactorEnabled: process.env.DEV_ADMIN_2FA_ENABLED === 'true',
+    };
+  }
+  return devAdminState;
+}
+
+// ============================================================================
+// 3. Upstash / Redis & In-Memory Rate Limiting
+// ============================================================================
+let redisClient: Redis | null = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  try {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
   } catch (err) {
-    console.error('Failed to init dev admin hash:', err);
+    console.warn('⚠️ Could not connect to Upstash Redis, using in-memory rate limiting fallback:', err);
   }
-})();
+}
 
-// System Settings Fallback Store
-const fallbackSettings: Record<string, any> = {
-  aiTutorEnabled: true,
-  maintenanceBanner: { enabled: false, message: 'Scheduled laboratory maintenance in progress.' },
-  autoModLevel: 'moderate',
-};
+export function isRedisRateLimitConfigured(): boolean {
+  return redisClient !== null;
+}
 
-// Fallback Reviews Store
+const inMemoryFailures = new Map<string, { count: number; resetAt: number }>();
+
+async function getFailureCount(prefix: string, identifier: string): Promise<number> {
+  const key = `chemora:ratelimit:admin:${prefix}:${identifier.toLowerCase().trim()}`;
+  if (redisClient) {
+    try {
+      const val = await redisClient.get<string | number>(key);
+      if (val !== null && val !== undefined) {
+        return typeof val === 'number' ? val : parseInt(String(val), 10) || 0;
+      }
+      return 0;
+    } catch {
+      // fallback to memory below
+    }
+  }
+
+  const record = inMemoryFailures.get(key);
+  if (!record || Date.now() > record.resetAt) {
+    return 0;
+  }
+  return record.count;
+}
+
+async function recordFailure(prefix: string, identifier: string, windowSeconds = 900): Promise<number> {
+  const key = `chemora:ratelimit:admin:${prefix}:${identifier.toLowerCase().trim()}`;
+  if (redisClient) {
+    try {
+      const count = await redisClient.incr(key);
+      if (count === 1) {
+        await redisClient.expire(key, windowSeconds);
+      }
+      return count;
+    } catch {
+      // fallback to memory
+    }
+  }
+
+  const now = Date.now();
+  const record = inMemoryFailures.get(key);
+  if (!record || now > record.resetAt) {
+    inMemoryFailures.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
+    return 1;
+  }
+  record.count += 1;
+  return record.count;
+}
+
+export async function clearRateLimit(prefix: string, identifier: string): Promise<void> {
+  const key = `chemora:ratelimit:admin:${prefix}:${identifier.toLowerCase().trim()}`;
+  inMemoryFailures.delete(key);
+  if (redisClient) {
+    try {
+      await redisClient.del(key);
+    } catch {}
+  }
+}
+
+/**
+ * Resets admin lockout for a specific IP and/or email, or all admin lockouts.
+ */
+export async function clearAdminLockouts(options: { email?: string; ip?: string; all?: boolean }): Promise<{ cleared: string[] }> {
+  const cleared: string[] = [];
+  if (options.all) {
+    inMemoryFailures.clear();
+    if (redisClient) {
+      try {
+        const keys = await redisClient.keys('chemora:ratelimit:admin:*');
+        if (keys && keys.length > 0) {
+          for (const k of keys) {
+            await redisClient.del(k);
+            cleared.push(k);
+          }
+        }
+      } catch {}
+    }
+    cleared.push('all_in_memory');
+    return { cleared };
+  }
+
+  if (options.email) {
+    await clearRateLimit('email', options.email);
+    cleared.push(`email:${options.email}`);
+  }
+  if (options.ip) {
+    await clearRateLimit('ip', options.ip);
+    cleared.push(`ip:${options.ip}`);
+  }
+  return { cleared };
+}
+
+/**
+ * Express middleware for admin login & 2FA endpoints.
+ * Returns 429 if the IP is already locked out (>= 5 failures within 15 min).
+ */
+export async function adminLoginRateLimiter(req: Request, res: Response, next: NextFunction) {
+  const ip = getClientIp(req);
+  try {
+    const ipFailures = await getFailureCount('ip', ip);
+    if (ipFailures >= 5) {
+      safeLogWarn(`Admin login blocked by IP rate limit: ip=${ip}, failures=${ipFailures}`);
+      return res.status(429).json({
+        error: 'Too many admin login attempts from this IP. Account temporarily locked for 15 minutes.',
+        retryAfterSeconds: 900,
+      });
+    }
+    next();
+  } catch (err) {
+    next();
+  }
+}
+
+// ============================================================================
+// 4. Fallback Stores for Non-Supabase Operations (Reviews, Settings, Audit)
+// ============================================================================
 interface AdminReview {
   id: string;
   user_id: string;
@@ -127,61 +400,18 @@ interface AdminReview {
 }
 
 const fallbackAdminReviews = new Map<string, AdminReview>([
-  [
-    'rev_001',
-    {
-      id: 'rev_001',
-      user_id: 'usr_001',
-      author_name: 'Elena Rostova',
-      rating: 5,
-      status: 'pending',
-      comment: 'The acid-base titration module gave me complete confidence before my university practical exam.',
-      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-      discipline: 'Analytical',
-    },
-  ],
-  [
-    'rev_002',
-    {
-      id: 'rev_002',
-      user_id: 'usr_002',
-      author_name: 'Marcus Vance',
-      rating: 4,
-      status: 'pending',
-      comment: 'Challenge Arena level 45 on electrochemistry is tough but the step hints are brilliant.',
-      created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-      discipline: 'Physical',
-    },
-  ],
-  [
-    'rev_003',
-    {
-      id: 'rev_003',
-      user_id: 'usr_003',
-      author_name: 'Aisha Al-Mansoor',
-      rating: 5,
-      status: 'pending',
-      comment: 'The NFPA 704 hazard diamonds on every reagent bottle taught me real laboratory safety.',
-      created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-      discipline: 'Inorganic',
-    },
-  ],
-  [
-    'rev_004',
-    {
-      id: 'rev_004',
-      user_id: 'usr_004',
-      author_name: 'Kenji Sato',
-      rating: 5,
-      status: 'approved',
-      comment: 'Golden Rain demonstration video is crystal clear in high definition.',
-      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-      discipline: 'Inorganic',
-    },
-  ],
+  ['rev_001', { id: 'rev_001', user_id: 'usr_001', author_name: 'Elena Rostova', rating: 5, status: 'pending', comment: 'The acid-base titration module gave me complete confidence before my practical exam.', created_at: new Date(Date.now() - 3600000 * 2).toISOString(), discipline: 'Analytical' }],
+  ['rev_002', { id: 'rev_002', user_id: 'usr_002', author_name: 'Marcus Vance', rating: 4, status: 'pending', comment: 'Challenge Arena level 45 on electrochemistry is tough but the step hints are brilliant.', created_at: new Date(Date.now() - 3600000 * 5).toISOString(), discipline: 'Physical' }],
+  ['rev_003', { id: 'rev_003', user_id: 'usr_003', author_name: 'Aisha Al-Mansoor', rating: 5, status: 'pending', comment: 'The NFPA 704 hazard diamonds on every reagent bottle taught me real laboratory safety.', created_at: new Date(Date.now() - 3600000 * 12).toISOString(), discipline: 'Inorganic' }],
+  ['rev_004', { id: 'rev_004', user_id: 'usr_004', author_name: 'Kenji Sato', rating: 5, status: 'approved', comment: 'Golden Rain demonstration video is crystal clear in high definition.', created_at: new Date(Date.now() - 86400000 * 2).toISOString(), discipline: 'Inorganic' }],
 ]);
 
-// Audit Log Store
+const fallbackSettings: Record<string, any> = {
+  aiTutorEnabled: true,
+  maintenanceBanner: { enabled: false, message: 'Scheduled laboratory maintenance in progress.' },
+  autoModLevel: 'moderate',
+};
+
 interface AuditLogRow {
   id: string;
   admin_id: string;
@@ -193,13 +423,8 @@ interface AuditLogRow {
   created_at: string;
 }
 const auditLogStore: AuditLogRow[] = [];
-
-// Disabled Users Store
 const disabledUsers = new Set<string>();
 
-// ============================================================================
-// Helper: Record Audit Log
-// ============================================================================
 async function writeAdminAudit(
   adminId: string,
   adminEmail: string,
@@ -242,12 +467,7 @@ async function writeAdminAudit(
 }
 
 // ============================================================================
-// Middleware: requireAdmin
-// Enforces:
-// 1. Valid admin session token from httpOnly cookie or Bearer header
-// 2. 30-minute idle timeout enforcement
-// 3. Admin role verification against admin_users table (or fallback store)
-// 4. Non-admins receive 404 (not 403) to prevent route discovery
+// 5. Middleware: requireAdmin (Stateless session + 404 Stealth + Idle Sliding)
 // ============================================================================
 export interface AuthenticatedAdminRequest extends Request {
   admin?: {
@@ -259,8 +479,6 @@ export interface AuthenticatedAdminRequest extends Request {
   };
 }
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-
 export async function requireAdmin(
   req: AuthenticatedAdminRequest,
   res: Response,
@@ -271,41 +489,95 @@ export async function requireAdmin(
     (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
 
   if (!token || typeof token !== 'string') {
-    // Non-admin receives 404 (stealth security per spec)
+    // Stealth 404: non-admins and unauthenticated requests receive 404
     return res.status(404).json({ error: 'Endpoint not found' });
   }
 
-  const session = activeAdminSessions.get(token);
-  if (!session) {
-    return res.status(404).json({ error: 'Endpoint not found' });
-  }
-
-  // Check 30-minute idle timeout
-  const now = Date.now();
-  if (now - session.lastActiveAt > IDLE_TIMEOUT_MS) {
-    activeAdminSessions.delete(token);
-    userAdminSessions.get(session.userId)?.delete(token);
+  const payload = verifyAdminToken(token);
+  if (!payload) {
     res.clearCookie('chemora_admin_session');
     return res.status(404).json({ error: 'Endpoint not found' });
   }
 
-  // Update rolling idle timestamp
-  session.lastActiveAt = now;
+  // Re-check that the user still exists in admin_users table (or dev fallback)
+  let userActive = false;
+  let currentRole = payload.role;
+
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data: adminRow, error } = await client
+          .from('admin_users')
+          .select('role, sessions_valid_after')
+          .eq('user_id', payload.userId)
+          .single();
+
+        if (!error && adminRow) {
+          userActive = true;
+          currentRole = adminRow.role as any;
+
+          // Check if session was revoked via logout-all
+          if (adminRow.sessions_valid_after) {
+            const validAfterMs = new Date(adminRow.sessions_valid_after).getTime();
+            if (payload.iat < validAfterMs) {
+              res.clearCookie('chemora_admin_session');
+              return res.status(404).json({ error: 'Endpoint not found' });
+            }
+          }
+        }
+      }
+    } catch {
+      userActive = false;
+    }
+  } else {
+    // Check dev fallback account
+    const dev = getDevAdmin();
+    if (dev && dev.id === payload.userId) {
+      userActive = true;
+      currentRole = dev.role;
+      const revokedMs = devRevokedSessionsAfter.get(payload.userId);
+      if (revokedMs && payload.iat < revokedMs) {
+        res.clearCookie('chemora_admin_session');
+        return res.status(404).json({ error: 'Endpoint not found' });
+      }
+    }
+  }
+
+  if (!userActive) {
+    res.clearCookie('chemora_admin_session');
+    return res.status(404).json({ error: 'Endpoint not found' });
+  }
+
+  // Sliding expiry: issue refreshed session token extending the 30-minute idle window
+  try {
+    const refreshedPayload: AdminSessionPayload = {
+      ...payload,
+      role: currentRole,
+      exp: Date.now() + IDLE_TIMEOUT_MS,
+    };
+    const refreshedToken = signAdminToken(refreshedPayload);
+    res.cookie('chemora_admin_session', refreshedToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: IDLE_TIMEOUT_MS,
+    });
+  } catch {}
 
   req.admin = {
-    id: session.userId,
-    email: session.email,
-    fullName: session.fullName,
-    role: session.role,
+    id: payload.userId,
+    email: payload.email,
+    fullName: payload.fullName,
+    role: currentRole,
     sessionToken: token,
   };
 
   next();
 }
 
-// ============================================================================
 // CSRF Origin Verification on state-changing requests
-// ============================================================================
 router.use((req: Request, res: Response, next: NextFunction) => {
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
     const origin = req.headers.origin || req.headers.referer;
@@ -331,26 +603,60 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // ============================================================================
-// Admin Login & 2FA
+// 6. Admin Authentication Endpoints (/login, /verify-2fa, /me, /logout, /logout-all)
 // ============================================================================
+
+// Minimum 6 character password for Supabase compatibility
 const AdminLoginSchema = z.object({
-  email: z.string().trim().email(),
-  password: z.string().min(8),
+  email: z.string().trim().email('Invalid email address format.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
   twoFactorCode: z.string().trim().optional(),
 });
 
+type LoginFailureReason =
+  | 'rate_limited'
+  | 'bad_format'
+  | 'wrong_password'
+  | 'no_admin_row'
+  | 'supabase_error'
+  | 'missing_env';
+
+function logLoginFailure(reason: LoginFailureReason, ip: string, email: string): void {
+  // Never log passwords or tokens; log structured failure reason
+  safeLogWarn(`Admin login failure: reason=${reason}, ip=${ip}, email_hash=${crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex').slice(0, 10)}`);
+}
+
 router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response) => {
+  const ip = getClientIp(req);
+
+  // 1. Validate Input Schema (400 on malformed input)
   const parsed = AdminLoginSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: 'Invalid credentials format.' });
+    logLoginFailure('bad_format', ip, req.body?.email || 'unknown');
+    return res.status(400).json({
+      error: 'Invalid login format. Please provide a valid email and password (minimum 6 characters).',
+    });
   }
 
   const { email, password, twoFactorCode } = parsed.data;
-  const ip = req.ip || '127.0.0.1';
 
-  // Per-email rate limit check (5 attempts / 15m)
-  if (!checkEmailRateLimit(email)) {
-    return res.status(429).json({ error: 'Too many admin login attempts for this account. Please wait 15 minutes.' });
+  // 2. Check per-email rate limit (5 attempts / 15 min)
+  const emailFailures = await getFailureCount('email', email);
+  if (emailFailures >= 5) {
+    logLoginFailure('rate_limited', ip, email);
+    await writeAdminAudit('anonymous', email, 'LOGIN_RATE_LIMITED', 'admin_auth', { reason: 'rate_limited' }, ip);
+    return res.status(429).json({
+      error: 'Too many admin login attempts for this account. Please wait 15 minutes.',
+      retryAfterSeconds: 900,
+    });
+  }
+
+  // 3. Check for required session secret env var (fail closed if missing)
+  try {
+    getAdminSessionSecret();
+  } catch (err: any) {
+    logLoginFailure('missing_env', ip, email);
+    return res.status(500).json({ error: 'Admin authentication service configuration error.' });
   }
 
   let authenticatedAdmin: {
@@ -362,26 +668,33 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
     twoFactorEnabled?: boolean;
   } | null = null;
 
-  // 1. Try Supabase Admin verification if configured
+  let failureReason: LoginFailureReason = 'wrong_password';
+
+  // 4. Try Supabase verification if configured
   if (isSupabaseAdminConfigured()) {
     try {
-      const adminClient = getSupabaseAdminClient();
       const anonClient = getSupabaseAnonClient();
-      if (adminClient && anonClient) {
+      const adminClient = getSupabaseAdminClient();
+
+      if (anonClient && adminClient) {
         const { data: authData, error: authErr } = await anonClient.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (!authErr && authData?.user) {
-          // Verify admin_users table membership
+        if (authErr || !authData?.user) {
+          failureReason = 'wrong_password';
+        } else {
+          // Verify user is in admin_users table
           const { data: adminRow, error: adminErr } = await adminClient
             .from('admin_users')
             .select('role, two_factor_secret, two_factor_enabled')
             .eq('user_id', authData.user.id)
             .single();
 
-          if (!adminErr && adminRow) {
+          if (adminErr || !adminRow) {
+            failureReason = 'no_admin_row';
+          } else {
             authenticatedAdmin = {
               id: authData.user.id,
               email: authData.user.email || email,
@@ -394,67 +707,93 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
         }
       }
     } catch (err: any) {
-      safeLogWarn('Supabase admin login check error:', err);
+      safeLogError('Supabase admin authentication query failed:', err);
+      failureReason = 'supabase_error';
     }
   }
 
-  // 2. Fallback check for dev/local testing
-  if (!authenticatedAdmin && (isDevFallbackAllowed() || fallbackAdmins.has(email.toLowerCase().trim()))) {
-    const fallback = fallbackAdmins.get(email.toLowerCase().trim());
-    if (fallback) {
-      const match = await bcrypt.compare(password, fallback.passwordHash);
+  // 5. Dev Fallback: ONLY when NODE_ENV === 'development' AND ALLOW_DEV_ADMIN === 'true'
+  // In production, getDevAdmin() unconditionally returns null.
+  if (!authenticatedAdmin && !isProd) {
+    const dev = getDevAdmin();
+    if (dev && dev.email.toLowerCase() === email.toLowerCase()) {
+      const match = await bcrypt.compare(password, dev.passwordHash);
       if (match) {
         authenticatedAdmin = {
-          id: fallback.id,
-          email: fallback.email,
-          fullName: fallback.fullName,
-          role: fallback.role,
-          twoFactorSecret: fallback.twoFactorSecret,
-          twoFactorEnabled: fallback.twoFactorEnabled,
+          id: dev.id,
+          email: dev.email,
+          fullName: dev.fullName,
+          role: dev.role,
+          twoFactorSecret: dev.twoFactorSecret,
+          twoFactorEnabled: dev.twoFactorEnabled,
         };
+      } else {
+        failureReason = 'wrong_password';
       }
     }
   }
 
+  // Handle Authentication Failure
   if (!authenticatedAdmin) {
-    await writeAdminAudit('anonymous', email, 'LOGIN_FAILED', 'admin_auth', { reason: 'invalid_credentials' }, ip);
+    await recordFailure('ip', ip);
+    await recordFailure('email', email);
+    logLoginFailure(failureReason, ip, email);
+    await writeAdminAudit('anonymous', email, 'LOGIN_FAILED', 'admin_auth', { reason: failureReason }, ip);
+
+    // Keep generic 401 wording to prevent user enumeration
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
-  // 3. Optional TOTP 2FA Verification (State B)
+  // 6. Two-Factor Authentication (TOTP)
   if (authenticatedAdmin.twoFactorEnabled) {
+    const plainSecret = decrypt2faSecret(authenticatedAdmin.twoFactorSecret || '');
+
     if (!twoFactorCode) {
-      return res.json({ requires2FA: true, message: 'Please enter your two-factor authentication code.' });
+      // Issue temporary signed token for state B (valid 5 min)
+      const tempToken = signTemp2faToken({
+        userId: authenticatedAdmin.id,
+        email: authenticatedAdmin.email,
+        fullName: authenticatedAdmin.fullName,
+        role: authenticatedAdmin.role,
+      });
+
+      return res.json({
+        requires2FA: true,
+        tempToken,
+        message: 'Please enter your two-factor authentication code.',
+      });
     }
-    // Verify 6-digit code
-    if (!/^\d{6}$/.test(twoFactorCode) && twoFactorCode !== '123456') {
+
+    // Verify 6-digit TOTP code strictly against decrypted secret (NO '123456' bypass!)
+    const isValidCode = /^\d{6}$/.test(twoFactorCode) && verifyTotpToken(twoFactorCode, plainSecret);
+
+    if (!isValidCode) {
+      await recordFailure('ip', ip);
+      await recordFailure('email', email);
+      logLoginFailure('wrong_password', ip, email);
       await writeAdminAudit(authenticatedAdmin.id, authenticatedAdmin.email, '2FA_FAILED', 'admin_auth', {}, ip);
       return res.status(401).json({ error: 'Invalid 2FA verification code.' });
     }
   }
 
-  // Login succeeded: reset rate limit counter
-  resetEmailRateLimit(email);
+  // Reset rate limit counters upon successful authentication
+  await clearRateLimit('ip', ip);
+  await clearRateLimit('email', email);
 
-  // Generate secure admin session token
-  const token = `chemora_adm_${crypto.randomBytes(32).toString('hex')}`;
-  const session: AdminSession = {
-    token,
+  // Generate stateless HMAC-signed admin session token
+  const now = Date.now();
+  const sessionPayload: AdminSessionPayload = {
     userId: authenticatedAdmin.id,
     email: authenticatedAdmin.email,
     fullName: authenticatedAdmin.fullName,
     role: authenticatedAdmin.role,
-    createdAt: Date.now(),
-    lastActiveAt: Date.now(),
+    sessionId: crypto.randomBytes(16).toString('hex'),
+    iat: now,
+    exp: now + IDLE_TIMEOUT_MS,
   };
 
-  activeAdminSessions.set(token, session);
-  if (!userAdminSessions.has(authenticatedAdmin.id)) {
-    userAdminSessions.set(authenticatedAdmin.id, new Set());
-  }
-  userAdminSessions.get(authenticatedAdmin.id)!.add(token);
+  const token = signAdminToken(sessionPayload);
 
-  // Set httpOnly + Secure + SameSite=Strict cookie
   res.cookie('chemora_admin_session', token, {
     httpOnly: true,
     secure: isProd,
@@ -463,7 +802,14 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
     maxAge: IDLE_TIMEOUT_MS,
   });
 
-  await writeAdminAudit(authenticatedAdmin.id, authenticatedAdmin.email, 'LOGIN_SUCCESS', 'admin_auth', { role: authenticatedAdmin.role }, ip);
+  await writeAdminAudit(
+    authenticatedAdmin.id,
+    authenticatedAdmin.email,
+    'LOGIN_SUCCESS',
+    'admin_auth',
+    { role: authenticatedAdmin.role },
+    ip
+  );
 
   return res.json({
     success: true,
@@ -476,50 +822,344 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
   });
 });
 
-// Verify 2FA Standalone Route
+// Standalone 2FA Verification Route
 router.post('/verify-2fa', adminLoginRateLimiter, async (req: Request, res: Response) => {
-  const { email, code } = req.body;
-  if (!email || !code || !/^\d{6}$/.test(code)) {
-    return res.status(400).json({ error: 'Invalid 2FA verification code.' });
-  }
-  return res.json({ success: true });
-});
+  const ip = getClientIp(req);
+  const { code, tempToken, email, password } = req.body;
 
-// Admin Profile
-router.get('/me', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  if (!code || typeof code !== 'string' || !/^\d{6}$/.test(code.trim())) {
+    return res.status(400).json({ error: 'Please provide a valid 6-digit verification code.' });
+  }
+
+  let adminInfo: { id: string; email: string; fullName: string; role: 'super_admin' | 'admin' | 'moderator' } | null = null;
+  let storedSecret = '';
+
+  // Case A: Temp token from pre-auth step
+  if (tempToken && typeof tempToken === 'string') {
+    const tempPayload = verifyTemp2faToken(tempToken);
+    if (tempPayload) {
+      adminInfo = {
+        id: tempPayload.userId,
+        email: tempPayload.email,
+        fullName: tempPayload.fullName,
+        role: tempPayload.role,
+      };
+    }
+  }
+
+  // Case B: Resolving via email & password if provided
+  if (!adminInfo && email && password) {
+    if (isSupabaseAdminConfigured()) {
+      try {
+        const anon = getSupabaseAnonClient();
+        const adm = getSupabaseAdminClient();
+        if (anon && adm) {
+          const { data: authData } = await anon.auth.signInWithPassword({ email, password });
+          if (authData?.user) {
+            const { data: row } = await adm.from('admin_users').select('role, two_factor_secret').eq('user_id', authData.user.id).single();
+            if (row) {
+              adminInfo = {
+                id: authData.user.id,
+                email: authData.user.email || email,
+                fullName: authData.user.user_metadata?.full_name || 'Administrator',
+                role: row.role as any,
+              };
+              storedSecret = row.two_factor_secret || '';
+            }
+          }
+        }
+      } catch {}
+    } else if (!isProd) {
+      const dev = getDevAdmin();
+      if (dev && dev.email.toLowerCase() === email.toLowerCase().trim()) {
+        const match = await bcrypt.compare(password, dev.passwordHash);
+        if (match) {
+          adminInfo = { id: dev.id, email: dev.email, fullName: dev.fullName, role: dev.role };
+          storedSecret = dev.twoFactorSecret || '';
+        }
+      }
+    }
+  }
+
+  if (!adminInfo) {
+    return res.status(401).json({ error: 'Invalid or expired 2FA session. Please log in again.' });
+  }
+
+  // Fetch 2FA secret from DB if not already fetched
+  if (!storedSecret) {
+    if (isSupabaseAdminConfigured()) {
+      try {
+        const { data: row } = await getSupabaseAdminClient()!
+          .from('admin_users')
+          .select('two_factor_secret')
+          .eq('user_id', adminInfo.id)
+          .single();
+        storedSecret = row?.two_factor_secret || '';
+      } catch {}
+    } else if (!isProd) {
+      const dev = getDevAdmin();
+      if (dev && dev.id === adminInfo.id) {
+        storedSecret = dev.twoFactorSecret || '';
+      }
+    }
+  }
+
+  const plainSecret = decrypt2faSecret(storedSecret);
+  const isValid = verifyTotpToken(code, plainSecret);
+
+  if (!isValid) {
+    await recordFailure('ip', ip);
+    await recordFailure('email', adminInfo.email);
+    await writeAdminAudit(adminInfo.id, adminInfo.email, '2FA_FAILED', 'admin_auth', {}, ip);
+    return res.status(401).json({ error: 'Invalid 2FA verification code.' });
+  }
+
+  // 2FA succeeded: clear rate limits
+  await clearRateLimit('ip', ip);
+  await clearRateLimit('email', adminInfo.email);
+
+  // Issue stateless session cookie
+  const now = Date.now();
+  const sessionPayload: AdminSessionPayload = {
+    userId: adminInfo.id,
+    email: adminInfo.email,
+    fullName: adminInfo.fullName,
+    role: adminInfo.role,
+    sessionId: crypto.randomBytes(16).toString('hex'),
+    iat: now,
+    exp: now + IDLE_TIMEOUT_MS,
+  };
+
+  const token = signAdminToken(sessionPayload);
+
+  res.cookie('chemora_admin_session', token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: IDLE_TIMEOUT_MS,
+  });
+
+  await writeAdminAudit(adminInfo.id, adminInfo.email, '2FA_VERIFIED_LOGIN', 'admin_auth', {}, ip);
+
   return res.json({
-    admin: req.admin,
-    idleTimeoutRemainingMs: IDLE_TIMEOUT_MS - (Date.now() - activeAdminSessions.get(req.admin!.sessionToken)!.lastActiveAt),
+    success: true,
+    admin: adminInfo,
   });
 });
 
-// Sign Out
+// Admin Profile Verification
+router.get('/me', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  return res.json({
+    admin: req.admin,
+  });
+});
+
+// Sign Out (Current session)
 router.post('/logout', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  const token = req.admin!.sessionToken;
-  activeAdminSessions.delete(token);
-  userAdminSessions.get(req.admin!.id)?.delete(token);
   res.clearCookie('chemora_admin_session');
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'LOGOUT', 'admin_auth', {}, req.ip || '127.0.0.1');
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'LOGOUT', 'admin_auth', {}, getClientIp(req));
   return res.json({ success: true });
 });
 
-// Sign Out Everywhere
+// Sign Out Everywhere (Revoke all sessions issued before now)
 router.post('/logout-all', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   const adminId = req.admin!.id;
-  const tokens = userAdminSessions.get(adminId);
-  if (tokens) {
-    for (const t of tokens) {
-      activeAdminSessions.delete(t);
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+
+  // Track in-memory revocation timestamp
+  devRevokedSessionsAfter.set(adminId, now);
+
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        await client
+          .from('admin_users')
+          .update({ sessions_valid_after: nowIso })
+          .eq('user_id', adminId);
+      }
+    } catch (err: any) {
+      safeLogWarn('Failed to update sessions_valid_after in database:', err);
     }
-    userAdminSessions.delete(adminId);
   }
+
   res.clearCookie('chemora_admin_session');
-  await writeAdminAudit(adminId, req.admin!.email, 'LOGOUT_ALL', 'admin_auth', {}, req.ip || '127.0.0.1');
+  await writeAdminAudit(adminId, req.admin!.email, 'LOGOUT_ALL', 'admin_auth', {}, getClientIp(req));
   return res.json({ success: true, message: 'Signed out of all administrative sessions.' });
 });
 
 // ============================================================================
-// Dashboard Statistics & Activity
+// 7. Real 2FA Enrolment Flow (TOTP + QR Code + Encryption at Rest)
+// ============================================================================
+
+// Check 2FA status for the logged-in administrator
+router.get('/2fa/status', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    let enabled = false;
+    if (isSupabaseAdminConfigured()) {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data: row } = await client
+          .from('admin_users')
+          .select('two_factor_enabled')
+          .eq('user_id', req.admin!.id)
+          .single();
+        enabled = Boolean(row?.two_factor_enabled);
+      }
+    } else if (!isProd) {
+      const dev = getDevAdmin();
+      if (dev && dev.id === req.admin!.id) {
+        enabled = Boolean(dev.twoFactorEnabled);
+      }
+    }
+    return res.json({ enabled });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to retrieve 2FA status.' });
+  }
+});
+
+// Generate new 2FA enrolment secret & QR code
+router.post('/2fa/generate', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const secret = generateSecret();
+    const serviceName = 'CHEMORA Chemistry Platform';
+    const otpauth = generateURI({ issuer: serviceName, label: req.admin!.email, secret });
+    const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
+
+    // Sign a short-lived pending enrolment ticket
+    const pendingSecretToken = signTemp2faToken({
+      userId: req.admin!.id,
+      email: req.admin!.email,
+      fullName: req.admin!.fullName,
+      role: req.admin!.role,
+    });
+
+    return res.json({
+      secret,
+      manualEntryKey: secret,
+      qrCodeDataUrl,
+      pendingToken: pendingSecretToken,
+    });
+  } catch (err: any) {
+    safeLogError('Failed to generate 2FA enrolment QR:', err);
+    return res.status(500).json({ error: 'Failed to generate 2FA secret and QR code.' });
+  }
+});
+
+// Confirm & Enable 2FA with a valid TOTP code
+router.post('/2fa/enable', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  const { code, secret } = req.body;
+  if (!code || !secret || !/^\d{6}$/.test(String(code).trim())) {
+    return res.status(400).json({ error: 'Please provide both the enrolment secret and a valid 6-digit code.' });
+  }
+
+  const isValid = verifyTotpToken(String(code).trim(), String(secret).trim());
+
+  if (!isValid) {
+    return res.status(400).json({ error: 'Invalid verification code. Please check your authenticator application.' });
+  }
+
+  // Encrypt secret with AES-256-GCM before database persistence
+  const encryptedSecret = encrypt2faSecret(String(secret).trim());
+
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { error } = await client
+          .from('admin_users')
+          .update({
+            two_factor_secret: encryptedSecret,
+            two_factor_enabled: true,
+          })
+          .eq('user_id', req.admin!.id);
+
+        if (error) {
+          throw error;
+        }
+      }
+    } catch (err: any) {
+      safeLogError('Failed to persist 2FA secret:', err);
+      return res.status(500).json({ error: 'Failed to save two-factor configuration.' });
+    }
+  } else if (!isProd) {
+    const dev = getDevAdmin();
+    if (dev && dev.id === req.admin!.id) {
+      dev.twoFactorSecret = encryptedSecret;
+      dev.twoFactorEnabled = true;
+    }
+  }
+
+  await writeAdminAudit(req.admin!.id, req.admin!.email, '2FA_ENROLLED_AND_ENABLED', 'admin_security', {}, getClientIp(req));
+
+  return res.json({ success: true, message: 'Two-factor authentication successfully enabled.' });
+});
+
+// Disable 2FA (requires valid code or super_admin role)
+router.post('/2fa/disable', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  const { code } = req.body;
+  if (!code || !/^\d{6}$/.test(String(code).trim())) {
+    return res.status(400).json({ error: 'Please enter your current 6-digit authenticator code to disable 2FA.' });
+  }
+
+  let storedSecret = '';
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const { data: row } = await getSupabaseAdminClient()!
+        .from('admin_users')
+        .select('two_factor_secret')
+        .eq('user_id', req.admin!.id)
+        .single();
+      storedSecret = row?.two_factor_secret || '';
+    } catch {}
+  } else if (!isProd) {
+    const dev = getDevAdmin();
+    if (dev && dev.id === req.admin!.id) {
+      storedSecret = dev.twoFactorSecret || '';
+    }
+  }
+
+  const plainSecret = decrypt2faSecret(storedSecret);
+  const isValid = verifyTotpToken(String(code).trim(), plainSecret);
+
+  if (!isValid && req.admin!.role !== 'super_admin') {
+    return res.status(401).json({ error: 'Invalid 2FA code.' });
+  }
+
+  if (isSupabaseAdminConfigured()) {
+    try {
+      await getSupabaseAdminClient()!
+        .from('admin_users')
+        .update({ two_factor_secret: null, two_factor_enabled: false })
+        .eq('user_id', req.admin!.id);
+    } catch {}
+  } else if (!isProd) {
+    const dev = getDevAdmin();
+    if (dev && dev.id === req.admin!.id) {
+      dev.twoFactorSecret = undefined;
+      dev.twoFactorEnabled = false;
+    }
+  }
+
+  await writeAdminAudit(req.admin!.id, req.admin!.email, '2FA_DISABLED', 'admin_security', {}, getClientIp(req));
+
+  return res.json({ success: true, message: 'Two-factor authentication has been disabled.' });
+});
+
+// ============================================================================
+// 8. Admin Rate Limit Clearance Route
+// ============================================================================
+router.post('/clear-lockout', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  const { email, ip, all } = req.body;
+  const result = await clearAdminLockouts({ email, ip, all: Boolean(all) });
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'CLEAR_LOCKOUT', 'rate_limit', result, getClientIp(req));
+  return res.json({ success: true, ...result });
+});
+
+// ============================================================================
+// 9. Dashboard Statistics & Activity
 // ============================================================================
 router.get('/stats', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
@@ -547,7 +1187,6 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedAdminRequest, res: R
       pendingReviews = Array.from(fallbackAdminReviews.values()).filter((r) => r.status === 'pending').length;
     }
 
-    // 7d, 30d, 90d activity data for SVG chart
     const generateActivity = (days: number) => {
       const data = [];
       const now = new Date();
@@ -555,7 +1194,6 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedAdminRequest, res: R
         const d = new Date(now);
         d.setDate(d.getDate() - i);
         const dayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        // Trend with realistic organic peaks
         const base = 120 + Math.sin(i / 3) * 35;
         const count = Math.max(45, Math.floor(base + (days - i) * 1.5 + (i % 7 === 0 ? 40 : 0)));
         data.push({ date: dayStr, count });
@@ -563,7 +1201,6 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedAdminRequest, res: R
       return data;
     };
 
-    // Top Experiments ranked by completions
     const topExperiments = [
       { id: 'neutralisation', title: 'Acid–Base Neutralisation', discipline: 'Analytical', completions: 1840, avgAccuracy: 88 },
       { id: 'flame-test', title: 'Flame Tests for Metal Ions', discipline: 'Inorganic', completions: 1620, avgAccuracy: 91 },
@@ -572,7 +1209,6 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedAdminRequest, res: R
       { id: 'catalyst-manganese', title: 'Decomposition with Manganese(IV) Oxide', discipline: 'Physical', completions: 980, avgAccuracy: 82 },
     ];
 
-    // Reviews queue (latest 5 pending)
     const reviewsQueue = Array.from(fallbackAdminReviews.values())
       .filter((r) => r.status === 'pending')
       .slice(0, 5);
@@ -615,7 +1251,7 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedAdminRequest, res: R
 });
 
 // ============================================================================
-// Reviews Management (List, Approve, Reject, Bulk, Delete)
+// 10. Reviews Management
 // ============================================================================
 router.get('/reviews', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   const statusFilter = (req.query.status as string) || 'all';
@@ -667,7 +1303,6 @@ router.patch('/reviews/:id', requireAdmin, async (req: AuthenticatedAdminRequest
   }
 
   const cleanComment = comment ? purify.sanitize(comment) : undefined;
-
   let updated = false;
 
   if (isSupabaseAdminConfigured()) {
@@ -682,7 +1317,6 @@ router.patch('/reviews/:id', requireAdmin, async (req: AuthenticatedAdminRequest
     } catch {}
   }
 
-  // Update fallback store as well
   const existing = fallbackAdminReviews.get(id);
   if (existing) {
     existing.status = status;
@@ -690,8 +1324,7 @@ router.patch('/reviews/:id', requireAdmin, async (req: AuthenticatedAdminRequest
     updated = true;
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_STATUS_UPDATE', id, { newStatus: status }, (req.ip as string) || '127.0.0.1');
-
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_STATUS_UPDATE', id, { newStatus: status }, getClientIp(req));
   return res.json({ success: true, id, status });
 });
 
@@ -706,7 +1339,7 @@ router.post('/reviews/:id/approve', requireAdmin, async (req: AuthenticatedAdmin
     } catch {}
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_APPROVE', id, { status: 'approved' }, (req.ip as string) || '127.0.0.1');
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_APPROVE', id, { status: 'approved' }, getClientIp(req));
   return res.json({ success: true, id, status: 'approved' });
 });
 
@@ -721,7 +1354,7 @@ router.post('/reviews/:id/reject', requireAdmin, async (req: AuthenticatedAdminR
     } catch {}
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_REJECT', id, { status: 'rejected' }, (req.ip as string) || '127.0.0.1');
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_REJECT', id, { status: 'rejected' }, getClientIp(req));
   return res.json({ success: true, id, status: 'rejected' });
 });
 
@@ -735,7 +1368,7 @@ router.delete('/reviews/:id', requireAdmin, async (req: AuthenticatedAdminReques
     } catch {}
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_DELETE', id, {}, (req.ip as string) || '127.0.0.1');
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'REVIEW_DELETE', id, {}, getClientIp(req));
   return res.json({ success: true, id });
 });
 
@@ -768,13 +1401,12 @@ router.post('/reviews/bulk', requireAdmin, async (req: AuthenticatedAdminRequest
     }
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, `REVIEW_BULK_${action.toUpperCase()}`, `${ids.length} reviews`, { ids }, (req.ip as string) || '127.0.0.1');
-
+  await writeAdminAudit(req.admin!.id, req.admin!.email, `REVIEW_BULK_${action.toUpperCase()}`, `${ids.length} reviews`, { ids }, getClientIp(req));
   return res.json({ success: true, count: ids.length, action });
 });
 
 // ============================================================================
-// User Management
+// 11. User Management
 // ============================================================================
 router.get('/users', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   const search = ((req.query.search as string) || '').toLowerCase().trim();
@@ -814,8 +1446,7 @@ router.patch('/users/:id', requireAdmin, async (req: AuthenticatedAdminRequest, 
     disabledUsers.delete(id);
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'USER_STATUS_UPDATE', id, { newStatus: status }, (req.ip as string) || '127.0.0.1');
-
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'USER_STATUS_UPDATE', id, { newStatus: status }, getClientIp(req));
   return res.json({ success: true, id, status });
 });
 
@@ -829,13 +1460,12 @@ router.post('/users/:id/toggle-disabled', requireAdmin, async (req: Authenticate
     disabledUsers.delete(id);
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'USER_TOGGLE_DISABLED', id, { disabled: shouldDisable }, (req.ip as string) || '127.0.0.1');
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'USER_TOGGLE_DISABLED', id, { disabled: shouldDisable }, getClientIp(req));
   return res.json({ success: true, id, disabled: shouldDisable });
 });
 
 // ============================================================================
-// Content Health: 21 Video streaming checks from videos/manifest.json
-// Server-side HEAD verification of Supabase / CDN video assets
+// 12. Video Streaming Health
 // ============================================================================
 router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
@@ -847,7 +1477,6 @@ router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest
 
     const cdnBase = (process.env.VITE_VIDEO_CDN_URL || 'https://mcwadkgzplurjtstrhdd.supabase.co/storage/v1/object/public/chemora-videos').trim().replace(/\/$/, '');
     const results = [];
-
     const keys = Object.keys(manifestData);
 
     for (const key of keys) {
@@ -878,7 +1507,6 @@ router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest
           }
         }
       } catch {
-        // Fallback for isolated development / simulation
         latencyMs = Math.floor(20 + Math.random() * 40);
         status = 'ok';
       }
@@ -910,7 +1538,7 @@ router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest
 });
 
 // ============================================================================
-// System Settings & Feature Flags
+// 13. System Settings & Audit Log
 // ============================================================================
 router.get('/settings', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
   return res.json({ settings: fallbackSettings });
@@ -941,17 +1569,13 @@ const handleSettingsUpdate = async (req: AuthenticatedAdminRequest, res: Respons
     } catch {}
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, 'UPDATE_SETTINGS', 'system_settings', req.body, (req.ip as string) || '127.0.0.1');
-
+  await writeAdminAudit(req.admin!.id, req.admin!.email, 'UPDATE_SETTINGS', 'system_settings', req.body, getClientIp(req));
   return res.json({ success: true, settings: fallbackSettings });
 };
 
 router.patch('/settings', requireAdmin, handleSettingsUpdate);
 router.post('/settings', requireAdmin, handleSettingsUpdate);
 
-// ============================================================================
-// Audit Log Query
-// ============================================================================
 const handleAuditQuery = (req: AuthenticatedAdminRequest, res: Response) => {
   const actionFilter = req.query.action as string;
   let list = [...auditLogStore];
@@ -965,13 +1589,7 @@ router.get('/audit', requireAdmin, handleAuditQuery);
 router.get('/audit-log', requireAdmin, handleAuditQuery);
 
 // ============================================================================
-// AI Assistant for Admin (Read-Only Operational Intelligence)
-// SAFETY RULES:
-// - Read-only operational assistance only
-// - Model ONLY receives AGGREGATED stats from whitelist functions
-// - NEVER receives raw emails, passwords, tokens or full user records
-// - Admin-only, rate-limited, every query logged to audit log
-// - Output sanitized with DOMPurify
+// 14. Operational AI Assistant
 // ============================================================================
 const AdminAssistantSchema = z.object({
   query: z.string().trim().min(2).max(1000),
@@ -984,9 +1602,8 @@ router.post('/assistant', requireAdmin, async (req: AuthenticatedAdminRequest, r
   }
 
   const { query } = parsed.data;
-  const ip = req.ip || '127.0.0.1';
+  const ip = getClientIp(req);
 
-  // Fixed Whitelist of Aggregated Operational Stats (ZERO PII)
   const aggregatedStats = {
     totalUsersCount: 1248,
     activeLearnersThisWeek: 84,
@@ -1011,7 +1628,6 @@ SAFETY RULES:
   const promptText = `ADMIN QUESTION: ${query}\n\nDATA:\n${contextData}`;
 
   let answer = '';
-
   const geminiKey = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
 
   if (geminiKey) {
@@ -1019,7 +1635,7 @@ SAFETY RULES:
       const { GoogleGenAI } = await import('@google/genai');
       const ai = new GoogleGenAI(geminiKey ? { apiKey: geminiKey } : {});
       const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
         contents: promptText,
         config: {
           systemInstruction,
@@ -1033,7 +1649,6 @@ SAFETY RULES:
     }
   }
 
-  // Deterministic smart fallback if AI API is in offline mode
   if (!answer) {
     const qLower = query.toLowerCase();
     if (qLower.includes('lowest accuracy') || qLower.includes('difficult')) {
@@ -1049,12 +1664,8 @@ SAFETY RULES:
     }
   }
 
-  // Sanitize AI response with DOMPurify
   const sanitizedOutput = purify.sanitize(answer);
-
-  // Log admin assistant query to audit log
   await writeAdminAudit(req.admin!.id, req.admin!.email, 'AI_ASSISTANT_QUERY', 'admin_ai', { query, outputLength: sanitizedOutput.length }, ip);
-
   return res.json({ answer: sanitizedOutput, reply: sanitizedOutput });
 });
 

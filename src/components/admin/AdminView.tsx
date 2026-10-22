@@ -32,6 +32,7 @@ export const AdminView: React.FC = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
+  const [tempToken, setTempToken] = useState<string | null>(null);
   const [isVerifyingState, setIsVerifyingState] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -151,13 +152,31 @@ export const AdminView: React.FC = () => {
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
 
-      if (res.status === 429) {
-        setAuthError('Too many failed attempts. Please try again in 15 minutes.');
+      if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || 'Please check your input details (valid email and minimum 6 character password required).');
         return;
       }
 
-      if (!res.ok) {
-        setAuthError('Invalid administrator credentials.');
+      if (res.status === 401) {
+        setAuthError('Invalid email or password.');
+        return;
+      }
+
+      if (res.status === 404) {
+        setAuthError('Admin service unavailable or endpoint not found.');
+        return;
+      }
+
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || 'Too many admin login attempts. Account temporarily locked for 15 minutes.');
+        return;
+      }
+
+      if (res.status >= 500) {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || 'Server error encountered. Please check server logs or try again later.');
         return;
       }
 
@@ -165,7 +184,10 @@ export const AdminView: React.FC = () => {
 
       if (data.requires2FA) {
         setIsVerifyingState(true);
-        setAuthSuccess('Please enter your 6-digit authentication token.');
+        if (data.tempToken) {
+          setTempToken(data.tempToken);
+        }
+        setAuthSuccess('Please enter your 6-digit authenticator code.');
       } else if (data.admin) {
         setAdminUser(data.admin);
         setAuthSuccess('Authenticated successfully.');
@@ -188,11 +210,38 @@ export const AdminView: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code: verifyCode }),
+        body: JSON.stringify({
+          code: verifyCode.trim(),
+          tempToken,
+          email: loginEmail,
+          password: loginPassword,
+        }),
       });
 
-      if (!res.ok) {
+      if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || 'Please check your input (valid 6-digit verification code required).');
+        return;
+      }
+
+      if (res.status === 401) {
         setAuthError('Invalid or expired 2FA code.');
+        return;
+      }
+
+      if (res.status === 404) {
+        setAuthError('Admin verification service unavailable.');
+        return;
+      }
+
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.error || 'Too many attempts. Please try again in 15 minutes.');
+        return;
+      }
+
+      if (res.status >= 500) {
+        setAuthError('Server error encountered during 2FA verification.');
         return;
       }
 

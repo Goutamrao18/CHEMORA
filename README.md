@@ -51,18 +51,36 @@ An administrative command center modeled after an AI dashboard with floating nav
 - **Operational AI Assistant:** Read-only intelligence querying live metrics, queue backlogs, and video health with zero PII and automated prompt sanitization.
 
 ### Creating the First Admin
-1. Apply the migration:
+1. Apply the database migration in Supabase SQL Editor:
    ```bash
-   # Run in Supabase SQL Editor
    cat supabase/migrations/20261022000000_admin_hardening.sql
    ```
-2. In the Supabase SQL Editor, insert your target user's UUID into `admin_users`:
+2. Insert your authenticated user's UUID into `admin_users`:
    ```sql
    INSERT INTO public.admin_users (user_id, role)
-   VALUES ('YOUR_USER_UUID_HERE', 'super_admin');
+   VALUES ('<YOUR_USER_UUID_FROM_AUTH_USERS>', 'super_admin');
    ```
 
-*(In local development environments without Supabase credentials configured, a built-in pre-seeded administrator `admin@chemora.edu` / `ChemoraAdmin2026!` is available for local testing.)*
+### Admin Security & Session Architecture
+- **No Hardcoded Credentials:** There are zero default or fallback credentials in the source code.
+- **Local Dev Fallback:** Allowed ONLY when `NODE_ENV=development`, `ALLOW_DEV_ADMIN=true`, and `DEV_ADMIN_PASSWORD` is explicitly set via environment variables. In production (`NODE_ENV=production`), dev fallback is strictly impossible.
+- **Stateless Sessions:** Sessions are signed using HMAC-SHA256 (`ADMIN_SESSION_SECRET`) in an `httpOnly`, `Secure`, `SameSite=Strict` cookie, re-verified against `admin_users` on every request. Re-issues cookie on activity with a rolling 30-minute idle sliding expiration. Global logout (`/logout-all`) revokes older tokens via `sessions_valid_after`.
+- **Two-Factor Authentication (2FA):** Standard RFC 6238 TOTP using `otplib` and QR code enrolment with `qrcode`. Secrets are encrypted at rest using AES-256-GCM derived from `ADMIN_2FA_ENCRYPTION_KEY`.
+- **Distributed Rate Limiting:** 5 failed login attempts per 15 minutes per IP and email tracked via Upstash Redis (or in-memory sliding window fallback).
+
+### Clearing an Admin Lockout
+If an administrator account or IP is temporarily locked out after 5 failed attempts:
+```bash
+# Clear by email
+node scripts/clear-admin-lockout.mjs --email=myadmin@domain.com
+
+# Clear by IP address
+node scripts/clear-admin-lockout.mjs --ip=127.0.0.1
+
+# Clear all active lockouts
+node scripts/clear-admin-lockout.mjs --all
+```
+*(In local development without Redis, restarting the dev server also resets the in-memory counter immediately).*
 
 ### Running Admin Verification Tests
 ```bash
