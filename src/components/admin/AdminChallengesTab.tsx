@@ -12,25 +12,25 @@ interface ChallengeStatsItem {
   avgTime: string;
 }
 
-const SAMPLE_CHALLENGES: ChallengeStatsItem[] = [
-  { level: 1, title: 'Atomic Foundations & Protons', category: 'General', difficulty: 'Beginner', completions: 489, accuracy: 94.2, avgTime: '1m 12s' },
-  { level: 2, title: 'Electron Configuration (Aufbau)', category: 'Physical', difficulty: 'Beginner', completions: 462, accuracy: 91.5, avgTime: '1m 45s' },
-  { level: 3, title: 'Balancing Combustion Reactions', category: 'Inorganic', difficulty: 'Beginner', completions: 430, accuracy: 88.0, avgTime: '2m 10s' },
-  { level: 15, title: 'Acid-Base Neutralization Titration', category: 'Analytical', difficulty: 'Intermediate', completions: 341, accuracy: 82.4, avgTime: '3m 05s' },
-  { level: 28, title: 'Gas Laws & Ideal PV=nRT', category: 'Physical', difficulty: 'Intermediate', completions: 288, accuracy: 76.1, avgTime: '3m 40s' },
-  { level: 42, title: 'Organic Nomenclature (IUPAC Alkanes)', category: 'Organic', difficulty: 'Intermediate', completions: 215, accuracy: 73.8, avgTime: '4m 12s' },
-  { level: 57, title: 'Thermodynamics & Gibbs Free Energy', category: 'Physical', difficulty: 'Advanced', completions: 168, accuracy: 64.2, avgTime: '4m 55s' },
-  { level: 69, title: 'Electrochemical Half-Cells & Nernst', category: 'Physical', difficulty: 'Advanced', completions: 132, accuracy: 58.7, avgTime: '5m 20s' },
-  { level: 84, title: 'SN1 vs SN2 Nucleophilic Substitution', category: 'Organic', difficulty: 'Expert', completions: 98, accuracy: 52.3, avgTime: '6m 10s' },
-  { level: 92, title: 'Coordination Chemistry & Crystal Field', category: 'Inorganic', difficulty: 'Expert', completions: 74, accuracy: 48.9, avgTime: '6m 45s' },
-  { level: 100, title: 'Grand Grandmaster Synthesis Matrix', category: 'Organic', difficulty: 'Expert', completions: 41, accuracy: 41.2, avgTime: '8m 30s' },
+const CURRICULUM_CHALLENGES: ChallengeStatsItem[] = [
+  { level: 1, title: 'Atomic Foundations & Protons', category: 'General', difficulty: 'Beginner', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 2, title: 'Electron Configuration (Aufbau)', category: 'Physical', difficulty: 'Beginner', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 3, title: 'Balancing Combustion Reactions', category: 'Inorganic', difficulty: 'Beginner', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 15, title: 'Acid-Base Neutralization Titration', category: 'Analytical', difficulty: 'Intermediate', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 28, title: 'Gas Laws & Ideal PV=nRT', category: 'Physical', difficulty: 'Intermediate', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 42, title: 'Organic Nomenclature (IUPAC Alkanes)', category: 'Organic', difficulty: 'Intermediate', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 57, title: 'Thermodynamics & Gibbs Free Energy', category: 'Physical', difficulty: 'Advanced', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 69, title: 'Electrochemical Half-Cells & Nernst', category: 'Physical', difficulty: 'Advanced', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 84, title: 'SN1 vs SN2 Nucleophilic Substitution', category: 'Organic', difficulty: 'Expert', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 92, title: 'Coordination Chemistry & Crystal Field', category: 'Inorganic', difficulty: 'Expert', completions: 0, accuracy: 0, avgTime: '--' },
+  { level: 100, title: 'Grand Grandmaster Synthesis Matrix', category: 'Organic', difficulty: 'Expert', completions: 0, accuracy: 0, avgTime: '--' },
 ];
 
 export const AdminChallengesTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
 
-  const filtered = SAMPLE_CHALLENGES.filter((c) => {
+  const filtered = CURRICULUM_CHALLENGES.filter((c) => {
     const matchesSearch =
       !searchQuery ||
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

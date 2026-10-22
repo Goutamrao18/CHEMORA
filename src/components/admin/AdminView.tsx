@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './admin.css';
-import { AuthCard } from '../AuthCard';
+import { AdminAuthCard } from './AdminAuthCard';
 import { AdminSidebarRail, AdminTab } from './AdminSidebarRail';
 import { AdminTopBar } from './AdminTopBar';
 import { AdminDashboardTab } from './AdminDashboardTab';
@@ -339,13 +339,8 @@ export const AdminView: React.FC = () => {
 
         {/* Control Room Auth Card */}
         <div className="w-full max-w-4xl z-10 flex flex-col items-center">
-          <AuthCard
-            variant="admin"
-            isRegister={isVerifyingState}
-            onToggleMode={(mode) => {
-              setIsVerifyingState(mode);
-              setAuthError(null);
-            }}
+          <AdminAuthCard
+            isVerifyingState={isVerifyingState}
             email={loginEmail}
             onEmailChange={setLoginEmail}
             password={loginPassword}
@@ -358,8 +353,14 @@ export const AdminView: React.FC = () => {
             success={authSuccess}
             onClearSuccess={() => setAuthSuccess(null)}
             onSignIn={handleSignIn}
-            onSignUp={handleSignIn}
             onVerifySubmit={handleVerify2FA}
+            onCancel2FA={() => {
+              setIsVerifyingState(false);
+              setTempToken(null);
+              setVerifyCode('');
+              setAuthError(null);
+              setAuthSuccess(null);
+            }}
           />
         </div>
 

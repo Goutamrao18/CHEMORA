@@ -68,53 +68,7 @@ function validateReviewPlainText(text: string): { valid: boolean; error?: string
 }
 
 // In-memory dev cache only when Supabase is not provisioned
-const devReviews: ReviewRecord[] = [
-  {
-    id: 'rev_seed_1',
-    authorName: 'Dr. Elena Rostova',
-    role: 'Biochemistry Lecturer',
-    avatarUrl: '/know/image/beaker.png',
-    rating: 5,
-    category: 'Interactive Lab Simulator',
-    title: 'Remarkable tool for visualizing apparatus and reactions',
-    content: 'The 130+ item apparatus directory and step-by-step experiment procedures provide our undergraduates with an intuitive, risk-free laboratory orientation before setting foot in physical wet labs.',
-    wouldRecommend: true,
-    helpful: 42,
-    verified: true,
-    status: 'approved',
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-  {
-    id: 'rev_seed_2',
-    authorName: 'Marcus Chen',
-    role: 'AP Chemistry Scholar',
-    avatarUrl: '/know/image/bunsen-burner.png',
-    rating: 5,
-    category: '100 Challenge Levels',
-    title: 'The progressive difficulty ladder made stoichiometry click',
-    content: 'Having graduated challenges from fundamental valency balancing all the way to complex organic synthesis gave me confidence I never achieved with conventional textbooks.',
-    wouldRecommend: true,
-    helpful: 28,
-    verified: true,
-    status: 'approved',
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: 'rev_seed_3',
-    authorName: 'Amina Al-Mansoor',
-    role: 'High School Chemistry Educator',
-    avatarUrl: '/know/image/volumetric-flask.png',
-    rating: 5,
-    category: 'AI Chemistry Assistant',
-    title: 'Safe, accurate tutoring that explains the mechanism',
-    content: 'CHEMORA does not just hand students the answer—it walks through the underlying reaction pathway, stoichiometric ratios, and necessary lab precautions.',
-    wouldRecommend: true,
-    helpful: 19,
-    verified: true,
-    status: 'approved',
-    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-  },
-];
+const devReviews: ReviewRecord[] = [];
 const devVotes = new Set<string>(); // "reviewId:userId"
 
 function calculateSummary(records: ReviewRecord[]): ReviewSummary {

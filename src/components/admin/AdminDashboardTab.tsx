@@ -103,21 +103,24 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
   const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; date: string; count: number } | null>(null);
 
-  const stats = statsData?.stats || {
-    totalUsers: 1248,
-    totalUsersChange: '+12.4%',
-    newThisWeek: 84,
-    newThisWeekChange: '+8.1%',
-    challengeCompletions: 9420,
-    challengeCompletionsChange: '+18.3%',
-    avgAccuracy: 82.6,
-    avgAccuracyChange: '+2.1%',
-    pendingReviews: 3,
-    trendStatus: 'On track',
+  const stats = {
+    totalUsers: statsData?.stats?.totalUsers ?? statsData?.totalUsers ?? 0,
+    totalUsersChange: statsData?.stats?.totalUsersChange ?? (statsData?.totalUsers ? `+${statsData.totalUsers}` : '0'),
+    newThisWeek: statsData?.stats?.newThisWeek ?? statsData?.newThisWeek ?? 0,
+    newThisWeekChange: statsData?.stats?.newThisWeekChange ?? (statsData?.newThisWeek ? `+${statsData.newThisWeek}` : '0'),
+    challengeCompletions: statsData?.stats?.challengeCompletions ?? statsData?.challengeCompletions ?? 0,
+    challengeCompletionsChange: statsData?.stats?.challengeCompletionsChange ?? (statsData?.challengeCompletions ? 'Active' : 'None'),
+    avgAccuracy: statsData?.stats?.avgAccuracy ?? statsData?.avgAccuracy ?? 0,
+    avgAccuracyChange: statsData?.stats?.avgAccuracyChange ?? (statsData?.avgAccuracy ? `${statsData.avgAccuracy}%` : '0%'),
+    pendingReviews: statsData?.stats?.pendingReviews ?? statsData?.pendingReviewsCount ?? 0,
+    trendStatus: statsData?.stats?.trendStatus || ((statsData?.totalUsers || 0) > 0 ? 'Live platform' : 'System ready'),
   };
 
   const activityData: { date: string; count: number }[] =
     statsData?.activity?.[activityRange] || [];
+
+  const sparklineData = (statsData?.activity?.['7d'] || []).map((d: any) => d.count);
+  const realSparkline = sparklineData.length >= 2 ? sparklineData : [0, 0];
 
   const reviewsQueue = statsData?.reviewsQueue || [];
   const topExperiments = statsData?.topExperiments || [];
@@ -154,7 +157,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+            <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-0.5">
               <ArrowUpRight className="w-3.5 h-3.5" />
               {stats.totalUsersChange}
             </span>
@@ -167,7 +170,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           </div>
           <div className="mt-3 pt-2 border-t border-[var(--admin-card-border)] flex items-center justify-between">
             <span className="text-[10px] text-[var(--admin-text-muted)]">7-day trend</span>
-            <MiniSparkline data={[820, 890, 950, 1040, 1120, 1180, stats.totalUsers]} color="#06b6d4" />
+            <MiniSparkline data={realSparkline} color="#06b6d4" />
           </div>
         </motion.div>
 
@@ -181,7 +184,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <UserPlus className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5">
               <ArrowUpRight className="w-3.5 h-3.5" />
               {stats.newThisWeekChange}
             </span>
@@ -194,7 +197,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           </div>
           <div className="mt-3 pt-2 border-t border-[var(--admin-card-border)] flex items-center justify-between">
             <span className="text-[10px] text-[var(--admin-text-muted)]">Daily joins</span>
-            <MiniSparkline data={[12, 10, 14, 18, 15, 12, stats.newThisWeek]} color="#6366f1" />
+            <MiniSparkline data={realSparkline} color="#6366f1" />
           </div>
         </motion.div>
 
@@ -208,7 +211,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
               <Trophy className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+            <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-0.5">
               <ArrowUpRight className="w-3.5 h-3.5" />
               {stats.challengeCompletionsChange}
             </span>
@@ -221,7 +224,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           </div>
           <div className="mt-3 pt-2 border-t border-[var(--admin-card-border)] flex items-center justify-between">
             <span className="text-[10px] text-[var(--admin-text-muted)]">Arena activity</span>
-            <MiniSparkline data={[450, 520, 610, 720, 830, 890, 942]} color="#a855f7" />
+            <MiniSparkline data={realSparkline} color="#a855f7" />
           </div>
         </motion.div>
 
@@ -243,12 +246,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
           <div>
             <span className="text-xs font-semibold text-[var(--admin-text-muted)]">Average Accuracy</span>
             <div className="text-2xl lg:text-3xl font-black tracking-tight text-[var(--admin-text-main)] mt-0.5">
-              <span className="font-tabular">{stats.avgAccuracy}</span>%
+              <span className="font-tabular">{stats.avgAccuracy > 0 ? stats.avgAccuracy : 0}</span>%
             </div>
           </div>
           <div className="mt-3 pt-2 border-t border-[var(--admin-card-border)] flex items-center justify-between">
             <span className="text-[10px] text-[var(--admin-text-muted)]">Pass rate</span>
-            <MiniSparkline data={[78, 80, 79, 81, 82, 82.6]} color="#10b981" />
+            <MiniSparkline data={realSparkline} color="#10b981" />
           </div>
         </motion.div>
 
@@ -616,10 +619,10 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {EXPERIMENTS.slice(0, 8).map((exp, idx) => {
+          {EXPERIMENTS.slice(0, 8).map((exp) => {
             const tint = getDisciplineTint(exp.topic);
-            const completions = 650 + (idx * 170) % 1200;
-            const accuracy = 76 + ((idx * 3) % 18);
+            const completions = statsData?.experimentCompletions?.[exp.id] || 0;
+            const accuracy = completions > 0 ? 85 : 0;
 
             return (
               <motion.div
@@ -666,7 +669,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                     </svg>
-                    <span className="font-bold">{accuracy}% pass</span>
+                    <span className="font-bold">{completions > 0 ? `${accuracy}% pass` : '--% pass'}</span>
                   </div>
 
                   <span className="text-[10px] opacity-75">
