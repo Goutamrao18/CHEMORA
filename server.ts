@@ -16,8 +16,8 @@ import {
   authRateLimiter,
 } from './server/middleware/rateLimit.ts';
 
-// Load environment variables from .env if present
-dotenv.config();
+// Load environment variables from .env if present (override placeholders)
+dotenv.config({ override: true });
 
 // Defensive Environment Validation (OWASP A05)
 function validateEnvironment(): void {
@@ -76,9 +76,15 @@ async function startServer() {
   // Enable trust proxy so client IP is accurately extracted behind reverse proxies / cloud environments
   app.set('trust proxy', 1);
 
-  // H2: 100kb global json limit; assistant handles larger payloads separately
-  app.use(express.json({ limit: '100kb' }));
-  app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+  // H2: 100kb global json limit; assistant handles larger payloads separately (up to 12MB)
+  app.use((req, res, next) => {
+    if (req.path === '/api/assistant') return next();
+    express.json({ limit: '100kb' })(req, res, next);
+  });
+  app.use((req, res, next) => {
+    if (req.path === '/api/assistant') return next();
+    express.urlencoded({ extended: true, limit: '100kb' })(req, res, next);
+  });
   app.use(cookieParser());
 
   // 5.1: Never serve the repo root, .env, server/, data/ or dotfiles
@@ -171,8 +177,11 @@ async function startServer() {
   const assistantJsonParser = express.json({ limit: '12mb' });
   app.all('/api/assistant', assistantJsonParser, async (req: Request, res: Response) => {
     try {
+      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'MY_GEMINI_API_KEY') {
+        dotenv.config({ path: path.resolve(__dirname, '.env'), override: true });
+      }
       // @ts-ignore Import JS handler without declaration file
-      const assistantModule = await import('./api/assistant.js');
+      const assistantModule = await import(`./api/assistant.js?t=${Date.now()}`);
       const handler = assistantModule.default;
       return handler(req, res);
     } catch (err: any) {

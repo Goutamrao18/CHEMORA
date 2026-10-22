@@ -33,33 +33,41 @@ export const AI_MODELS: AIModelOption[] = [
     id: 'auto',
     name: 'Auto-Routing (Recommended)',
     tag: 'Smart',
-    description: 'Intelligently routes between Gemini and OpenRouter for fastest high-accuracy solving',
+    description: 'Intelligently routes across Gemini Vision and reasoning engines for highest accuracy',
     provider: 'auto',
     badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
   },
   {
-    id: 'gemini-3.8-flash',
-    name: 'Gemini 3.8 Flash',
-    tag: 'Ultra-Fast',
-    description: 'Google multimodal reasoning for equations, stoichiometry & homework photos',
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    tag: 'High-Speed Vision',
+    description: 'Ultra-fast multimodal vision & reasoning for chemistry homework photos and equations',
     provider: 'gemini',
     badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
   },
   {
-    id: 'gemini-3.8-pro',
-    name: 'Gemini 3.8 Pro',
-    tag: 'Deep Reasoning',
-    description: 'Advanced organic synthesis, thermodynamics & complex multi-step proofs',
+    id: 'gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    tag: 'STEM Reasoning',
+    description: 'Advanced chemistry problem solving, molecular diagrams, and stoichiometry proofs',
     provider: 'gemini',
     badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
   },
   {
-    id: 'minimax/minimax-m3.1-flash:free',
-    name: 'Minimax M3.1 Flash',
-    tag: 'Free Fast',
-    description: 'Rapid chemistry problem solving and balanced equations via OpenRouter',
-    provider: 'openrouter',
+    id: 'gemini-3.5-flash-lite',
+    name: 'Gemini 3.5 Flash-Lite',
+    tag: 'Instant',
+    description: 'Lightweight high-speed chemical formula balancing and conceptual explanations',
+    provider: 'gemini',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+  },
+  {
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    tag: 'Deep Reasoning',
+    description: 'Google multimodal reasoning for advanced organic synthesis & proofs',
+    provider: 'gemini',
+    badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
   },
   {
     id: 'nvidia/nemotron-3.5-super-vl:free',
@@ -101,16 +109,12 @@ function getOfflineChemistryAnswer(prompt: string, hasImage?: boolean): string {
   const q = (prompt || '').toLowerCase();
 
   if (hasImage) {
-    return `📷 **Laboratory Image & Homework Analysis**:
+    return `⚠️ **AI Vision Notice**:
+We received your question photo, but our AI Vision servers are currently experiencing peak demand.
 
-1. **Analytical Framework**:
-   • **Apparatus & Setup**: Inspect fluid levels, meniscuses (measure bottom curve at eye level), stopcocks, and heating sources.
-   • **Reaction Stoichiometry**: Write the complete balanced reaction with state symbols:
-     \\[ \\text{Reactants}_{(aq/s)} \\rightarrow \\text{Products}_{(aq/l/g)} \\]
-   • **Quantitative Solving**: Convert given masses or volumes to moles via \\(n = \\frac{m}{M}\\) or \\(n = C \\times V\\). Determine limiting reagents by comparing stoichiometric mole ratios.
-
-2. **Laboratory Safety**:
-   • Verify closed systems have adequate pressure relief. Always work with chemical splash goggles, a buttoned lab coat, and nitrile gloves.`;
+**Quick Options to get your solution immediately:**
+1. Tap **Send** again to automatically re-route to an active vision node.
+2. Or type the question text directly into the chat input (e.g. *"Calculate the molarity of..."* or *"Balance Fe + O2 -> Fe2O3"*), and CHEMORA will solve it instantly!`;
   }
 
   // Acid-Base Titration & Neutralization
@@ -580,10 +584,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
           'Accept': 'application/json',
         };
 
+        const effectiveModel = currentImage && selectedModel.includes('/')
+          ? undefined // Automatically route images to Gemini Vision cascade
+          : (selectedModel === 'auto' ? undefined : selectedModel);
+
         const payload: Record<string, any> = {
           prompt: query,
           context: 'CHEMORA Chemistry Learning Workspace & Problem Solver',
-          preferredModel: selectedModel === 'auto' ? undefined : selectedModel,
+          preferredModel: effectiveModel,
         };
 
         if (currentImage) {
