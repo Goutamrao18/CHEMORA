@@ -53,6 +53,20 @@ app.use('/api/account', accountRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/admin', adminRouter);
 
+// AI Assistant endpoint with 12MB limit for homework photos
+const assistantJsonParser = express.json({ limit: '12mb' });
+app.all('/api/assistant', assistantJsonParser, async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore Import JS handler
+    const assistantModule = await import('../api/assistant.js');
+    const handler = assistantModule.default;
+    return handler(req, res);
+  } catch (err: any) {
+    console.error('Error delegating to /api/assistant:', err);
+    return res.status(500).json({ error: 'AI Assistant service unavailable' });
+  }
+});
+
 // PubChem Compound proxy route with timeout & cache
 app.get('/api/science/compound', async (req: Request, res: Response) => {
   try {

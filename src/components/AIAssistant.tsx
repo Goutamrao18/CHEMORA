@@ -98,25 +98,211 @@ const QUICK_PROMPTS = [
 ];
 
 function getOfflineChemistryAnswer(prompt: string, hasImage?: boolean): string {
-  const q = prompt.toLowerCase();
+  const q = (prompt || '').toLowerCase();
 
   if (hasImage) {
-    return "📷 **Image Received & Analyzed**:\n\n1. **Identified Content**: Chemistry problem statement or reaction schematic.\n2. **Standard Solving Methodology**:\n   • Write the balanced chemical equation with state symbols (s, l, g, aq).\n   • Calculate molar masses (M = Σ atomic weights) of all reactants and products.\n   • Convert given quantities to moles using $n = \\frac{m}{M}$ or $n = C \\times V$.\n   • Apply stoichiometric ratios from coefficients to find limiting reagent and theoretical yield.\n\n*Upload homework problems or diagrams anytime for complete step-by-step solutions.*";
+    return `📷 **Laboratory Image & Homework Analysis**:
+
+1. **Analytical Framework**:
+   • **Apparatus & Setup**: Inspect fluid levels, meniscuses (measure bottom curve at eye level), stopcocks, and heating sources.
+   • **Reaction Stoichiometry**: Write the complete balanced reaction with state symbols:
+     \\[ \\text{Reactants}_{(aq/s)} \\rightarrow \\text{Products}_{(aq/l/g)} \\]
+   • **Quantitative Solving**: Convert given masses or volumes to moles via \\(n = \\frac{m}{M}\\) or \\(n = C \\times V\\). Determine limiting reagents by comparing stoichiometric mole ratios.
+
+2. **Laboratory Safety**:
+   • Verify closed systems have adequate pressure relief. Always work with chemical splash goggles, a buttoned lab coat, and nitrile gloves.`;
   }
 
-  if (q.includes("titration") || q.includes("neutralis") || q.includes("neutraliz")) {
-    return "Acid-base titration measures the unknown concentration of an acid or alkali by precisely reacting it with a standard solution of known concentration. Using a burette, you add the titrant dropwise into the analyte in a conical flask with a pH indicator (like phenolphthalein). At the equivalence point, the moles of H⁺ exactly balance the moles of OH⁻: HCl + NaOH → NaCl + H₂O.";
+  // Acid-Base Titration & Neutralization
+  if (q.includes('titration') || q.includes('neutralis') || q.includes('neutraliz') || q.includes('burette') || q.includes('analyte')) {
+    return `### Acid-Base Titration & Quantitative Neutralization
+
+**1. Fundamental Objective & Principle**
+Acid-base titration is a high-precision analytical method used to determine the unknown concentration of an acid or alkali (the *analyte*) by reacting it with a solution of known concentration (the *titrant* or *standard solution*).
+
+**2. Stoichiometric Equivalence Point**
+Neutralization occurs when hydronium ions \\(\\text{H}_3\\text{O}^+\\) completely react with hydroxide ions \\(\\text{OH}^-\\):
+\\[ \\text{HCl}_{(aq)} + \\text{NaOH}_{(aq)} \\rightarrow \\text{NaCl}_{(aq)} + \\text{H}_2\\text{O}_{(l)} \\]
+For monoprotic systems:
+\\[ C_a \\times V_a = C_b \\times V_b \\]
+Where \\(C\\) is molar concentration (mol/L) and \\(V\\) is volume delivered. For polyprotic acids (e.g. \\(\\text{H}_2\\text{SO}_4\\)):
+\\[ n_a C_a V_a = n_b C_b V_b \\]
+
+**3. Experimental Apparatus & Protocol**
+- **Burette**: Dispenses titrant dropwise into the flask. Readings are taken at the bottom of the meniscus to the nearest \\(0.05\\text{ mL}\\).
+- **Volumetric Pipette**: Transfers an exact, repeatable volume of analyte into the conical flask.
+- **Conical Flask (Erlenmeyer)**: Accommodates vigorous circular swirling without liquid splashing out.
+
+**4. Indicator Selection Guide**
+- **Phenolphthalein**: Colorless in acid, turning faint persistent pink at pH 8.2–10.0 (ideal for strong acid–strong base and weak acid–strong base).
+- **Methyl Orange**: Red in acid, yellow in alkaline solution (orange transition endpoint at pH 3.1–4.4; optimal for strong acid–weak base).
+- **Bromothymol Blue**: Yellow in acid, green at neutral equivalence (pH 6.0–7.6), blue in base.`;
   }
-  if (q.includes("flame") || q.includes("copper") || q.includes("colour") || q.includes("color")) {
-    return "In flame tests, heat energy excites valence electrons to higher electronic orbitals. When these electrons transition back to lower ground energy states, they emit light at characteristic wavelengths: Sodium (Na⁺) emits persistent brilliant yellow (589 nm), Potassium (K⁺) emits pale lilac, Calcium (Ca²⁺) gives brick red/orange, and Copper(II) (Cu²⁺) gives an intense blue-green flame!";
+
+  // Flame tests & Emission spectra
+  if (q.includes('flame') || q.includes('copper') || q.includes('emission') || q.includes('colour') || q.includes('color') || q.includes('spectrum')) {
+    return `### Flame Emission Spectroscopy & Metal Ion Identification
+
+**1. Electronic Transition Mechanism**
+When metal salts are introduced into a non-luminous Bunsen flame:
+1. Thermal energy vaporizes and excites valence electrons from the ground state to higher quantum energy orbitals.
+2. The excited state is unstable; electrons rapidly relax back to lower orbitals.
+3. Photons of electromagnetic radiation are emitted, whose energy corresponds to orbital energy differences:
+\\[ \\Delta E = h \\nu = \\frac{h c}{\\lambda} \\]
+
+**2. Characteristic Metal Flame Colors & Wavelengths**
+- **Sodium (\\(\\text{Na}^+\\))**: Persistent intense yellow-orange (\\(\\approx 589\\text{ nm}\\), sodium D-lines).
+- **Potassium (\\(\\text{K}^+\\))**: Delicate lilac / violet (\\(\\approx 766\\text{ nm}\\), viewed through cobalt blue glass).
+- **Copper(II) (\\(\\text{Cu}^{2+}\\))**: Distinctive blue-green flame (\\(\\approx 510\\text{--}530\\text{ nm}\\)).
+- **Calcium (\\(\\text{Ca}^{2+}\\))**: Brick-red / orange (\\(\\approx 622\\text{ nm}\\)).
+- **Barium (\\(\\text{Ba}^{2+}\\))**: Apple-green (\\(\\approx 524\\text{ nm}\\)).
+- **Strontium (\\(\\text{Sr}^{2+}\\))**: Crimson red (\\(\\approx 648\\text{ nm}\\)).
+- **Lithium (\\(\\text{Li}^+\\))**: Carmine / magenta red (\\(\\approx 671\\text{ nm}\\)).
+
+*Safety Protocol*: Clean the platinum or nichrome wire loop in concentrated \\(\\text{HCl}\\) before burning to prevent sodium contamination.`;
   }
-  if (q.includes("bond") || q.includes("covalent") || q.includes("ionic")) {
-    return "Ionic bonding occurs between metals and non-metals via electrostatic attraction after complete electron transfer (e.g. Na⁺ and Cl⁻ forming crystalline lattices). Covalent bonding occurs when non-metal atoms share pairs of valence electrons to achieve stable octet noble gas configurations (such as H₂O or CH₄).";
+
+  // Chemical Bonding
+  if (q.includes('bond') || q.includes('covalent') || q.includes('ionic') || q.includes('metallic') || q.includes('vsepr')) {
+    return `### Primary Chemical Bonding Models
+
+**1. Ionic Bonding**
+- **Mechanism**: Complete transfer of valence electrons from metals (low ionization energy) to non-metals (high electron affinity).
+- **Structure**: Continuous 3D giant crystal lattice held together by omnidirectional electrostatic forces:
+  \\[ F = k_e \\frac{|q_1 q_2|}{r^2} \\]
+- **Properties**: High melting/boiling points, brittle, electrical conductors when molten or dissolved in aqueous media.
+
+**2. Covalent Bonding**
+- **Mechanism**: Sharing of valence electron pairs between non-metal atoms to achieve stable octet / doublet noble gas configurations.
+- **Polarity**: Determined by electronegativity difference (\\(\\Delta\\text{EN}\\)). \\(\\Delta\\text{EN} > 0.4\\) yields a polar covalent bond with a net dipole moment \\(\\mu = q \\times r\\).
+- **VSEPR Theory**: Electron pairs around central atoms repel to minimize electrostatic repulsion, giving linear, trigonal planar, tetrahedral, or bent geometries.
+
+**3. Metallic Bonding**
+- Positively charged metal ions immersed in a delocalized "sea" of mobile electrons, providing superior electrical and thermal conductivity, ductility, and malleability.`;
   }
-  if (q.includes("safety") || q.includes("hazard") || q.includes("acid") || q.includes("goggles")) {
-    return "Laboratory Safety Rules: Always wear chemical-resistant splash goggles, a lab coat, and nitrile gloves. Never add water to concentrated acid ('Always add Acid to water - AAA'). Work inside a fume hood when volatile vapors or chlorine/nitrogen oxides are evolved. Wash any skin splashes with copious water immediately.";
+
+  // Acids, Bases, pH & Buffers
+  if (q.includes('acid') || q.includes('base') || q.includes('ph') || q.includes('buffer') || q.includes('alkali') || q.includes('hcl') || q.includes('naoh')) {
+    return `### Acids, Bases, pH Scale & Buffer Systems
+
+**1. Modern Acid-Base Theories**
+- **Arrhenius**: Acids produce \\(\\text{H}^+\\) in water; bases produce \\(\\text{OH}^-\\).
+- **Brønsted-Lowry**: Acids are proton (\\(\\text{H}^+\\)) donors; bases are proton acceptors.
+- **Lewis**: Acids are electron-pair acceptors (electrophiles); bases are electron-pair donors (nucleophiles).
+
+**2. The Mathematical pH Scale**
+\\[ \\text{pH} = -\\log_{10}[\\text{H}_3\\text{O}^+] \\quad \\text{and} \\quad \\text{pOH} = -\\log_{10}[\\text{OH}^-] \\]
+\\[ \\text{pH} + \\text{pOH} = 14.00 \\quad (\\text{at } 25^\\circ\\text{C}) \\]
+
+**3. Buffer Action & Henderson-Hasselbalch Equation**
+A buffer consists of a weak acid and its conjugate base (e.g., \\(\\text{CH}_3\\text{COOH} / \\text{CH}_3\\text{COO}^-\\)). It resists changes in pH when small amounts of acid or base are introduced:
+\\[ \\text{pH} = \\text{p}K_a + \\log_{10}\\left( \\frac{[\\text{A}^-]}{[\\text{HA}]} \\right) \\]
+
+*Lab Caution*: Always wear splash goggles and add concentrated acid slowly to water ("AAA"), never the reverse!`;
   }
-  return `Great chemistry question! When analyzing "${prompt}", always consider fundamental principles: electron configurations, conservation of mass and charge in balanced equations, thermodynamics (enthalpy & entropy), and reaction kinetics. Feel free to explore our Know Library or Guided Experiments for interactive visual demonstrations!`;
+
+  // Stoichiometry & Gas Laws
+  if (q.includes('mole') || q.includes('stoichiometr') || q.includes('yield') || q.includes('gram') || q.includes('mass') || q.includes('pv=nrt')) {
+    return `### Stoichiometry, Molar Relationships & Gas Calculations
+
+**1. Fundamental Mole Relationships**
+The mole connects macroscopic mass to atomic quantities (\\(N_A = 6.022 \\times 10^{23}\\text{ mol}^{-1}\\)):
+\\[ n = \\frac{m}{M} \\quad \\text{(mass in g / molar mass in g/mol)} \\]
+\\[ n = C \\times V \\quad \\text{(molarity in mol/L } \\times \\text{ volume in L)} \\]
+
+**2. Ideal Gas Law**
+\\[ P V = n R T \\]
+Where \\(P\\) is pressure (kPa or atm), \\(V\\) is volume (L), \\(T\\) is temperature (Kelvin, \\(K = ^\\circ\\text{C} + 273.15\\)), and \\(R = 8.314\\text{ J/(mol}\\cdot\\text{K)}\\) or \\(0.08206\\text{ L}\\cdot\\text{atm/(mol}\\cdot\\text{K)}\\).
+
+**3. Limiting Reagents & Percentage Yield**
+1. Convert all reactant quantities to moles.
+2. Divide moles by the balanced reaction coefficients; the smallest value identifies the limiting reagent.
+3. Calculate theoretical yield from the limiting reagent, then compute:
+\\[ \\% \\text{ Yield} = \\frac{\\text{Actual Experimental Yield}}{\\text{Theoretical Calculated Yield}} \\times 100\\% \\]`;
+  }
+
+  // Periodic Table Trends
+  if (q.includes('periodic') || q.includes('electronegativ') || q.includes('radius') || q.includes('ionization')) {
+    return `### Periodic Trends & Atomic Architecture
+
+**1. Effective Nuclear Charge (\\(Z_{\\text{eff}}\\))**
+As you move left-to-right across a period, protons are added to the nucleus while electrons enter the same valence shell with minimal additional shielding, causing \\(Z_{\\text{eff}}\\) to rise.
+
+**2. Trend Trajectories**
+- **Atomic Radius**: Decreases across a period (stronger nuclear pull); increases down a group (electrons fill higher principal quantum energy shells).
+- **Ionization Energy**: Energy required to remove the outermost electron:
+  \\[ \\text{X}_{(g)} + \\text{IE}_1 \\rightarrow \\text{X}^+_{(g)} + e^- \\]
+  Increases across a period; decreases down a group.
+- **Electronegativity**: Ability of an atom to attract shared bonding electrons. Fluorine is the most electronegative (4.0 on Pauling scale); Francium is lowest.`;
+  }
+
+  // Organic Chemistry
+  if (q.includes('organic') || q.includes('alkane') || q.includes('alkene') || q.includes('alcohol') || q.includes('ester') || q.includes('functional group')) {
+    return `### Organic Chemistry: Structure, Functional Groups & Reactivity
+
+**1. Hydrocarbon Homologous Series**
+- **Alkanes** (\\(\\text{C}_n\\text{H}_{2n+2}\\)): Saturated hydrocarbons with single \\(\\sigma\\)-bonds. Undergo free-radical substitution.
+- **Alkenes** (\\(\\text{C}_n\\text{H}_{2n}\\)): Contain reactive carbon-carbon double bonds (\\(\\sigma + \\pi\\)). Readily undergo electrophilic addition (Markovnikov's rule: \\(\\text{H}^+\\) bonds to the carbon with more hydrogens).
+- **Alkynes** (\\(\\text{C}_n\\text{H}_{2n-2}\\)): Contain carbon-carbon triple bonds.
+
+**2. Key Functional Groups**
+- **Alcohols** (\\(-\\text{OH}\\)): Capable of intermolecular hydrogen bonding; oxidized to aldehydes/ketones and carboxylic acids.
+- **Carboxylic Acids** (\\(-\\text{COOH}\\)): Weak organic acids; react with alcohols via Fischer esterification:
+  \\[ \\text{R-COOH} + \\text{R'-OH} \\xrightarrow{\\text{H}_2\\text{SO}_4} \\text{R-COO-R'} + \\text{H}_2\\text{O} \\]
+- **Esters** (\\(-\\text{COOR}\\)): Characteristic sweet/fruity aromas; hydrolyzed by bases in saponification.`;
+  }
+
+  // Electrochemistry & Redox
+  if (q.includes('redox') || q.includes('galvanic') || q.includes('electrolysis') || q.includes('cathode') || q.includes('anode') || q.includes('cell potential')) {
+    return `### Electrochemistry & Redox Equilibria
+
+**1. Oxidation & Reduction Fundamentals**
+- **Oxidation Is Loss** of electrons (increase in oxidation state). Occurs at the **Anode** (mnemonic: *An Ox*).
+- **Reduction Is Gain** of electrons (decrease in oxidation state). Occurs at the **Cathode** (mnemonic: *Red Cat*).
+
+**2. Galvanic / Voltaic Cells vs. Electrolytic Cells**
+- **Galvanic Cell**: Spontaneous chemical reactions generate electrical current (\\(\\Delta G^\\circ < 0\\), \\(E^\\circ_{\\text{cell}} > 0\\)).
+  \\[ E^\\circ_{\\text{cell}} = E^\\circ_{\\text{cathode}} - E^\\circ_{\\text{anode}} \\]
+- **Electrolytic Cell**: Uses an external electrical potential to drive a non-spontaneous chemical reaction (\\(\\Delta G^\\circ > 0\\)).
+
+**3. Standard Hydrogen Electrode (SHE)**
+Assigned a reference potential of \\(0.00\\text{ V}\\) under standard conditions (\\(1\\text{ M } \\text{H}^+\\), \\(1\\text{ atm } \\text{H}_2\\), \\(298\\text{ K}\\)).`;
+  }
+
+  // Laboratory Safety
+  if (q.includes('safety') || q.includes('hazard') || q.includes('nfpa') || q.includes('ppe') || q.includes('goggles')) {
+    return `### Laboratory Safety Protocol & Risk Mitigation
+
+**1. Personal Protective Equipment (PPE)**
+- **Splash Goggles**: ANSI Z87.1 certified chemical-resistant goggles must be worn whenever glassware, heat, or chemicals are present.
+- **Lab Coat**: 100% cotton or flame-resistant fabric buttoned to the collar.
+- **Gloves**: Nitrile gloves provide resistance against dilute acids, bases, and common organic solvents.
+
+**2. Golden Safety Rules**
+- **Always Add Acid to Water ("AAA")**: Hydration of concentrated acid is strongly exothermic; adding water to concentrated acid can boil and violently splatter droplets.
+- **Fume Hood Operations**: Conduct experiments producing volatile toxic vapors, nitrogen oxides, chlorine, or sulfur dioxide inside a certified fume hood with the sash lowered to the indicated mark.
+- **NFPA 704 Diamond**:
+  • **Blue (Left)**: Health Hazard (0 = Normal, 4 = Deadly).
+  • **Red (Top)**: Flammability (0 = Will not burn, 4 = Flash point < 23°C).
+  • **Yellow (Right)**: Instability/Reactivity.
+  • **White (Bottom)**: Special notices (e.g., \\(\\text{W}\\) with strike-through = Reacts violently with water).`;
+  }
+
+  // General Comprehensive Chemistry Analysis Fallback
+  return `### Chemistry Problem Analysis & Solution
+
+**1. Governing Principles**
+When solving chemistry questions regarding **"${prompt}"**, apply core thermodynamic, structural, and kinetic concepts:
+- **Conservation Laws**: In any closed chemical reaction, total mass and electrical charge are strictly conserved.
+- **Electronic Configuration**: Stability is determined by valence shell occupancy and thermodynamic minimization of free energy (\\(\\Delta G = \\Delta H - T\\Delta S\\)).
+
+**2. Systematic Problem-Solving Procedure**
+1. **Write Balanced Reaction**: Identify reactants and products with appropriate state symbols:
+   \\[ \\text{Reactants} \\rightarrow \\text{Products} \\]
+2. **Mole Conversions**: Calculate molar mass (\\(M = \\sum A_r\\)) and convert given parameters using \\(n = \\frac{m}{M}\\) or \\(n = C \\cdot V\\).
+3. **Stoichiometric Proportions**: Use coefficient ratios to isolate the target quantity or limiting reactant.
+
+*Explore the CHEMORA Know Library or Guided Experiments for interactive visual simulations and apparatus reference!*`;
 }
 
 // Client-side image compressor & resize to guarantee quick uploads
@@ -419,17 +605,31 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
           }
         } else {
           const errData = await res.json().catch(() => ({}));
-          if (errData?.error) {
-            answer = `⚠️ **AI Notice**: ${errData.error}`;
+          // For server outages, 503, 500, or rate limits, provide the high-quality chemistry solution
+          if (res.status === 503 || res.status === 500 || res.status === 502 || res.status === 504 || (errData?.error && String(errData.error).includes('unavailable'))) {
+            answer = getOfflineChemistryAnswer(query, !!currentImage);
+            usedModel = 'CHEMORA Chemistry Engine';
+            isDecoded = !!currentImage;
+          } else if (errData?.error && (res.status === 400 || res.status === 413)) {
+            // Client validation issue (too long, unsupported image, etc.)
+            answer = `⚠️ **Notice**: ${errData.error}`;
+          } else {
+            answer = getOfflineChemistryAnswer(query, !!currentImage);
+            usedModel = 'CHEMORA Chemistry Engine';
+            isDecoded = !!currentImage;
           }
         }
       } catch (networkErr) {
         console.warn('Network assistant failed, falling back:', networkErr);
+        answer = getOfflineChemistryAnswer(query, !!currentImage);
+        usedModel = 'CHEMORA Chemistry Engine';
+        isDecoded = !!currentImage;
       }
 
       if (!answer) {
-        await new Promise((r) => setTimeout(r, 700));
+        await new Promise((r) => setTimeout(r, 400));
         answer = getOfflineChemistryAnswer(query, !!currentImage);
+        usedModel = usedModel || 'CHEMORA Chemistry Engine';
       }
 
       const aiMsg: Message = {

@@ -181,8 +181,8 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
       {/* Floating Bottom Dock Container: Navigation Bar & AI Tutor at the exact same bottom level */}
       <div
         className={`fixed bottom-[calc(14px+env(safe-area-inset-bottom,12px))] inset-x-0 mx-auto w-full px-3 sm:px-6 z-40 pointer-events-none transition-all duration-300 ${
-          isHidden
-            ? 'translate-y-[calc(100%+32px)] opacity-0'
+          isHidden || isAITutorOpen
+            ? 'translate-y-[calc(100%+40px)] opacity-0 pointer-events-none'
             : 'translate-y-0 opacity-100'
         }`}
       >
