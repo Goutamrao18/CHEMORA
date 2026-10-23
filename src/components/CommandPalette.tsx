@@ -12,7 +12,8 @@ import {
   Command,
   ArrowRight,
   Flame,
-  X
+  X,
+  Dna
 } from 'lucide-react';
 import { KNOWLEDGE_ITEMS } from '../data/knowledgeData';
 import { isSoundEnabled, setSoundEnabled, playSoftClick } from '../utils/soundEffects';
@@ -88,6 +89,20 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: 'Navigation',
         icon: <BookOpen className="w-4 h-4 text-cyan-400" />,
         action: () => { onSelectTab('know'); onClose(); },
+      },
+      {
+        id: 'nav-bioscience',
+        title: 'Bioscience & Molecular Biology Workbench',
+        subtitle: '3D WebGL AlphaFold DB predictions, RCSB PDB structures & Lipinski drug rules',
+        category: 'Navigation',
+        icon: <Dna className="w-4 h-4 text-emerald-400" />,
+        action: () => {
+          try {
+            window.sessionStorage?.setItem('chemora:know_tab', 'bioscience');
+          } catch {}
+          onSelectTab('know');
+          onClose();
+        },
       },
       {
         id: 'nav-challenge',

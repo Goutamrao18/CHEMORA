@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { KNOWLEDGE_ITEMS, KnowledgeItem } from '../data/knowledgeData';
 import { Glossary } from './Glossary';
-import { Search, X, Sparkles, Filter, BookOpen, Layers, ZoomIn, ShieldAlert, AlertTriangle, Flame, Atom } from 'lucide-react';
+import { Search, X, Sparkles, Filter, BookOpen, Layers, ZoomIn, ShieldAlert, AlertTriangle, Flame, Atom, Dna } from 'lucide-react';
 import { PeriodicTable } from './PeriodicTable';
+import { BioscienceView } from './BioscienceView';
 import { DropperDrip } from './Loaders/DropperDrip';
 import { NFPA704Diamond } from './NFPA704Diamond';
 import { ImageZoomViewer } from './ImageZoomViewer';
@@ -35,7 +36,22 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 }
 
 export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI }) => {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'periodic-table' | 'glossary'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'periodic-table' | 'glossary' | 'bioscience'>(() => {
+    try {
+      const stored = window.sessionStorage?.getItem('chemora:know_tab');
+      if (stored === 'bioscience') {
+        window.sessionStorage.removeItem('chemora:know_tab');
+        return 'bioscience';
+      }
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('bioscience')) return 'bioscience';
+      if (hash.includes('periodic')) return 'periodic-table';
+      if (hash.includes('glossary')) return 'glossary';
+    } catch {}
+    return 'catalog';
+  });
+  const [bioscienceInitialQuery, setBioscienceInitialQuery] = useState<string>('TP53');
+  const [isBioscienceFullscreen, setIsBioscienceFullscreen] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'apparatus' | 'chemicals' | 'indicators' | 'hazards'>('all');
   const [activeModalItem, setActiveModalItem] = useState<KnowledgeItem | null>(null);
@@ -161,7 +177,7 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
         </p>
 
         {/* View Mode Switcher: Apparatus Catalog vs Periodic Table vs Glossary */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3 mt-6">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-6">
           <button
             type="button"
             onClick={() => { setActiveTab('catalog'); playSoftClick(); }}
@@ -190,6 +206,22 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
 
           <button
             type="button"
+            onClick={() => { setActiveTab('bioscience'); playSoftClick(); }}
+            className={`flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
+              activeTab === 'bioscience'
+                ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 text-slate-950 font-black shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400/40'
+                : 'bg-[#0f172a] text-slate-300 hover:text-white border border-emerald-950 hover:border-emerald-700/60'
+            }`}
+          >
+            <Dna className="w-4 h-4 text-emerald-400" />
+            <span>Bioscience &amp; 3D Molecules</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/50">
+              AlphaFold &bull; PDB
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => { setActiveTab('glossary'); playSoftClick(); }}
             className={`flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
               activeTab === 'glossary'
@@ -207,6 +239,13 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
         <PeriodicTable onAskAI={onAskAI} />
       ) : activeTab === 'glossary' ? (
         <Glossary onAskAI={onAskAI} initialSearch={search} />
+      ) : activeTab === 'bioscience' ? (
+        <BioscienceView
+          onAskAI={onAskAI}
+          initialQuery={bioscienceInitialQuery}
+          isStandaloneFullscreen={isBioscienceFullscreen}
+          onToggleFullscreen={() => setIsBioscienceFullscreen((prev) => !prev)}
+        />
       ) : (
         <>
           {/* Instant Search Bar with Highlight */}
@@ -530,19 +569,38 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-cyan-950 bg-[#060c18] flex items-center justify-between">
-              {onAskAI && (
-                <button
-                  onClick={() => {
-                    setActiveModalItem(null);
-                    onAskAI(activeModalItem.name);
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition font-bold"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Ask AI about this item</span>
-                </button>
-              )}
+            <div className="px-6 py-3.5 border-t border-cyan-950 bg-[#060c18] flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                {onAskAI && (
+                  <button
+                    onClick={() => {
+                      setActiveModalItem(null);
+                      onAskAI(activeModalItem.name);
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition font-bold"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Ask AI</span>
+                  </button>
+                )}
+
+                {(activeModalItem.isChemical || activeModalItem.formula) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const q = activeModalItem.formulaName || activeModalItem.name;
+                      setActiveModalItem(null);
+                      setBioscienceInitialQuery(q);
+                      setActiveTab('bioscience');
+                      playSoftClick();
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition font-bold"
+                  >
+                    <Dna className="w-3.5 h-3.5" />
+                    <span>Open in 3D Bioscience</span>
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setActiveModalItem(null)}
                 className="ml-auto px-4 py-1.5 rounded-xl bg-[#0e1d35] hover:bg-[#122442] text-xs font-bold text-slate-200 transition"

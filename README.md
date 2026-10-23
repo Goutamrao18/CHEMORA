@@ -5,7 +5,6 @@
 >
 > **Company:** Chemora lab  
 > **Owner:** Goutam  
-> **Government Jurisdiction:** Government of India (india govt)  
 > **Contact Email:** chemora_lab@agentmail.to  
 > **Deployment:** Vercel  
 > **Database:** Supabase (PostgreSQL with Row Level Security)  

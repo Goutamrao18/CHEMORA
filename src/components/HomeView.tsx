@@ -151,7 +151,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
     },
     {
       q: 'Who develops and operates Chemora lab?',
-      a: 'Chemora lab is owned by Goutam and operates under the legal jurisdiction of the Government of India (india govt). The application was created through AI coding (vibe coding with Gemini, Claude, and ChatGPT) and is deployed on Vercel with high-performance Supabase database persistence and Upstash in-memory cache for extra RAM and rate limiting. For inquiries or questions, contact chemora_lab@agentmail.to.',
+      a: 'Chemora lab is owned by Goutam. The application was created through AI coding (vibe coding with Gemini, Claude, and ChatGPT) and is deployed on Vercel with high-performance Supabase database persistence and Upstash in-memory cache for extra RAM and rate limiting. For inquiries or questions, contact chemora_lab@agentmail.to.',
     },
   ];
 
@@ -536,8 +536,6 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
             <span className="text-cyan-300 font-bold">Chemora lab</span>
             <span className="text-slate-600">•</span>
             <span>Owner: <strong className="text-white">Goutam</strong></span>
-            <span className="text-slate-600">•</span>
-            <span>Jurisdiction: <span className="text-amber-300 font-medium">Government of India (india govt)</span></span>
           </div>
           <div className="flex items-center flex-wrap justify-center gap-1.5 text-[11px] text-slate-300">
             <span className="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-700/50 text-cyan-200">
@@ -572,7 +570,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-cyan-950/40 text-[11px] text-slate-400 gap-2 text-center sm:text-left">
-          <p>&copy; {new Date().getFullYear()} Chemora lab &bull; Owned by Goutam &bull; Jurisdiction: Government of India</p>
+          <p>&copy; {new Date().getFullYear()} Chemora lab &bull; Owned by Goutam</p>
           <p className="font-mono text-[10px] text-slate-400">Created through AI coding (Gemini, Claude, ChatGPT) &bull; Vercel &bull; Supabase &bull; Upstash</p>
         </div>
       </footer>

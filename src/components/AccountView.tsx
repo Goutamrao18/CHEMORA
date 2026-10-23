@@ -1691,7 +1691,7 @@ export const AccountView: React.FC<AccountViewProps> = () => {
                       {/* Operator, Ownership & Infrastructure Card */}
                       <div className="p-3 rounded-xl bg-slate-100/90 border border-slate-200 text-[11px] font-mono text-slate-700 space-y-1">
                         <div className="font-bold text-slate-900 flex items-center justify-between">
-                          <span>Chemora lab (india govt)</span>
+                          <span>Chemora lab</span>
                           <span className="text-cyan-700">Owner: Goutam</span>
                         </div>
                         <div className="text-[10px] text-slate-600">
