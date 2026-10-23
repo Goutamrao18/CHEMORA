@@ -7,8 +7,6 @@ import {
   Beaker,
   Compass,
   User,
-  Sun,
-  Moon,
   Volume2,
   VolumeX,
   Sparkles,
@@ -25,8 +23,6 @@ interface CommandPaletteProps {
   onClose: () => void;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenAssistant: () => void;
-  isLightMode: boolean;
-  onToggleTheme: () => void;
 }
 
 interface CommandItem {
@@ -43,8 +39,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose,
   onSelectTab,
   onOpenAssistant,
-  isLightMode,
-  onToggleTheme,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -138,14 +132,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => { onClose(); onOpenAssistant(); },
       },
       {
-        id: 'act-theme',
-        title: isLightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode',
-        subtitle: 'Toggle platform interface color theme',
-        category: 'Actions',
-        icon: isLightMode ? <Moon className="w-4 h-4 text-slate-300" /> : <Sun className="w-4 h-4 text-amber-300" />,
-        action: () => { onToggleTheme(); onClose(); },
-      },
-      {
         id: 'act-sound',
         title: soundActive ? 'Disable Soft UI Sounds' : 'Enable Soft UI Sounds',
         subtitle: 'Toggle gentle synthetic audio feedback',
@@ -169,7 +155,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }));
 
     return [...list, ...sampleItems];
-  }, [isLightMode, soundActive, onSelectTab, onOpenAssistant, onToggleTheme, onClose]);
+  }, [soundActive, onSelectTab, onOpenAssistant, onClose]);
 
   const filteredCommands = useMemo(() => {
     if (!query.trim()) return commands;

@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Sun, Moon, Sparkles, Flame, X, Volume2, VolumeX, Command } from 'lucide-react';
+import { Search, Sparkles, Flame, X, Volume2, VolumeX, Command } from 'lucide-react';
 import { getDailyStreak, DailyStreakState } from '../data/streakManager';
 import { isSoundEnabled, setSoundEnabled, playSoftClick } from '../utils/soundEffects';
 
 interface TopBarProps {
   onSearch: (q: string) => void;
   onOpenAssistant: () => void;
-  isLightMode: boolean;
-  onToggleTheme: () => void;
   onGoToProgress?: () => void;
   onOpenCommandPalette?: () => void;
   onSelectHome?: () => void;
@@ -16,8 +14,6 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({
   onSearch,
   onOpenAssistant,
-  isLightMode,
-  onToggleTheme,
   onGoToProgress,
   onOpenCommandPalette,
   onSelectHome,
@@ -164,16 +160,6 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span className="text-xs font-black tracking-tight font-mono">
             {streakState.currentStreak}d
           </span>
-        </button>
-
-        {/* Theme Toggle Button */}
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          aria-label="Toggle theme"
-          className="min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-[#07162e]/85 border border-cyan-500/30 text-cyan-200 hover:border-cyan-400 hover:text-white transition-all duration-200 shadow-md active:scale-[0.96] backdrop-blur-md"
-        >
-          {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-300" />}
         </button>
       </div>
     </div>

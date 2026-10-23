@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Sun, Moon, Search, User as UserIcon, BookOpen, Trophy, Beaker, TrendingUp, Home } from 'lucide-react';
+import { Sparkles, Search, User as UserIcon, BookOpen, Trophy, Beaker, TrendingUp, Home } from 'lucide-react';
 
 export type ActiveTab = 'home' | 'know' | 'challenge' | 'experiments' | 'progress' | 'account';
 
@@ -7,8 +7,6 @@ interface NavbarProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenAssistant: () => void;
-  isLightMode: boolean;
-  onToggleTheme: () => void;
   onSearch: (query: string) => void;
 }
 
@@ -16,8 +14,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onSelectTab,
   onOpenAssistant,
-  isLightMode,
-  onToggleTheme,
   onSearch,
 }) => {
   const [searchValue, setSearchValue] = useState('');
@@ -108,15 +104,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
             <span className="text-xs font-bold hidden sm:inline">CHEMORA AI</span>
-          </button>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={onToggleTheme}
-            aria-label="Toggle Theme"
-            className="p-2 rounded-xl bg-[#101726] border border-cyan-950 text-slate-300 hover:text-white hover:border-cyan-800 transition"
-          >
-            {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-300" />}
           </button>
 
           {/* Account Profile Button */}
