@@ -1,27 +1,11 @@
 /* ==========================================================================
-   CHEMORA Admin Panel Styles (AI Dashboard Reference)
+   CHEMORA Admin Panel Styles (AI Dashboard & Security Reference)
    ========================================================================== */
 
-.chemora-admin-root {
-  --admin-bg: #e9e8e1;
-  --admin-card-bg: #ffffff;
-  --admin-card-border: rgba(0, 0, 0, 0.04);
-  --admin-card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 1px 1px rgba(0, 0, 0, 0.02);
-  --admin-card-shadow-hover: 0 16px 36px -4px rgba(0, 0, 0, 0.09), 0 0 1px 1px rgba(0, 0, 0, 0.03);
-  --admin-text-main: #18202f;
-  --admin-text-muted: #64748b;
-  --admin-rail-bg: #ffffff;
-  --admin-rail-border: rgba(0, 0, 0, 0.06);
-  --admin-rail-active: #18202f;
-  --admin-teal-gradient: linear-gradient(135deg, #04212b 0%, #14a3c4 100%);
-  background-color: var(--admin-bg);
-  color: var(--admin-text-main);
-  min-height: 100vh;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-}
-
-.chemora-admin-root.dark {
+.chemora-admin-root,
+.admin-portal-root {
   --admin-bg: #030814;
+  --admin-page-bg: #030814;
   --admin-card-bg: #071224;
   --admin-card-border: rgba(56, 189, 248, 0.14);
   --admin-card-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -31,6 +15,142 @@
   --admin-rail-bg: #09162c;
   --admin-rail-border: rgba(56, 189, 248, 0.2);
   --admin-rail-active: #14a3c4;
+  --admin-teal-gradient: linear-gradient(135deg, #04212b 0%, #14a3c4 100%);
+  background-color: var(--admin-bg);
+  color: var(--admin-text-main);
+  min-height: 100vh;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Light Mode Variant (optional toggle) */
+.chemora-admin-root.light,
+.admin-portal-root.light,
+html:not(.dark) .admin-portal-root.light-enabled {
+  --admin-bg: #e9e8e1;
+  --admin-page-bg: #e9e8e1;
+  --admin-card-bg: #ffffff;
+  --admin-card-border: rgba(0, 0, 0, 0.06);
+  --admin-card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 1px 1px rgba(0, 0, 0, 0.02);
+  --admin-card-shadow-hover: 0 16px 36px -4px rgba(0, 0, 0, 0.09), 0 0 1px 1px rgba(0, 0, 0, 0.03);
+  --admin-text-main: #18202f;
+  --admin-text-muted: #64748b;
+  --admin-rail-bg: #ffffff;
+  --admin-rail-border: rgba(0, 0, 0, 0.08);
+  --admin-rail-active: #18202f;
+}
+
+/* Explicit Dark Mode Enforcement */
+.chemora-admin-root.dark,
+.admin-portal-root.dark,
+html.dark .admin-portal-root,
+html.dark .chemora-admin-root {
+  --admin-bg: #030814;
+  --admin-page-bg: #030814;
+  --admin-card-bg: #071224;
+  --admin-card-border: rgba(56, 189, 248, 0.14);
+  --admin-card-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --admin-card-shadow-hover: 0 20px 45px -4px rgba(6, 182, 212, 0.18), 0 0 0 1px rgba(56, 189, 248, 0.3);
+  --admin-text-main: #f8fafc;
+  --admin-text-muted: #94a3b8;
+  --admin-rail-bg: #09162c;
+  --admin-rail-border: rgba(56, 189, 248, 0.2);
+  --admin-rail-active: #14a3c4;
+}
+
+/* ==========================================================================
+   CSS Grid Layout for Admin Dashboard (FIX 2: Left Rail never overlaps content)
+   ========================================================================== */
+.admin-portal-grid {
+  --rail-w: 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .admin-portal-grid {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-portal-grid {
+    --rail-w: 220px;
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  }
+}
+
+.admin-sticky-rail {
+  position: sticky;
+  top: 16px;
+  height: calc(100dvh - 32px);
+  max-height: calc(100dvh - 32px);
+  align-self: start;
+  z-index: 30;
+}
+
+.admin-content-stage {
+  min-width: 0;
+  padding: 24px;
+  max-width: 1280px;
+  margin-inline: auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 120px; /* Safe distance above floating assistant orb & action buttons */
+}
+
+@media (max-width: 640px) {
+  .admin-content-stage {
+    padding: 12px 8px 120px 8px;
+  }
+}
+
+/* ==========================================================================
+   Embossed Dark Neumorphic OTP Card Tokens (FIX 1)
+   ========================================================================== */
+.otp-card-dark {
+  background: linear-gradient(165deg, #04212b 0%, #063140 45%, #0a4a5e 85%, #0c5971 100%);
+  border: 1px solid rgba(20, 163, 196, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 30px rgba(20, 163, 196, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+.otp-badge-raised {
+  background: linear-gradient(145deg, #073344, #031c26);
+  box-shadow: -2px -2px 6px rgba(20, 163, 196, 0.18), 3px 3px 8px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(20, 163, 196, 0.3);
+}
+
+.otp-box-raised {
+  background: linear-gradient(145deg, #062b38, #031922);
+  box-shadow: -2px -2px 6px rgba(20, 163, 196, 0.12), 3px 3px 8px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(20, 163, 196, 0.22);
+}
+
+.otp-box-active {
+  background: #02141c !important;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(20, 163, 196, 0.2), 0 0 12px rgba(20, 163, 196, 0.35) !important;
+  border: 2px solid #14a3c4 !important;
+}
+
+.otp-box-error {
+  border: 2px solid #f43f5e !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.45), inset 2px 2px 5px rgba(0, 0, 0, 0.5) !important;
+  color: #fecdd3 !important;
+}
+
+@keyframes otpShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.anim-otp-shake {
+  animation: otpShake 0.32s ease-in-out;
 }
 
 .font-tabular {

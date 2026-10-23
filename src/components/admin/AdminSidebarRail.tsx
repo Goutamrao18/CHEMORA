@@ -45,7 +45,7 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
   adminEmail,
   pendingReviewsCount,
 }) => {
-  const [hoveredTab, setHoveredTab] = useState<AdminTab | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
 
   const mainItems: RailItem[] = [
@@ -59,6 +59,7 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
 
   const adminInitials = adminName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
@@ -67,25 +68,59 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
   return (
     <>
       {/* =========================================================================
-          DESKTOP FLOATING LEFT ICON RAIL
-          Pill, white, ~64px wide, vertically centered, detached from the edge.
+          DESKTOP STICKY LEFT RAIL (CSS GRID COLUMN)
+          - Never overlaps content (resides in reserved grid track)
+          - 72px collapsed on tablet / small desktop (<1280px)
+          - 220px expanded on large desktop (>=1280px)
+          - No stray vertical lines or subpixel border glitches
           ========================================================================= */}
       <aside
         aria-label="Admin Navigation Rail"
-        className="hidden md:flex fixed left-5 top-1/2 -translate-y-1/2 z-40 flex-col items-center justify-between w-[68px] py-4 rounded-[36px] bg-[var(--admin-rail-bg)] border border-[var(--admin-rail-border)] shadow-[0_12px_36px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.02)] backdrop-blur-xl h-[86vh] max-h-[720px]"
+        className="admin-sticky-rail hidden md:flex flex-col justify-between py-4 px-2 xl:px-3 w-full rounded-[28px] bg-[var(--admin-rail-bg)] border border-[var(--admin-rail-border)] shadow-xl overflow-y-auto overflow-x-hidden backdrop-blur-xl select-none"
       >
-        {/* Top: Chemora Flask Badge */}
-        <div className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#04212b] to-[#14a3c4] flex items-center justify-center text-white shadow-md shadow-cyan-900/20 font-black text-sm select-none">
-            ⚗
+        {/* Top: Logo with tooltip "Admin" / "Chemora Admin" (No clipped "ADM" text) */}
+        <div className="flex flex-col items-center xl:items-start xl:px-1 shrink-0">
+          <div
+            className="relative flex items-center gap-3 w-full justify-center xl:justify-start"
+            onMouseEnter={() => setActiveTooltip('logo')}
+            onMouseLeave={() => setActiveTooltip(null)}
+            onFocus={() => setActiveTooltip('logo')}
+            onBlur={() => setActiveTooltip(null)}
+            tabIndex={0}
+            role="banner"
+            aria-label="Chemora Admin"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#04212b] to-[#14a3c4] flex items-center justify-center text-white shadow-md shadow-cyan-950/40 font-black text-lg select-none shrink-0 border border-cyan-400/30">
+              ⚗
+            </div>
+            <div className="hidden xl:flex flex-col min-w-0">
+              <span className="font-black text-sm text-[var(--admin-text-main)] tracking-tight leading-tight">
+                CHEMORA
+              </span>
+              <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-400 uppercase">
+                Admin Portal
+              </span>
+            </div>
+
+            {/* Collapsed Tooltip on hover / keyboard focus */}
+            <AnimatePresence>
+              {activeTooltip === 'logo' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -6, scale: 0.94 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -6, scale: 0.94 }}
+                  transition={{ duration: 0.15 }}
+                  className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#071325] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30"
+                >
+                  Chemora Admin
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <span className="text-[9px] font-mono font-bold tracking-widest text-[var(--admin-text-muted)] uppercase">
-            ADM
-          </span>
         </div>
 
         {/* Middle: Navigation Items */}
-        <nav className="flex flex-col items-center gap-2.5 my-auto">
+        <nav aria-label="Main Administration" className="flex flex-col items-center xl:items-stretch gap-1.5 my-auto py-4 w-full">
           {mainItems.map((item) => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
@@ -93,51 +128,63 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
             return (
               <div
                 key={item.id}
-                className="relative flex items-center justify-center"
-                onMouseEnter={() => setHoveredTab(item.id)}
-                onMouseLeave={() => setHoveredTab(null)}
+                className="relative flex items-center justify-center xl:justify-start w-full"
+                onMouseEnter={() => setActiveTooltip(item.id)}
+                onMouseLeave={() => setActiveTooltip(null)}
               >
                 <button
                   type="button"
                   onClick={() => onSelectTab(item.id)}
+                  onFocus={() => setActiveTooltip(item.id)}
+                  onBlur={() => setActiveTooltip(null)}
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`relative z-10 w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-cyan-500 ${
+                  className={`relative z-10 w-11 h-11 xl:w-full xl:h-11 xl:px-3 rounded-2xl flex items-center justify-center xl:justify-start gap-3 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none min-h-[44px] min-w-[44px] ${
                     isActive
                       ? 'text-white'
-                      : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)]'
+                      : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <Icon className="w-5 h-5 shrink-0" />
+
+                  {/* Text label visible at >=1280px (xl) */}
+                  <span className="hidden xl:inline text-xs font-semibold whitespace-nowrap truncate flex-1 text-left">
+                    {item.label}
+                  </span>
 
                   {/* Badge for Pending items */}
                   {item.badge !== undefined && item.badge > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-slate-950 font-black text-[9px] flex items-center justify-center shadow-sm">
+                    <span className="absolute top-1 right-1 xl:static xl:top-auto xl:right-auto px-1.5 py-0.5 min-w-[18px] h-[18px] rounded-full bg-cyan-400 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-xs">
                       {item.badge}
                     </span>
                   )}
                 </button>
 
-                {/* Dark filled circle that slides between items */}
+                {/* Dark filled pill that slides between active items */}
                 {isActive && (
                   <motion.div
                     layoutId="admin-active-pill"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    className="absolute inset-0 rounded-full bg-[var(--admin-rail-active)] shadow-md"
+                    className="absolute inset-0 rounded-2xl bg-[var(--admin-rail-active)] shadow-sm"
                   />
                 )}
 
-                {/* Hover Tooltip Label */}
+                {/* Hover / Focus Tooltip (active in collapsed mode) */}
                 <AnimatePresence>
-                  {hoveredTab === item.id && (
+                  {activeTooltip === item.id && (
                     <motion.div
                       initial={{ opacity: 0, x: -6, scale: 0.94 }}
                       animate={{ opacity: 1, x: 0, scale: 1 }}
                       exit={{ opacity: 0, x: -6, scale: 0.94 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#09152a] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30"
+                      className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#071325] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30"
                     >
                       {item.label}
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-cyan-400 text-slate-950 text-[10px] font-black">
+                          {item.badge}
+                        </span>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -146,56 +193,171 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
           })}
         </nav>
 
+        {/* Clean Divider */}
+        <div className="w-full h-px bg-[var(--admin-rail-border)] my-2 shrink-0" role="separator" />
+
         {/* Bottom Group: Theme Toggle, Settings, Sign Out, Admin Avatar */}
-        <div className="flex flex-col items-center gap-2 pt-2 border-t border-[var(--admin-card-border)] w-full">
+        <div className="flex flex-col items-center xl:items-stretch gap-1.5 shrink-0 w-full pt-1">
           {/* Theme Toggle */}
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            aria-label="Toggle theme"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          <div
+            className="relative flex items-center justify-center xl:justify-start w-full"
+            onMouseEnter={() => setActiveTooltip('theme')}
+            onMouseLeave={() => setActiveTooltip(null)}
           >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-          </button>
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              onFocus={() => setActiveTooltip('theme')}
+              onBlur={() => setActiveTooltip(null)}
+              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              className="w-11 h-11 xl:w-full xl:h-11 xl:px-3 rounded-2xl flex items-center justify-center xl:justify-start gap-3 text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none min-h-[44px] min-w-[44px]"
+            >
+              {isDark ? <Sun className="w-5 h-5 text-amber-400 shrink-0" /> : <Moon className="w-5 h-5 shrink-0" />}
+              <span className="hidden xl:inline text-xs font-semibold whitespace-nowrap">
+                {isDark ? 'Light Theme' : 'Dark Theme'}
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {activeTooltip === 'theme' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -6, scale: 0.94 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -6, scale: 0.94 }}
+                  transition={{ duration: 0.15 }}
+                  className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#071325] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30"
+                >
+                  {isDark ? 'Light Theme' : 'Dark Theme'}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Settings */}
-          <button
-            type="button"
-            onClick={() => onSelectTab('settings')}
-            aria-label="Settings"
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-              activeTab === 'settings'
-                ? 'bg-[var(--admin-rail-active)] text-white'
-                : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] hover:bg-black/5 dark:hover:bg-white/10'
-            }`}
+          <div
+            className="relative flex items-center justify-center xl:justify-start w-full"
+            onMouseEnter={() => setActiveTooltip('settings')}
+            onMouseLeave={() => setActiveTooltip(null)}
           >
-            <Settings className="w-4 h-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onSelectTab('settings')}
+              onFocus={() => setActiveTooltip('settings')}
+              onBlur={() => setActiveTooltip(null)}
+              aria-label="Admin Settings"
+              aria-current={activeTab === 'settings' ? 'page' : undefined}
+              className={`w-11 h-11 xl:w-full xl:h-11 xl:px-3 rounded-2xl flex items-center justify-center xl:justify-start gap-3 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none min-h-[44px] min-w-[44px] ${
+                activeTab === 'settings'
+                  ? 'bg-[var(--admin-rail-active)] text-white shadow-sm'
+                  : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] hover:bg-black/5 dark:hover:bg-white/5'
+              }`}
+            >
+              <Settings className="w-5 h-5 shrink-0" />
+              <span className="hidden xl:inline text-xs font-semibold whitespace-nowrap">
+                Settings
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {activeTooltip === 'settings' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -6, scale: 0.94 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -6, scale: 0.94 }}
+                  transition={{ duration: 0.15 }}
+                  className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#071325] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30"
+                >
+                  Settings
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Sign Out */}
-          <button
-            type="button"
-            onClick={onLogout}
-            aria-label="Sign Out"
-            title="Sign out of administration"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--admin-text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-
-          {/* Admin Avatar */}
           <div
-            title={`${adminName} (${adminEmail})`}
-            className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 to-teal-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-sm select-none cursor-default"
+            className="relative flex items-center justify-center xl:justify-start w-full"
+            onMouseEnter={() => setActiveTooltip('logout')}
+            onMouseLeave={() => setActiveTooltip(null)}
           >
-            {adminInitials}
+            <button
+              type="button"
+              onClick={onLogout}
+              onFocus={() => setActiveTooltip('logout')}
+              onBlur={() => setActiveTooltip(null)}
+              aria-label="Sign out"
+              title="Sign out of administration"
+              className="w-11 h-11 xl:w-full xl:h-11 xl:px-3 rounded-2xl flex items-center justify-center xl:justify-start gap-3 text-[var(--admin-text-muted)] hover:text-rose-400 hover:bg-rose-500/10 transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none min-h-[44px] min-w-[44px]"
+            >
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span className="hidden xl:inline text-xs font-semibold whitespace-nowrap">
+                Sign Out
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {activeTooltip === 'logout' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -6, scale: 0.94 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -6, scale: 0.94 }}
+                  transition={{ duration: 0.15 }}
+                  className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#071325] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-rose-500/30"
+                >
+                  Sign Out
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Admin Avatar & Profile Details */}
+          <div
+            className="relative flex items-center justify-center xl:justify-start w-full pt-1"
+            onMouseEnter={() => setActiveTooltip('avatar')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div
+              tabIndex={0}
+              role="figure"
+              aria-label={`Administrator: ${adminName}`}
+              onFocus={() => setActiveTooltip('avatar')}
+              onBlur={() => setActiveTooltip(null)}
+              className="w-11 h-11 xl:w-full xl:h-12 xl:px-2 rounded-2xl flex items-center justify-center xl:justify-start gap-2.5 bg-black/10 dark:bg-white/5 border border-[var(--admin-card-border)] select-none cursor-default focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-teal-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                {adminInitials}
+              </div>
+              <div className="hidden xl:flex flex-col min-w-0 flex-1 text-left">
+                <span className="text-xs font-bold text-[var(--admin-text-main)] truncate leading-tight">
+                  {adminName}
+                </span>
+                <span className="text-[10px] text-[var(--admin-text-muted)] truncate font-mono">
+                  {adminEmail}
+                </span>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {activeTooltip === 'avatar' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -6, scale: 0.94 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -6, scale: 0.94 }}
+                  transition={{ duration: 0.15 }}
+                  className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-2 rounded-xl bg-[#071325] text-white text-xs whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30 text-left"
+                >
+                  <p className="font-bold text-white">{adminName}</p>
+                  <p className="text-[10px] text-cyan-300 font-mono">{adminEmail}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </aside>
 
       {/* =========================================================================
-          MOBILE FLOATING BOTTOM DOCK
-          (Dashboard, Reviews, Users, More) with 44px tap targets, dvh units
+          MOBILE FLOATING BOTTOM DOCK (< 768px)
+          - Single column mobile layout
+          - 44px tap targets with dvh unit awareness
           ========================================================================= */}
       <nav
         aria-label="Mobile Admin Navigation"
@@ -215,7 +377,9 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => onSelectTab(item.id)}
-                className={`relative min-w-[52px] h-[44px] px-3 rounded-[22px] flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative min-w-[52px] h-[44px] px-3 rounded-[22px] flex items-center justify-center gap-1.5 text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                   isActive
                     ? 'bg-[var(--admin-rail-active)] text-white shadow-sm'
                     : 'text-[var(--admin-text-muted)]'
@@ -236,7 +400,8 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
           <button
             type="button"
             onClick={() => setIsMobileMoreOpen(true)}
-            className="min-w-[48px] h-[44px] px-2.5 rounded-[22px] flex items-center justify-center text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)]"
+            aria-label="More admin options"
+            className="min-w-[48px] h-[44px] px-2.5 rounded-[22px] flex items-center justify-center text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <MoreHorizontal className="w-5 h-5" />
           </button>
@@ -269,6 +434,7 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsMobileMoreOpen(false)}
+                  aria-label="Close menu"
                   className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <X className="w-5 h-5" />

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { KeyRound, AlertCircle, ArrowLeft, RotateCw } from 'lucide-react';
+import { KeyRound, AlertCircle, ArrowLeft, RotateCw, CheckCircle2 } from 'lucide-react';
 import { LiquidLoader } from '../ui/LiquidLoader';
 
 export interface OtpCardProps {
@@ -45,7 +45,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
     const timer = setTimeout(() => {
       inputRefs.current[0]?.focus();
       setFocusedIndex(0);
-    }, 120);
+    }, 100);
     return () => clearTimeout(timer);
   }, []);
 
@@ -69,7 +69,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
   useEffect(() => {
     if (error) {
       setShouldShake(true);
-      const timer = setTimeout(() => setShouldShake(false), 350);
+      const timer = setTimeout(() => setShouldShake(false), 320);
       return () => clearTimeout(timer);
     }
   }, [error, errorCode, attemptsLeft]);
@@ -84,7 +84,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
   const handleDigitChange = useCallback((index: number, val: string) => {
     if (onClearError) onClearError();
     const clean = val.replace(/\D/g, '');
-    
+
     if (!clean) {
       const next = [...digits];
       next[index] = '';
@@ -135,6 +135,12 @@ export const OtpCard: React.FC<OtpCardProps> = ({
       e.preventDefault();
       inputRefs.current[index + 1]?.focus();
       setFocusedIndex(index + 1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = digits.join('');
+      if (code.length === 6 && !isSubmitting) {
+        onVerifyOtp(code);
+      }
     }
   };
 
@@ -168,55 +174,61 @@ export const OtpCard: React.FC<OtpCardProps> = ({
   const isExpired = errorCode === 'otp_expired' || timeRemaining === 0;
 
   return (
-    <div className="w-full max-w-[460px] mx-auto otp-card-enter">
-      {/* Neumorphic Embossed Card Container */}
-      <div className="relative rounded-[28px] p-6 sm:p-9 transition-all duration-300 otp-surface-light dark:otp-surface-dark backdrop-blur-xl">
+    <div className="w-full max-w-[430px] mx-auto animate-in fade-in duration-200">
+      {/* Neumorphic Dark Embossed Card Container matching Admin Login panel */}
+      <div className="relative rounded-[28px] p-5 sm:p-7 transition-all duration-300 otp-card-dark backdrop-blur-xl">
         {/* Top Raised Circular Lock Badge */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-cyan-600 dark:text-cyan-300 otp-raised-light dark:otp-raised-dark border border-cyan-500/20 mb-4 transition-transform hover:scale-105">
-            <KeyRound className="w-7 h-7 text-cyan-500 dark:text-cyan-400" />
+        <div className="flex flex-col items-center text-center mb-4">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center otp-badge-raised mb-2.5 transition-transform hover:scale-105">
+            <KeyRound className="w-5 h-5 text-[#7fdcef]" />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-[10px] font-mono font-bold tracking-wider uppercase mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-[#7fdcef] text-[10px] font-mono font-bold tracking-wider uppercase mb-1.5">
             <span>Identity Verification</span>
           </div>
 
-          <h2 className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
             Verify it&apos;s you
           </h2>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-[320px] leading-relaxed">
+          <p className="text-xs text-[#c5dce4] mt-1 max-w-[320px] leading-relaxed">
             We&apos;ve sent a 6-digit verification code to
             <br />
-            <span className="font-mono font-bold text-cyan-700 dark:text-cyan-300 tracking-wide">
+            <span className="font-mono font-bold text-[#7fdcef] tracking-wide">
               {maskedEmail || 'your staff address'}
             </span>
           </p>
         </div>
 
-        {/* Live Alerts & Error Display */}
-        <div aria-live="polite" className="space-y-2 mb-4">
+        {/* Live Alerts & Error Display (Dark theme style with WCAG AA compliance) */}
+        <div aria-live="polite" className="space-y-2 mb-3.5">
           {error && (
             <div
               role="alert"
-              className="p-3.5 rounded-2xl bg-rose-100/80 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-xs font-medium flex items-start gap-2.5 animate-in fade-in duration-200"
+              className={`p-3 rounded-2xl text-xs font-medium flex items-start gap-2.5 animate-in fade-in duration-200 ${
+                errorCode === 'otp_locked' || errorCode === 'otp_expired'
+                  ? 'bg-amber-950/40 border border-amber-500/50 text-[#fde68a]'
+                  : 'bg-rose-950/40 border border-rose-500/50 text-[#fecdd3]'
+              }`}
             >
-              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+              <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
+                errorCode === 'otp_locked' || errorCode === 'otp_expired' ? 'text-amber-400' : 'text-rose-400'
+              }`} />
               <div className="flex-1 leading-snug">
                 {errorCode === 'otp_invalid' && typeof attemptsLeft === 'number' ? (
                   <span>
-                    Invalid verification code. You have <strong>{attemptsLeft}</strong>{' '}
-                    {attemptsLeft === 1 ? 'attempt' : 'attempts'} remaining before this code is locked.
+                    Incorrect code. <strong>{attemptsLeft}</strong>{' '}
+                    {attemptsLeft === 1 ? 'attempt' : 'attempts'} left.
                   </span>
                 ) : errorCode === 'otp_locked' ? (
                   <div>
-                    <span>Too many failed attempts. This code has been locked for security. Please sign in again.</span>
+                    <span>Too many failed attempts. This code has been locked.</span>
                     {onResetToLogin && (
-                      <div className="mt-1.5">
+                      <div className="mt-1">
                         <button
                           type="button"
                           onClick={onResetToLogin}
-                          className="font-bold underline text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer"
+                          className="font-bold underline text-[#fde68a] hover:text-white cursor-pointer"
                         >
                           Start over
                         </button>
@@ -225,13 +237,13 @@ export const OtpCard: React.FC<OtpCardProps> = ({
                   </div>
                 ) : errorCode === 'otp_expired' ? (
                   <div>
-                    <span>Verification code has expired. Please request a new code or sign in again.</span>
+                    <span>Verification code has expired.</span>
                     {onResetToLogin && (
-                      <div className="mt-1.5">
+                      <div className="mt-1">
                         <button
                           type="button"
                           onClick={onResetToLogin}
-                          className="font-bold underline text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer"
+                          className="font-bold underline text-[#fde68a] hover:text-white cursor-pointer"
                         >
                           Start over
                         </button>
@@ -252,7 +264,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
                 <button
                   type="button"
                   onClick={onClearError}
-                  className="text-rose-400 hover:text-rose-700 dark:hover:text-rose-100 text-sm font-bold cursor-pointer p-0.5"
+                  className="text-slate-400 hover:text-white text-sm font-bold cursor-pointer p-0.5"
                   aria-label="Dismiss error"
                 >
                   &times;
@@ -264,14 +276,15 @@ export const OtpCard: React.FC<OtpCardProps> = ({
           {success && (
             <div
               role="status"
-              className="p-3 rounded-2xl bg-emerald-100/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200 text-xs font-medium flex items-start gap-2"
+              className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/50 text-[#a7f3d0] text-xs font-medium flex items-start gap-2.5"
             >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <span className="flex-1 leading-snug">{success}</span>
               {onClearSuccess && (
                 <button
                   type="button"
                   onClick={onClearSuccess}
-                  className="text-emerald-500 hover:text-emerald-800 dark:hover:text-emerald-100 text-sm font-bold cursor-pointer"
+                  className="text-emerald-400 hover:text-white text-sm font-bold cursor-pointer"
                   aria-label="Dismiss message"
                 >
                   &times;
@@ -281,13 +294,24 @@ export const OtpCard: React.FC<OtpCardProps> = ({
           )}
         </div>
 
-        {/* 6 Digit Neumorphic Boxes */}
-        <div className={`my-6 ${shouldShake ? 'anim-otp-shake' : ''}`}>
-          <div className="flex justify-between items-center gap-1.5 sm:gap-2.5">
+        {/* 6 Digit Dark Embossed Neumorphic Boxes */}
+        <div className={`my-4 ${shouldShake ? 'anim-otp-shake' : ''}`}>
+          <div className="flex justify-between items-center gap-1.5 sm:gap-2">
             {digits.map((digit, idx) => {
               const isFocused = focusedIndex === idx;
               const hasVal = Boolean(digit);
-              const isPressed = isFocused || hasVal;
+              const isError = Boolean(error && !isLocked && !isExpired);
+
+              let boxClass = 'otp-box-raised text-white';
+              if (isFocused) {
+                boxClass = 'otp-box-active text-[#7fdcef]';
+              } else if (hasVal) {
+                boxClass = 'otp-box-raised text-white font-black';
+              }
+
+              if (isError) {
+                boxClass += ' otp-box-error';
+              }
 
               return (
                 <input
@@ -307,24 +331,20 @@ export const OtpCard: React.FC<OtpCardProps> = ({
                   onKeyDown={(e) => handleKeyDown(idx, e)}
                   onPaste={handlePaste}
                   aria-label={`Digit ${idx + 1} of 6`}
-                  className={`w-11 sm:w-13 h-13 sm:h-15 rounded-[14px] text-center text-xl font-mono font-black transition-all duration-200 outline-none select-none min-h-[44px] min-w-[40px] ${
-                    isPressed
-                      ? 'otp-pressed-light dark:otp-pressed-dark text-cyan-600 dark:text-cyan-300 border-2 border-[#14a3c4] shadow-[0_0_12px_rgba(20,163,196,0.25)]'
-                      : 'otp-raised-light dark:otp-raised-dark text-slate-700 dark:text-slate-200 border border-black/5 dark:border-white/5 hover:border-cyan-500/30'
-                  }`}
+                  className={`w-11 sm:w-12 h-12 sm:h-13 rounded-[14px] text-center text-xl font-mono transition-all duration-150 outline-none select-none min-h-[44px] min-w-[40px] ${boxClass}`}
                 />
               );
             })}
           </div>
 
-          {/* Expiration Countdown Indicator */}
-          <div className="mt-3.5 flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 px-1">
+          {/* Expiration Countdown Indicator (AA contrast #a5c8d3) */}
+          <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-[#a5c8d3] px-1">
             <span>Security Challenge</span>
-            <span className={timeRemaining <= 60 ? 'text-rose-500 font-bold' : ''}>
+            <span className={timeRemaining <= 60 ? 'text-rose-400 font-bold' : ''}>
               {timeRemaining > 0 ? (
                 `Code expires in ${formatTime(timeRemaining)}`
               ) : (
-                <span className="text-rose-500 font-bold">Code expired</span>
+                <span className="text-rose-400 font-bold">Code expired</span>
               )}
             </span>
           </div>
@@ -335,7 +355,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
           <button
             type="button"
             onClick={onResetToLogin}
-            className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 text-white font-bold text-sm shadow-lg transition active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-800 to-rose-700 hover:from-rose-700 hover:to-rose-600 text-white font-bold text-sm shadow-lg transition active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Lockout Activated — Return to Sign In</span>
@@ -346,27 +366,31 @@ export const OtpCard: React.FC<OtpCardProps> = ({
             onClick={() => onVerifyOtp(digits.join(''))}
             disabled={isSubmitting || !isComplete || isExpired}
             aria-busy={isSubmitting}
-            className="w-full min-h-[48px] py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#04212b] via-[#093544] to-[#14a3c4] hover:opacity-95 active:scale-[0.99] text-white font-bold text-sm shadow-[0_4px_16px_rgba(20,163,196,0.3)] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-cyan-500"
+            className={`w-full min-h-[44px] py-3 px-4 rounded-2xl bg-gradient-to-r from-[#0e7490] to-[#0b5f78] hover:from-[#0891b2] hover:to-[#0e7490] text-white font-bold text-sm shadow-[0_4px_16px_rgba(14,116,144,0.35)] transition-all flex items-center justify-center gap-2.5 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
+              !isComplete || isSubmitting || isExpired
+                ? 'opacity-60 cursor-not-allowed shadow-none'
+                : 'cursor-pointer active:scale-[0.99]'
+            }`}
           >
             {isSubmitting ? (
               <>
                 <LiquidLoader size="xs" label="Verifying code..." />
-                <span>Verifying Code...</span>
+                <span>Verifying code...</span>
               </>
             ) : (
-              <span>VERIFY OTP</span>
+              <span>Verify code</span>
             )}
           </button>
         )}
 
         {/* Resend OTP Link & Return Navigation */}
-        <div className="mt-6 flex flex-col items-center gap-3">
-          {/* Cyan Resend Link */}
+        <div className="mt-4 flex flex-col items-center gap-2.5">
+          {/* Cyan Resend Link with visible focus ring */}
           <button
             type="button"
             onClick={onResendOtp}
             disabled={resendCountdown > 0 || isSubmitting || isLocked}
-            className="text-xs font-bold font-mono tracking-wider text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed py-1.5 px-3 rounded-lg hover:bg-cyan-500/5 active:scale-95"
+            className="text-xs font-bold font-mono tracking-wider text-[#7fdcef] hover:text-[#58d6ff] transition-colors uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed py-1 px-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <RotateCw
               className={`w-3.5 h-3.5 ${
@@ -376,16 +400,16 @@ export const OtpCard: React.FC<OtpCardProps> = ({
             {resendCountdown > 0 ? (
               <span>Resend in {resendCountdown}s</span>
             ) : (
-              <span>RESEND OTP</span>
+              <span>Resend code</span>
             )}
           </button>
 
-          {/* Return to Password Step */}
+          {/* Return to Step 1 */}
           <button
             type="button"
             onClick={onResetToLogin}
             disabled={isSubmitting}
-            className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer py-1"
+            className="text-xs font-medium text-[#a5c8d3] hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer py-1 px-2 rounded-lg focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Use a different account</span>
@@ -393,9 +417,9 @@ export const OtpCard: React.FC<OtpCardProps> = ({
         </div>
 
         {/* Security Policy Footer Note */}
-        <div className="mt-6 pt-4 border-t border-black/5 dark:border-white/5 text-center">
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono leading-relaxed">
-            Protected by Chemora Administrative Protocol. Mandatory email OTP. Maximum 5 attempts.
+        <div className="mt-4 pt-3 border-t border-white/10 text-center">
+          <p className="text-[10px] text-[#a5c8d3]/70 font-mono leading-relaxed">
+            Protected by Chemora Administrative Protocol. Mandatory email OTP.
           </p>
         </div>
       </div>

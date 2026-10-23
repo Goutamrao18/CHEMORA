@@ -50,14 +50,15 @@ export const AdminView: React.FC = () => {
     return () => clearInterval(interval);
   }, [resendCountdown]);
 
-  // Navigation & Theme
+  // Navigation & Theme (Dark teal is the default for CHEMORA Admin)
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('chemora-admin-theme') === 'dark' ||
-        document.documentElement.classList.contains('dark');
+      const stored = localStorage.getItem('chemora-admin-theme');
+      if (stored === 'light') return false;
+      return true;
     } catch {
-      return false;
+      return true;
     }
   });
 
@@ -390,7 +391,7 @@ export const AdminView: React.FC = () => {
   // Unauthenticated: render <AuthCard variant="admin" />
   if (!adminUser) {
     return (
-      <div className="admin-portal-root min-h-screen flex flex-col items-center justify-center p-4 md:p-8 bg-[var(--admin-page-bg)] relative overflow-hidden transition-colors duration-300">
+      <div className="admin-portal-root min-h-dvh flex flex-col items-center justify-center p-3 sm:p-4 bg-[var(--admin-page-bg)] relative overflow-hidden transition-colors duration-300">
         {/* Subtle decorative grid */}
         <div
           className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
@@ -400,24 +401,25 @@ export const AdminView: React.FC = () => {
           }}
         />
 
-        {/* Back to Chemora Public Platform link */}
-        <div className="w-full max-w-4xl mb-6 flex items-center justify-between z-10 px-2">
+        {/* Back to Chemora Public Platform link & Theme Toggle */}
+        <div className="w-full max-w-[430px] mb-2 sm:mb-3 flex items-center justify-between z-10 px-1">
           <a
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] transition"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] transition"
           >
-            <ArrowLeft className="w-4 h-4" /> Return to Chemora Academy
+            <ArrowLeft className="w-3.5 h-3.5" /> Return to Chemora Academy
           </a>
           <button
             onClick={() => setIsDark(!isDark)}
-            className="text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] px-3 py-1.5 rounded-xl border border-[var(--admin-card-border)] bg-[var(--admin-card-bg)] shadow-xs transition"
+            aria-label="Toggle visual theme"
+            className="text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] px-2.5 py-1 rounded-xl border border-[var(--admin-card-border)] bg-[var(--admin-card-bg)] shadow-xs transition"
           >
             {isDark ? 'Light mode' : 'Dark mode'}
           </button>
         </div>
 
         {/* Control Room Auth Card */}
-        <div className="w-full max-w-4xl z-10 flex flex-col items-center">
+        <div className="w-full max-w-[430px] z-10 flex flex-col items-center">
           <AdminAuthCard
             email={loginEmail}
             onEmailChange={setLoginEmail}
@@ -442,7 +444,7 @@ export const AdminView: React.FC = () => {
         </div>
 
         {/* Security disclaimer footer */}
-        <div className="mt-8 text-center text-[11px] text-[var(--admin-text-muted)] z-10 font-mono">
+        <div className="mt-2 sm:mt-3 text-center text-[10px] sm:text-[11px] text-[var(--admin-text-muted)] z-10 font-mono">
           <span>Protected by Chemora Administrative Protocol</span> &bull;{' '}
           <span>Unauthorised access attempts are logged with client IP origin</span>
         </div>
@@ -450,66 +452,68 @@ export const AdminView: React.FC = () => {
     );
   }
 
-  // Authenticated Admin Dashboard Layout
+  // Authenticated Admin Dashboard Layout (CSS Grid: Dedicated rail column + Centered content)
   const adminFirstName = adminUser.name ? adminUser.name.split(' ')[0] : 'Administrator';
   const pendingReviewsCount = statsData?.pendingReviewsCount || 0;
 
   return (
-    <div className="admin-portal-root min-h-screen bg-[var(--admin-page-bg)] text-[var(--admin-text-main)] flex flex-col md:flex-row relative transition-colors duration-300">
-      {/* 1. Floating Left Icon Rail */}
-      <AdminSidebarRail
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        isDark={isDark}
-        onToggleTheme={() => setIsDark(!isDark)}
-        onLogout={handleSignOut}
-        adminName={adminUser.name || 'Admin'}
-        adminEmail={adminUser.email}
-        pendingReviewsCount={pendingReviewsCount}
-      />
-
-      {/* 2. Main Portal Stage */}
-      <main className="flex-1 min-w-0 md:pl-28 p-4 md:p-8 lg:p-10 pb-28 md:pb-10 max-w-[1560px] mx-auto w-full flex flex-col gap-6">
-        {/* Top Bar with Greeting, Search, and Notification Badge */}
-        <AdminTopBar
-          adminName={adminFirstName}
+    <div className="admin-portal-root min-h-screen bg-[var(--admin-page-bg)] text-[var(--admin-text-main)] transition-colors duration-300">
+      <div className="admin-portal-grid">
+        {/* 1. Sticky Left Rail (Dedicated column in CSS Grid) */}
+        <AdminSidebarRail
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
+          isDark={isDark}
+          onToggleTheme={() => setIsDark(!isDark)}
+          onLogout={handleSignOut}
+          adminName={adminUser.name || 'Admin'}
+          adminEmail={adminUser.email}
           pendingReviewsCount={pendingReviewsCount}
-          onSearchSubmit={handleTopBarSearch}
-          onOpenReviewsTab={() => setActiveTab('reviews')}
-          onOpenAssistant={() => {
-            setAssistantInitialQuery('');
-            setIsAssistantOpen(true);
-          }}
         />
 
-        {/* Dynamic Tab Switcher */}
-        {activeTab === 'dashboard' && (
-          <AdminDashboardTab
-            statsData={statsData}
-            onNavigateTab={setActiveTab}
-            onOpenExperiment={(exp) => setSelectedExperiment(exp)}
-            onApproveReview={handleApproveReview}
-            onRejectReview={handleRejectReview}
-            onRefreshVideos={() => fetchVideoHealth(true)}
-            videoHealthData={videoHealthData}
-            isCheckingVideos={isCheckingVideos}
+        {/* 2. Main Portal Stage (Centered, min-width: 0, safe padding bottom >= 96px) */}
+        <main className="admin-content-stage flex flex-col gap-6">
+          {/* Top Bar with Greeting, Search, and Notification Badge */}
+          <AdminTopBar
+            adminName={adminFirstName}
+            pendingReviewsCount={pendingReviewsCount}
+            onSearchSubmit={handleTopBarSearch}
+            onOpenReviewsTab={() => setActiveTab('reviews')}
+            onOpenAssistant={() => {
+              setAssistantInitialQuery('');
+              setIsAssistantOpen(true);
+            }}
           />
-        )}
 
-        {activeTab === 'reviews' && (
-          <AdminReviewsTab onStatusChange={fetchStats} />
-        )}
+          {/* Dynamic Tab Switcher */}
+          {activeTab === 'dashboard' && (
+            <AdminDashboardTab
+              statsData={statsData}
+              onNavigateTab={setActiveTab}
+              onOpenExperiment={(exp) => setSelectedExperiment(exp)}
+              onApproveReview={handleApproveReview}
+              onRejectReview={handleRejectReview}
+              onRefreshVideos={() => fetchVideoHealth(true)}
+              videoHealthData={videoHealthData}
+              isCheckingVideos={isCheckingVideos}
+            />
+          )}
 
-        {activeTab === 'users' && <AdminUsersTab />}
+          {activeTab === 'reviews' && (
+            <AdminReviewsTab onStatusChange={fetchStats} />
+          )}
 
-        {activeTab === 'content' && <AdminVideosTab />}
+          {activeTab === 'users' && <AdminUsersTab />}
 
-        {activeTab === 'challenges' && <AdminChallengesTab />}
+          {activeTab === 'content' && <AdminVideosTab />}
 
-        {activeTab === 'audit' && <AdminAuditTab />}
+          {activeTab === 'challenges' && <AdminChallengesTab />}
 
-        {activeTab === 'settings' && <AdminSettingsTab />}
-      </main>
+          {activeTab === 'audit' && <AdminAuditTab />}
+
+          {activeTab === 'settings' && <AdminSettingsTab />}
+        </main>
+      </div>
 
       {/* 3. Experiment Detail Drawer */}
       <AdminExperimentDrawer
