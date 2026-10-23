@@ -23,6 +23,8 @@ interface CommandPaletteProps {
   onClose: () => void;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenAssistant: () => void;
+  isLightMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
 interface CommandItem {
@@ -39,6 +41,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose,
   onSelectTab,
   onOpenAssistant,
+  isLightMode,
+  onToggleTheme,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -139,6 +143,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         icon: soundActive ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />,
         action: () => { toggleSound(); },
       },
+      ...(onToggleTheme ? [{
+        id: 'act-theme',
+        title: isLightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode',
+        subtitle: isLightMode ? 'Enable dark laboratory theme' : 'Enable clean light laboratory theme',
+        category: 'Actions' as const,
+        icon: <span className="text-cyan-400">{isLightMode ? '🌙' : '☀️'}</span>,
+        action: () => { onToggleTheme(); onClose(); },
+      }] : []),
     ];
 
     // Add popular chemical library items
@@ -155,7 +167,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }));
 
     return [...list, ...sampleItems];
-  }, [soundActive, onSelectTab, onOpenAssistant, onClose]);
+  }, [soundActive, onSelectTab, onOpenAssistant, onClose, isLightMode, onToggleTheme]);
 
   const filteredCommands = useMemo(() => {
     if (!query.trim()) return commands;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, Flame, X, Volume2, VolumeX, Command } from 'lucide-react';
+import { Search, Sparkles, Flame, X, Volume2, VolumeX, Command, Sun, Moon } from 'lucide-react';
 import { getDailyStreak, DailyStreakState } from '../data/streakManager';
 import { isSoundEnabled, setSoundEnabled, playSoftClick } from '../utils/soundEffects';
 
@@ -9,6 +9,8 @@ interface TopBarProps {
   onGoToProgress?: () => void;
   onOpenCommandPalette?: () => void;
   onSelectHome?: () => void;
+  isLightMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -17,6 +19,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onGoToProgress,
   onOpenCommandPalette,
   onSelectHome,
+  isLightMode,
+  onToggleTheme,
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [streakState, setStreakState] = useState<DailyStreakState>(getDailyStreak);
@@ -147,6 +151,19 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {soundActive ? <Volume2 className="w-4 h-4 text-cyan-300" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
         </button>
+
+        {/* Theme Toggle (Light/Dark mode) */}
+        {onToggleTheme && (
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={isLightMode ? 'Switch to dark mode' : 'Switch to light mode'}
+            title={isLightMode ? 'Current: Light theme (click to switch to Dark)' : 'Current: Dark theme (click to switch to Light)'}
+            className="hidden sm:flex min-w-[44px] min-h-[44px] rounded-full items-center justify-center border border-cyan-500/30 bg-[#07162e]/85 text-cyan-300 hover:text-cyan-100 hover:border-cyan-400 active:scale-[0.96] transition shadow-md backdrop-blur-md"
+          >
+            {isLightMode ? <Moon className="w-4 h-4 text-cyan-300" /> : <Sun className="w-4 h-4 text-amber-300" />}
+          </button>
+        )}
 
         {/* Streak Counter Chip */}
         <button
