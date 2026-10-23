@@ -9,8 +9,6 @@ import {
   ShieldCheck,
   Settings,
   LogOut,
-  Sun,
-  Moon,
   MoreHorizontal,
   X,
 } from 'lucide-react';
@@ -20,8 +18,6 @@ export type AdminTab = 'dashboard' | 'reviews' | 'users' | 'content' | 'challeng
 interface AdminSidebarRailProps {
   activeTab: AdminTab;
   onSelectTab: (tab: AdminTab) => void;
-  isDark: boolean;
-  onToggleTheme: () => void;
   onLogout: () => void;
   adminName: string;
   adminEmail: string;
@@ -38,8 +34,6 @@ interface RailItem {
 export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
   activeTab,
   onSelectTab,
-  isDark,
-  onToggleTheme,
   onLogout,
   adminName,
   adminEmail,
@@ -196,43 +190,8 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
         {/* Clean Divider */}
         <div className="w-full h-px bg-[var(--admin-rail-border)] my-2 shrink-0" role="separator" />
 
-        {/* Bottom Group: Theme Toggle, Settings, Sign Out, Admin Avatar */}
+        {/* Bottom Group: Settings, Sign Out, Admin Avatar */}
         <div className="flex flex-col items-center xl:items-stretch gap-1.5 shrink-0 w-full pt-1">
-          {/* Theme Toggle */}
-          <div
-            className="relative flex items-center justify-center xl:justify-start w-full"
-            onMouseEnter={() => setActiveTooltip('theme')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              onFocus={() => setActiveTooltip('theme')}
-              onBlur={() => setActiveTooltip(null)}
-              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-              className="w-11 h-11 xl:w-full xl:h-11 xl:px-3 rounded-2xl flex items-center justify-center xl:justify-start gap-3 text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none min-h-[44px] min-w-[44px]"
-            >
-              {isDark ? <Sun className="w-5 h-5 text-amber-400 shrink-0" /> : <Moon className="w-5 h-5 shrink-0" />}
-              <span className="hidden xl:inline text-xs font-semibold whitespace-nowrap">
-                {isDark ? 'Light Theme' : 'Dark Theme'}
-              </span>
-            </button>
-
-            <AnimatePresence>
-              {activeTooltip === 'theme' && (
-                <motion.div
-                  initial={{ opacity: 0, x: -6, scale: 0.94 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -6, scale: 0.94 }}
-                  transition={{ duration: 0.15 }}
-                  className="xl:hidden absolute left-[calc(100%+14px)] px-3 py-1.5 rounded-xl bg-[#071325] text-white text-xs font-semibold whitespace-nowrap shadow-xl pointer-events-none z-50 border border-cyan-500/30"
-                >
-                  {isDark ? 'Light Theme' : 'Dark Theme'}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           {/* Settings */}
           <div
             className="relative flex items-center justify-center xl:justify-start w-full"
@@ -466,20 +425,11 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
                 })}
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-[var(--admin-card-border)]">
-                <button
-                  type="button"
-                  onClick={onToggleTheme}
-                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-xs font-semibold"
-                >
-                  {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-                  <span>{isDark ? 'Light Theme' : 'Dark Theme'}</span>
-                </button>
-
+              <div className="flex items-center justify-end pt-3 border-t border-[var(--admin-card-border)]">
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/10 text-rose-500 text-xs font-bold"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition active:scale-95"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>

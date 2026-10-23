@@ -77,12 +77,6 @@
     transition: transform var(--chemora-dur-normal, 260ms) var(--chemora-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
     z-index: 1;
   }
-  html.light .chemora-dock-blob,
-  body.light .chemora-dock-blob {
-    background: linear-gradient(135deg, rgba(13, 110, 82, 0.16) 0%, rgba(5, 150, 105, 0.22) 100%);
-    border-color: rgba(13, 110, 82, 0.35);
-    box-shadow: 0 0 12px rgba(13, 110, 82, 0.2);
-  }
   .chemora-dock-item {
     position: relative;
     z-index: 2;
@@ -148,15 +142,6 @@
     transform: translateY(-1px);
     filter: drop-shadow(0 0 6px var(--chemora-accent-cyan-glow, rgba(56, 189, 248, 0.5)));
   }
-  html.light .chemora-dock-item[aria-current="page"] .chemora-dock-label,
-  body.light .chemora-dock-item[aria-current="page"] .chemora-dock-label {
-    color: var(--chemora-accent-cyan, #0d6e52);
-  }
-  html.light .chemora-dock-item[aria-current="page"] .chemora-dock-icon svg,
-  body.light .chemora-dock-item[aria-current="page"] .chemora-dock-icon svg {
-    stroke: var(--chemora-accent-cyan, #0d6e52);
-    filter: drop-shadow(0 0 4px var(--chemora-accent-cyan-glow, rgba(13, 110, 82, 0.3)));
-  }
   .chemora-floating-ask {
     position: fixed;
     right: 14px;
@@ -219,17 +204,6 @@
     opacity: 0;
     pointer-events: none;
   }
-  html.light .chemora-floating-ask {
-    background: linear-gradient(135deg, rgba(13, 110, 82, 0.2) 0%, rgba(5, 150, 105, 0.25) 100%);
-    background-color: rgba(244, 248, 244, 0.92);
-    border-color: rgba(13, 110, 82, 0.4);
-    box-shadow: 0 8px 20px -2px rgba(13, 110, 82, 0.25), 0 0 0 1px rgba(13, 110, 82, 0.12);
-    color: #0f172a;
-  }
-  html.light .chemora-floating-ask .ask-icon {
-    color: #0d6e52;
-    filter: drop-shadow(0 0 4px rgba(13, 110, 82, 0.4));
-  }
 }
 @keyframes chemoraAskGlow {
   0%, 100% {
@@ -263,18 +237,9 @@
   transition: transform var(--chemora-dur-fast, 200ms) var(--chemora-ease-out),
               box-shadow var(--chemora-dur-fast, 200ms) var(--chemora-ease-out);
 }
-html.light .chemora-card,
-body.light .chemora-card {
-  background: var(--chemora-glass-surface, rgba(255, 255, 255, 0.88));
-  border-color: var(--chemora-glass-border, rgba(13, 110, 82, 0.14));
-  box-shadow: var(--chemora-shadow-card, 0 4px 16px -2px rgba(13, 110, 82, 0.08));
-}
 @media (prefers-reduced-transparency: reduce) {
   .chemora-card {
     background: #0a1424 !important;
-  }
-  html.light .chemora-card, body.light .chemora-card {
-    background: #ffffff !important;
   }
 }
 @keyframes chemoraCardEnter {
@@ -300,10 +265,6 @@ body.light .chemora-card {
 .chemora-ring-bg {
   stroke: rgba(255, 255, 255, 0.1);
   fill: none;
-}
-html.light .chemora-ring-bg,
-body.light .chemora-ring-bg {
-  stroke: rgba(13, 110, 82, 0.12);
 }
 .chemora-ring-fill {
   fill: none;

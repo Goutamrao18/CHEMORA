@@ -40,58 +40,10 @@
   --chemora-dock-bottom-offset: calc(14px + env(safe-area-inset-bottom, 0px));
   --chemora-content-padding-bottom: calc(var(--chemora-dock-height) + var(--chemora-dock-bottom-offset) + 24px);
 }
-html.light,
-body.light {
-  --chemora-bg: #f4f7f4;
-  --chemora-bg-elevated: #ffffff;
-  --chemora-glass-surface: rgba(255, 255, 255, 0.88);
-  --chemora-glass-surface-pressed: rgba(230, 237, 230, 0.95);
-  --chemora-glass-border: rgba(13, 110, 82, 0.14);
-  --chemora-glass-border-focus: rgba(13, 110, 82, 0.55);
-  --chemora-dock-bg: rgba(244, 248, 244, 0.9);
-  --chemora-dock-border: rgba(13, 110, 82, 0.18);
-  --chemora-accent-cyan: #0d6e52;
-  --chemora-accent-cyan-glow: rgba(13, 110, 82, 0.25);
-  --chemora-accent-violet: #4f46e5;
-  --chemora-accent-violet-glow: rgba(79, 70, 229, 0.2);
-  --chemora-accent-amber: #d97706;
-  --chemora-accent-emerald: #059669;
-  --chemora-text-primary: #0f172a;       
-  --chemora-text-secondary: #334155;     
-  --chemora-text-muted: #64748b;         
-  --chemora-text-accent: #0d6e52;
-  --chemora-shadow-card: 0 4px 16px -2px rgba(13, 110, 82, 0.08);
-  --chemora-shadow-dock: 0 10px 28px -4px rgba(13, 110, 82, 0.14), 0 0 0 1px rgba(13, 110, 82, 0.12);
-  --chemora-shadow-pill: 0 6px 18px -2px rgba(13, 110, 82, 0.25);
-  --chemora-shadow-glow: 0 0 16px rgba(13, 110, 82, 0.2);
-}
-@media (prefers-color-scheme: light) {
-  :root:not(.dark) {
-    --chemora-bg: #f4f7f4;
-    --chemora-bg-elevated: #ffffff;
-    --chemora-glass-surface: rgba(255, 255, 255, 0.88);
-    --chemora-glass-surface-pressed: rgba(230, 237, 230, 0.95);
-    --chemora-glass-border: rgba(13, 110, 82, 0.14);
-    --chemora-glass-border-focus: rgba(13, 110, 82, 0.55);
-    --chemora-dock-bg: rgba(244, 248, 244, 0.9);
-    --chemora-dock-border: rgba(13, 110, 82, 0.18);
-    --chemora-accent-cyan: #0d6e52;
-    --chemora-accent-cyan-glow: rgba(13, 110, 82, 0.25);
-    --chemora-text-primary: #0f172a;
-    --chemora-text-secondary: #334155;
-    --chemora-text-muted: #64748b;
-    --chemora-text-accent: #0d6e52;
-  }
-}
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --chemora-glass-surface: #0a1424;
     --chemora-dock-bg: #07101f;
-    --chemora-glass-blur: 0px;
-  }
-  html.light, body.light {
-    --chemora-glass-surface: #ffffff;
-    --chemora-dock-bg: #f0f4f0;
     --chemora-glass-blur: 0px;
   }
 }

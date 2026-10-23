@@ -22,41 +22,6 @@
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Light Mode Variant (optional toggle) */
-.chemora-admin-root.light,
-.admin-portal-root.light,
-html:not(.dark) .admin-portal-root.light-enabled {
-  --admin-bg: #e9e8e1;
-  --admin-page-bg: #e9e8e1;
-  --admin-card-bg: #ffffff;
-  --admin-card-border: rgba(0, 0, 0, 0.06);
-  --admin-card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 1px 1px rgba(0, 0, 0, 0.02);
-  --admin-card-shadow-hover: 0 16px 36px -4px rgba(0, 0, 0, 0.09), 0 0 1px 1px rgba(0, 0, 0, 0.03);
-  --admin-text-main: #18202f;
-  --admin-text-muted: #64748b;
-  --admin-rail-bg: #ffffff;
-  --admin-rail-border: rgba(0, 0, 0, 0.08);
-  --admin-rail-active: #18202f;
-}
-
-/* Explicit Dark Mode Enforcement */
-.chemora-admin-root.dark,
-.admin-portal-root.dark,
-html.dark .admin-portal-root,
-html.dark .chemora-admin-root {
-  --admin-bg: #030814;
-  --admin-page-bg: #030814;
-  --admin-card-bg: #071224;
-  --admin-card-border: rgba(56, 189, 248, 0.14);
-  --admin-card-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  --admin-card-shadow-hover: 0 20px 45px -4px rgba(6, 182, 212, 0.18), 0 0 0 1px rgba(56, 189, 248, 0.3);
-  --admin-text-main: #f8fafc;
-  --admin-text-muted: #94a3b8;
-  --admin-rail-bg: #09162c;
-  --admin-rail-border: rgba(56, 189, 248, 0.2);
-  --admin-rail-active: #14a3c4;
-}
-
 /* ==========================================================================
    CSS Grid Layout for Admin Dashboard (FIX 2: Left Rail never overlaps content)
    ========================================================================== */

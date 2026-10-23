@@ -24,6 +24,7 @@
     "upload:videos": "node scripts/upload-videos.mjs"
   },
   "dependencies": {
+    "3dmol": "^2.5.5",
     "@google/genai": "^2.30.0",
     "@supabase/supabase-js": "^2.117.3",
     "@upstash/ratelimit": "^2.2.0",
@@ -42,6 +43,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "smiles-drawer": "^2.4.1",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },

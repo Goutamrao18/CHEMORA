@@ -1,26 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, Flame, X, Volume2, VolumeX, Command, Sun, Moon } from 'lucide-react';
+import { Search, Sparkles, Flame, X, Volume2, VolumeX, Command } from 'lucide-react';
 import { getDailyStreak, DailyStreakState } from '../data/streakManager';
 import { isSoundEnabled, setSoundEnabled, playSoftClick } from '../utils/soundEffects';
 
 interface TopBarProps {
   onSearch: (q: string) => void;
   onOpenAssistant: () => void;
-  onGoToProgress?: () => void;
   onOpenCommandPalette?: () => void;
   onSelectHome?: () => void;
-  isLightMode?: boolean;
-  onToggleTheme?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   onSearch,
   onOpenAssistant,
-  onGoToProgress,
   onOpenCommandPalette,
   onSelectHome,
-  isLightMode,
-  onToggleTheme,
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [streakState, setStreakState] = useState<DailyStreakState>(getDailyStreak);
@@ -152,32 +146,17 @@ export const TopBar: React.FC<TopBarProps> = ({
           {soundActive ? <Volume2 className="w-4 h-4 text-cyan-300" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
         </button>
 
-        {/* Theme Toggle (Light/Dark mode) */}
-        {onToggleTheme && (
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            aria-label={isLightMode ? 'Switch to dark mode' : 'Switch to light mode'}
-            title={isLightMode ? 'Current: Light theme (click to switch to Dark)' : 'Current: Dark theme (click to switch to Light)'}
-            className="hidden sm:flex min-w-[44px] min-h-[44px] rounded-full items-center justify-center border border-cyan-500/30 bg-[#07162e]/85 text-cyan-300 hover:text-cyan-100 hover:border-cyan-400 active:scale-[0.96] transition shadow-md backdrop-blur-md"
-          >
-            {isLightMode ? <Moon className="w-4 h-4 text-cyan-300" /> : <Sun className="w-4 h-4 text-amber-300" />}
-          </button>
-        )}
-
         {/* Streak Counter Chip */}
-        <button
-          type="button"
-          onClick={onGoToProgress}
-          aria-label="View daily streak and progress"
+        <div
+          aria-label={`Daily Streak: ${streakState.currentStreak} days`}
           title={`Daily Streak: ${streakState.currentStreak} days (${streakState.streakLevel})`}
-          className="min-h-[44px] px-3 rounded-full flex items-center gap-1.5 bg-[#0e1628]/90 border border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-amber-200 transition-all duration-200 shadow-[0_0_15px_rgba(245,158,11,0.25)] active:scale-[0.96] group backdrop-blur-md"
+          className="min-h-[44px] px-3 rounded-full flex items-center gap-1.5 bg-[#0e1628]/90 border border-amber-500/40 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] select-none backdrop-blur-md"
         >
-          <span className="text-base group-hover:scale-115 transition-transform duration-200">🔥</span>
+          <span className="text-base">🔥</span>
           <span className="text-xs font-black tracking-tight font-mono">
             {streakState.currentStreak}d
           </span>
-        </button>
+        </div>
       </div>
     </div>
   );

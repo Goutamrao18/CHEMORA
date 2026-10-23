@@ -53,7 +53,7 @@ export function CookieConsent() {
             </button>
           </div>
           <p className="text-slate-300 mt-1 leading-relaxed">
-            CHEMORA uses first-party session cookies and browser storage strictly to maintain researcher authentication, record learning streaks, and save theme preferences. We do not use third-party advertising or commercial tracking cookies.
+            CHEMORA uses first-party session cookies and browser storage strictly to maintain researcher authentication and record learning streaks. We do not use third-party advertising or commercial tracking cookies.
           </p>
           <div className="flex items-center gap-2 mt-3 pt-2 border-t border-cyan-950">
             <button

@@ -3574,6 +3574,9 @@ var account_default = router2;
 // server/routes/reviews.ts
 import express3 from "express";
 import { z as z3 } from "zod";
+import fsSync from "node:fs";
+import path2 from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 var router3 = express3.Router();
 var isProd4 = process.env.NODE_ENV === "production";
 function extractToken2(req) {
@@ -3599,7 +3602,18 @@ function validateReviewPlainText(text) {
   }
   return { valid: true };
 }
+var __filename2 = fileURLToPath2(import.meta.url);
+var __dirname2 = path2.dirname(__filename2);
+var reviewsFilePath = path2.resolve(__dirname2, "../../data/reviews.json");
 var devReviews = [];
+try {
+  if (fsSync.existsSync(reviewsFilePath)) {
+    const raw = fsSync.readFileSync(reviewsFilePath, "utf8");
+    devReviews = JSON.parse(raw);
+  }
+} catch (e) {
+  console.warn("Failed to load reviews.json seed:", e);
+}
 var devVotes = /* @__PURE__ */ new Set();
 function calculateSummary(records) {
   const totalCount = records.length;
@@ -3689,13 +3703,19 @@ router3.get("/", async (req, res) => {
           createdAt: r.created_at || (/* @__PURE__ */ new Date()).toISOString()
         }));
       }
-    } else if (!isProd4 || !admin) {
+    }
+    if (approvedReviews.length === 0) {
       approvedReviews = devReviews.filter((r) => r.status === "approved");
       if (category && category !== "all") {
         approvedReviews = approvedReviews.filter((r) => r.category.toLowerCase().includes(category.toLowerCase()));
       }
       if (minRating !== void 0) {
         approvedReviews = approvedReviews.filter((r) => r.rating >= minRating);
+      }
+      if (sort === "recent") {
+        approvedReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } else {
+        approvedReviews.sort((a, b) => b.helpful - a.helpful || b.rating - a.rating);
       }
     }
     const summary = calculateSummary(approvedReviews);
@@ -3713,7 +3733,7 @@ router3.get("/stats", async (_req, res) => {
     let approvedReviews = [];
     if (admin) {
       const { data } = await admin.from("chemora_reviews").select("*").eq("status", "approved");
-      if (data) {
+      if (data && data.length > 0) {
         approvedReviews = data.map((r) => ({
           id: r.id,
           authorName: r.author_name,
@@ -3729,7 +3749,8 @@ router3.get("/stats", async (_req, res) => {
           createdAt: r.created_at
         }));
       }
-    } else if (!isProd4 || !admin) {
+    }
+    if (approvedReviews.length === 0) {
       approvedReviews = devReviews.filter((r) => r.status === "approved");
     }
     return res.json(calculateSummary(approvedReviews));

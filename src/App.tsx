@@ -10,7 +10,6 @@ const HomeView = lazy(() => import('./components/HomeView').then((m) => ({ defau
 const KnowView = lazy(() => import('./components/KnowView').then((m) => ({ default: m.KnowView })));
 const ChallengeView = lazy(() => import('./components/ChallengeView').then((m) => ({ default: m.ChallengeView })));
 const ExperimentsView = lazy(() => import('./components/ExperimentsView').then((m) => ({ default: m.ExperimentsView })));
-const ProgressView = lazy(() => import('./components/ProgressView').then((m) => ({ default: m.ProgressView })));
 const AccountView = lazy(() => import('./components/AccountView').then((m) => ({ default: m.AccountView })));
 const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
@@ -36,14 +35,19 @@ export default function App() {
   const [isBubbleTransitioning, setIsBubbleTransitioning] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [isLightMode, setIsLightMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('chemora-theme') === 'light';
-    } catch {
-      return false;
-    }
-  });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Lock dark mode permanently & clear any legacy theme keys
+  useEffect(() => {
+    try {
+      localStorage.removeItem('chemora-theme');
+      localStorage.removeItem('chemora-admin-theme');
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+      document.body.classList.remove('light');
+      document.body.classList.add('dark');
+    } catch {}
+  }, []);
 
   // Global Ctrl/Cmd+K keyboard listener
   useEffect(() => {
@@ -56,23 +60,6 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  // Synchronize light/dark class on body & document
-  useEffect(() => {
-    try {
-      if (isLightMode) {
-        document.documentElement.classList.add('light');
-        document.documentElement.classList.remove('dark');
-        document.body.classList.add('light');
-        localStorage.setItem('chemora-theme', 'light');
-      } else {
-        document.documentElement.classList.remove('light');
-        document.documentElement.classList.add('dark');
-        document.body.classList.remove('light');
-        localStorage.setItem('chemora-theme', 'dark');
-      }
-    } catch {}
-  }, [isLightMode]);
 
   const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => {
     return window.location.pathname.startsWith('/admin') || window.location.hash.startsWith('#admin');
@@ -94,7 +81,7 @@ export default function App() {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-      if (['home', 'know', 'challenge', 'experiments', 'progress', 'account'].includes(hash)) {
+      if (['home', 'know', 'challenge', 'experiments', 'account'].includes(hash)) {
         setActiveTab(hash as ActiveTab);
       }
     };
@@ -160,8 +147,6 @@ export default function App() {
         onClose={() => setIsCommandPaletteOpen(false)}
         onSelectTab={handleSelectTab}
         onOpenAssistant={() => setIsAssistantOpen(true)}
-        isLightMode={isLightMode}
-        onToggleTheme={() => setIsLightMode(!isLightMode)}
       />
 
       {/* Background radial ambiance */}
@@ -174,9 +159,6 @@ export default function App() {
       <TopBar
         onSearch={handleSearch}
         onOpenAssistant={() => setIsAssistantOpen(true)}
-        isLightMode={isLightMode}
-        onToggleTheme={() => setIsLightMode(!isLightMode)}
-        onGoToProgress={() => handleSelectTab('progress')}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onSelectHome={() => handleSelectTab('home')}
       />
@@ -218,21 +200,10 @@ export default function App() {
           </ErrorBoundary>
         )}
 
-        {activeTab === 'progress' && (
-          <ErrorBoundary tabName="Researcher Progress">
-            <Suspense fallback={<ViewSkeleton label="Synchronizing Research Milestones..." />}>
-              <ProgressView
-                onGoToChallenge={() => handleSelectTab('challenge')}
-                onGoToExperiments={() => handleSelectTab('experiments')}
-              />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-
         {activeTab === 'account' && (
           <ErrorBoundary tabName="Researcher Account">
             <Suspense fallback={<ViewSkeleton label="Connecting to Researcher Profile..." />}>
-              <AccountView onThemeChanged={() => setIsLightMode(!isLightMode)} />
+              <AccountView />
             </Suspense>
           </ErrorBoundary>
         )}

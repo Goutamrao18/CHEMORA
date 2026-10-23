@@ -689,50 +689,6 @@ footer small {
 }
 
 
-/* =========================================================
-   LIGHT MODE
-========================================================= */
-
-body.light {
-
-    background:
-        #eef6ff;
-
-    color:
-        #10213d;
-}
-
-body.light .navbar {
-
-    background:
-        rgba(255,255,255,.88);
-}
-
-body.light .navbar nav a {
-
-    color:
-        #52627c;
-}
-
-body.light .hero h1 {
-
-    color:
-        #10213d;
-}
-
-body.light .hero h2 {
-
-    color:
-        #385274;
-}
-
-body.light .hero p {
-
-    color:
-        #607493;
-}
-
-
 /* =========================================
    CHEMORA UNIVERSAL NAVBAR
    ========================================= */
@@ -1525,20 +1481,6 @@ body.light .hero p {
 @media(prefers-reduced-motion:reduce){
   .orbit-spinner,.orbit-content{animation:none}
 }
-
-body.light .chemora-orbit{
-  background:radial-gradient(circle at center,rgba(0,150,220,.12),transparent 45%),#eef6ff;
-}
-
-body.light .orbit-center,
-body.light .orbit-node{
-  background:radial-gradient(circle at 35% 25%,#dff7ff,#f4f9ff);
-  color:#10213d;
-}
-
-body.light .orbit-center strong,
-body.light .orbit-content b{color:#10213d}
-
 
 /* =========================================================
    CHEMORA HOME ORBIT — FINAL ORIENTATION FIX

@@ -5,7 +5,6 @@ import {
   BookOpen,
   Trophy,
   FlaskConical,
-  BarChart3,
   User,
   Sparkles,
 } from 'lucide-react';
@@ -28,7 +27,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'know', label: 'Know', icon: BookOpen },
   { id: 'challenge', label: 'Arena', icon: Trophy },
   { id: 'experiments', label: 'Labs', icon: FlaskConical },
-  { id: 'progress', label: 'Stats', icon: BarChart3 },
   { id: 'account', label: 'Account', icon: User },
 ];
 

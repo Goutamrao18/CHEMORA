@@ -30,18 +30,6 @@
   --glass-shadow-glow-amber: 0 0 35px rgba(245, 158, 11, 0.22), 0 15px 45px rgba(0, 0, 0, 0.5);
 }
 
-/* Light mode overrides */
-.light {
-  --glass-bg-base: rgba(255, 255, 255, 0.78);
-  --glass-bg-card: rgba(248, 250, 252, 0.85);
-  --glass-bg-subtle: rgba(241, 245, 249, 0.65);
-  --glass-bg-elevated: rgba(255, 255, 255, 0.95);
-  --glass-border-subtle: rgba(14, 165, 233, 0.2);
-  --glass-border-standard: rgba(14, 165, 233, 0.35);
-  --glass-border-highlight: rgba(255, 255, 255, 0.85);
-  --glass-shadow-soft: 0 12px 30px -4px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.04);
-}
-
 /* --------------------------------------------------------------------------
    Core Glass Panel & Card Utility Classes
    -------------------------------------------------------------------------- */

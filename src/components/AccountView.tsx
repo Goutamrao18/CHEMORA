@@ -56,9 +56,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { AvatarCropModal } from './AvatarCropModal';
 import { withTimeout } from '../utils/fetchWithRetry';
 
-interface AccountViewProps {
-  onThemeChanged?: () => void;
-}
+interface AccountViewProps {}
 
 const AVATAR_OPTIONS = [
   { label: 'Flask', url: '/favicon.png' },
@@ -81,7 +79,7 @@ function cleanErrorMessage(rawMsg: string | undefined): string {
 // Module-level deduplication cache to prevent re-logging and re-fetching on tab switches
 let moduleActiveSession: { userId?: string; token?: string } = {};
 
-export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
+export const AccountView: React.FC<AccountViewProps> = () => {
   // Session & Profile state from Backend (Zero localStorage policy)
   const [profile, setProfile] = useState<UserProfile>(getStoredProfile);
   const [accountProfile, setAccountProfile] = useState<AccountProfile | null>(null);
@@ -602,26 +600,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     }
   };
 
-  // Google OAuth Sign In
-  const handleGoogleSignIn = async () => {
-    setIsSubmittingAuth(true);
-    setAuthError(null);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + window.location.pathname + '#account',
-        },
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      const msg = err.message || 'Google sign-in encountered an error.';
-      setAuthError(msg);
-      triggerToast(msg, 'error');
-      setIsSubmittingAuth(false);
-    }
-  };
-
   // Sign Up
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -963,10 +941,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
     };
     setProfile(updated);
     saveStoredUiPreferences(updated.preferences);
-
-    if (key === 'theme' && onThemeChanged) {
-      onThemeChanged();
-    }
   };
 
   // Delete Account
@@ -1180,7 +1154,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                 onClearSuccess={() => setAuthSuccess(null)}
                 onSignIn={handleSignIn}
                 onSignUp={handleSignUp}
-                onGoogleSignIn={handleGoogleSignIn}
                 onForgotPassword={async (recoveryEmail) => {
                   if (!recoveryEmail.trim()) {
                     setAuthError('Please enter an email address.');

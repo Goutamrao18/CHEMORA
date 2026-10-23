@@ -17,14 +17,6 @@ body {
   box-sizing: border-box;
 }
 
-body.light {
-  --preview-bg: #f1f5f9;
-  --preview-card: #ffffff;
-  --preview-border: #cbd5e1;
-  --preview-text: #0f172a;
-  --preview-muted: #64748b;
-}
-
 .preview-container {
   max-width: 1100px;
   margin: 0 auto;

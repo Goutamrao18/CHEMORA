@@ -5,7 +5,6 @@ import {
   BookOpen,
   Trophy,
   Beaker,
-  Compass,
   User,
   Volume2,
   VolumeX,
@@ -23,8 +22,6 @@ interface CommandPaletteProps {
   onClose: () => void;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenAssistant: () => void;
-  isLightMode?: boolean;
-  onToggleTheme?: () => void;
 }
 
 interface CommandItem {
@@ -41,8 +38,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose,
   onSelectTab,
   onOpenAssistant,
-  isLightMode,
-  onToggleTheme,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -111,14 +106,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => { onSelectTab('experiments'); onClose(); },
       },
       {
-        id: 'nav-progress',
-        title: 'Progress & Discipline Rings',
-        subtitle: 'Concentric analytics, 52-week streak heatmap & badges',
-        category: 'Navigation',
-        icon: <Compass className="w-4 h-4 text-amber-400" />,
-        action: () => { onSelectTab('progress'); onClose(); },
-      },
-      {
         id: 'nav-account',
         title: 'Researcher Profile',
         subtitle: 'Account settings, lab rank & preferences',
@@ -143,14 +130,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         icon: soundActive ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />,
         action: () => { toggleSound(); },
       },
-      ...(onToggleTheme ? [{
-        id: 'act-theme',
-        title: isLightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode',
-        subtitle: isLightMode ? 'Enable dark laboratory theme' : 'Enable clean light laboratory theme',
-        category: 'Actions' as const,
-        icon: <span className="text-cyan-400">{isLightMode ? '🌙' : '☀️'}</span>,
-        action: () => { onToggleTheme(); onClose(); },
-      }] : []),
     ];
 
     // Add popular chemical library items
@@ -167,7 +146,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }));
 
     return [...list, ...sampleItems];
-  }, [soundActive, onSelectTab, onOpenAssistant, onClose, isLightMode, onToggleTheme]);
+  }, [soundActive, onSelectTab, onOpenAssistant, onClose]);
 
   const filteredCommands = useMemo(() => {
     if (!query.trim()) return commands;

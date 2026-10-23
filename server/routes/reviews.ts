@@ -67,8 +67,24 @@ function validateReviewPlainText(text: string): { valid: boolean; error?: string
   return { valid: true };
 }
 
-// In-memory dev cache only when Supabase is not provisioned
-const devReviews: ReviewRecord[] = [];
+import fsSync from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const reviewsFilePath = path.resolve(__dirname, '../../data/reviews.json');
+
+// In-memory dev cache loaded from data/reviews.json
+let devReviews: ReviewRecord[] = [];
+try {
+  if (fsSync.existsSync(reviewsFilePath)) {
+    const raw = fsSync.readFileSync(reviewsFilePath, 'utf8');
+    devReviews = JSON.parse(raw);
+  }
+} catch (e) {
+  console.warn('Failed to load reviews.json seed:', e);
+}
 const devVotes = new Set<string>(); // "reviewId:userId"
 
 function calculateSummary(records: ReviewRecord[]): ReviewSummary {
@@ -181,13 +197,20 @@ router.get('/', async (req: Request, res: Response) => {
           createdAt: r.created_at || new Date().toISOString(),
         }));
       }
-    } else if (!isProd || !admin) {
+    }
+
+    if (approvedReviews.length === 0) {
       approvedReviews = devReviews.filter((r) => r.status === 'approved');
       if (category && category !== 'all') {
         approvedReviews = approvedReviews.filter((r) => r.category.toLowerCase().includes(category.toLowerCase()));
       }
       if (minRating !== undefined) {
         approvedReviews = approvedReviews.filter((r) => r.rating >= minRating);
+      }
+      if (sort === 'recent') {
+        approvedReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } else {
+        approvedReviews.sort((a, b) => b.helpful - a.helpful || b.rating - a.rating);
       }
     }
 
@@ -208,7 +231,7 @@ router.get('/stats', async (_req: Request, res: Response) => {
     let approvedReviews: ReviewRecord[] = [];
     if (admin) {
       const { data } = await admin.from('chemora_reviews').select('*').eq('status', 'approved');
-      if (data) {
+      if (data && data.length > 0) {
         approvedReviews = data.map((r: any) => ({
           id: r.id,
           authorName: r.author_name,
@@ -224,7 +247,8 @@ router.get('/stats', async (_req: Request, res: Response) => {
           createdAt: r.created_at,
         }));
       }
-    } else if (!isProd || !admin) {
+    }
+    if (approvedReviews.length === 0) {
       approvedReviews = devReviews.filter((r) => r.status === 'approved');
     }
     return res.json(calculateSummary(approvedReviews));

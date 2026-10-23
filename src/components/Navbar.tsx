@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, Search, User as UserIcon, BookOpen, Trophy, Beaker, TrendingUp, Home } from 'lucide-react';
+import { Sparkles, Search, User as UserIcon, BookOpen, Trophy, Beaker, Home } from 'lucide-react';
 
-export type ActiveTab = 'home' | 'know' | 'challenge' | 'experiments' | 'progress' | 'account';
+export type ActiveTab = 'home' | 'know' | 'challenge' | 'experiments' | 'account';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -33,7 +33,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'know', label: 'Know', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'challenge', label: 'Challenge', icon: <Trophy className="w-3.5 h-3.5" /> },
     { id: 'experiments', label: 'Experiments', icon: <Beaker className="w-3.5 h-3.5" /> },
-    { id: 'progress', label: 'Progress', icon: <TrendingUp className="w-3.5 h-3.5" /> },
   ];
 
   return (

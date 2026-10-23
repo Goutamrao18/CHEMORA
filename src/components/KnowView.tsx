@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { KNOWLEDGE_ITEMS, KnowledgeItem } from '../data/knowledgeData';
 import { Glossary } from './Glossary';
-import { Search, X, Sparkles, Filter, BookOpen, Layers, ZoomIn, ShieldAlert, AlertTriangle, Flame } from 'lucide-react';
+import { Search, X, Sparkles, Filter, BookOpen, Layers, ZoomIn, ShieldAlert, AlertTriangle, Flame, Atom } from 'lucide-react';
+import { PeriodicTable } from './PeriodicTable';
 import { DropperDrip } from './Loaders/DropperDrip';
 import { NFPA704Diamond } from './NFPA704Diamond';
 import { ImageZoomViewer } from './ImageZoomViewer';
@@ -34,7 +35,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 }
 
 export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI }) => {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'glossary'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'periodic-table' | 'glossary'>('catalog');
   const [search, setSearch] = useState(initialSearch);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'apparatus' | 'chemicals' | 'indicators' | 'hazards'>('all');
   const [activeModalItem, setActiveModalItem] = useState<KnowledgeItem | null>(null);
@@ -159,7 +160,7 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
           Explore laboratory apparatus, glassware, chemical reagents, NFPA 704 safety diamonds, and a searchable dictionary of chemistry terms.
         </p>
 
-        {/* View Mode Switcher: Apparatus Catalog vs Glossary */}
+        {/* View Mode Switcher: Apparatus Catalog vs Periodic Table vs Glossary */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3 mt-6">
           <button
             type="button"
@@ -176,6 +177,19 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
 
           <button
             type="button"
+            onClick={() => { setActiveTab('periodic-table'); playSoftClick(); }}
+            className={`flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
+              activeTab === 'periodic-table'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
+                : 'bg-[#0f172a] text-slate-300 hover:text-white border border-cyan-950 hover:border-cyan-800'
+            }`}
+          >
+            <Atom className="w-4 h-4" />
+            <span>Periodic Table (118 Elements)</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => { setActiveTab('glossary'); playSoftClick(); }}
             className={`flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
               activeTab === 'glossary'
@@ -184,12 +198,14 @@ export const KnowView: React.FC<KnowViewProps> = ({ initialSearch = '', onAskAI 
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Chemistry Glossary &amp; Dictionary</span>
+            <span>Chemistry Glossary</span>
           </button>
         </div>
       </div>
 
-      {activeTab === 'glossary' ? (
+      {activeTab === 'periodic-table' ? (
+        <PeriodicTable onAskAI={onAskAI} />
+      ) : activeTab === 'glossary' ? (
         <Glossary onAskAI={onAskAI} initialSearch={search} />
       ) : (
         <>

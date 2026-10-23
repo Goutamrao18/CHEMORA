@@ -9,17 +9,6 @@
   --chem-shimmer-bg: rgba(14, 27, 49, 0.7);
   --chem-shimmer-glow: rgba(0, 240, 255, 0.12);
 }
-body.light {
-  --chem-loader-primary: #0284c7;
-  --chem-loader-secondary: #2563eb;
-  --chem-loader-accent: #059669;
-  --chem-loader-surface: #ffffff;
-  --chem-loader-muted: #94a3b8;
-  --chem-loader-flask-glass: rgba(2, 132, 199, 0.5);
-  --chem-loader-flask-liquid: rgba(14, 165, 233, 0.3);
-  --chem-shimmer-bg: rgba(226, 232, 240, 0.8);
-  --chem-shimmer-glow: rgba(255, 255, 255, 0.85);
-}
 .chem-loader {
   display: inline-flex;
   align-items: center;

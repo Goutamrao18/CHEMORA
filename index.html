@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
   <title>Chemora lab — Chemistry Learning Platform & Virtual Laboratory</title>
   <meta name="description" content="Chemora lab — Interactive chemistry learning platform and virtual laboratory for apparatus discovery, curriculum-aligned challenges, and guided scientific experiments." />
   <meta name="author" content="Goutam" />
@@ -20,7 +21,19 @@
   <meta name="twitter:title" content="Chemora lab — Chemistry Learning Platform & Virtual Laboratory" />
   <meta name="twitter:description" content="Chemora lab — Interactive chemistry learning platform and virtual laboratory for apparatus discovery, curriculum-aligned challenges, and guided scientific experiments." />
   <meta name="twitter:image" content="/assets/chemora-share.png" />
-  <meta name="theme-color" content="#111a34" />
+  <meta name="theme-color" content="#080d17" />
+  <script>
+    try {
+      localStorage.removeItem('chemora-theme');
+      localStorage.removeItem('chemora-admin-theme');
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+      if (document.body) {
+        document.body.classList.remove('light');
+        document.body.classList.add('dark');
+      }
+    } catch (e) {}
+  </script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

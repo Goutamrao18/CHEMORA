@@ -50,17 +50,8 @@ export const AdminView: React.FC = () => {
     return () => clearInterval(interval);
   }, [resendCountdown]);
 
-  // Navigation & Theme (Dark teal is the default for CHEMORA Admin)
+  // Navigation (Dark teal is the fixed look for CHEMORA Admin)
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem('chemora-admin-theme');
-      if (stored === 'light') return false;
-      return true;
-    } catch {
-      return true;
-    }
-  });
 
   // Global Data & Stats
   const [statsData, setStatsData] = useState<any>(null);
@@ -72,18 +63,14 @@ export const AdminView: React.FC = () => {
   const [assistantInitialQuery, setAssistantInitialQuery] = useState('');
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
 
-  // Synchronize dark theme class
+  // Enforce permanent dark mode
   useEffect(() => {
     try {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('chemora-admin-theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('chemora-admin-theme', 'light');
-      }
+      localStorage.removeItem('chemora-admin-theme');
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
     } catch {}
-  }, [isDark]);
+  }, []);
 
   // Check existing session
   const verifySession = useCallback(async () => {
@@ -401,21 +388,14 @@ export const AdminView: React.FC = () => {
           }}
         />
 
-        {/* Back to Chemora Public Platform link & Theme Toggle */}
-        <div className="w-full max-w-[430px] mb-2 sm:mb-3 flex items-center justify-between z-10 px-1">
+        {/* Back to Chemora Public Platform link */}
+        <div className="w-full max-w-[430px] mb-2 sm:mb-3 flex items-center justify-start z-10 px-1">
           <a
             href="/"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] transition"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Chemora Academy
           </a>
-          <button
-            onClick={() => setIsDark(!isDark)}
-            aria-label="Toggle visual theme"
-            className="text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text-main)] px-2.5 py-1 rounded-xl border border-[var(--admin-card-border)] bg-[var(--admin-card-bg)] shadow-xs transition"
-          >
-            {isDark ? 'Light mode' : 'Dark mode'}
-          </button>
         </div>
 
         {/* Control Room Auth Card */}
@@ -463,8 +443,6 @@ export const AdminView: React.FC = () => {
         <AdminSidebarRail
           activeTab={activeTab}
           onSelectTab={setActiveTab}
-          isDark={isDark}
-          onToggleTheme={() => setIsDark(!isDark)}
           onLogout={handleSignOut}
           adminName={adminUser.name || 'Admin'}
           adminEmail={adminUser.email}

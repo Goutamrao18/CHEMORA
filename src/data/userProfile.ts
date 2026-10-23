@@ -56,7 +56,7 @@ export function getStoredUiPreferences(): UserPreferences {
     if (!raw) return GUEST_PROFILE.preferences;
     const parsed = JSON.parse(raw);
     return {
-      theme: parsed.theme === 'light' ? 'light' : 'dark',
+      theme: 'dark',
       soundEffects: parsed.soundEffects ?? true,
       highContrast: Boolean(parsed.highContrast),
       autoExplain: parsed.autoExplain ?? true,

@@ -4,7 +4,6 @@ import {
   Sparkles,
   BookOpen,
   Trophy,
-  Compass,
   Beaker,
   ChevronRight,
   ArrowRight,
@@ -17,6 +16,7 @@ import {
 import { videoUrl, localVideoUrl } from '../utils/videoUrl';
 import { Skeleton } from './Loaders/Skeleton';
 import { LiquidButton } from './ui/LiquidButton';
+import { ReviewsSection } from './ReviewsSection';
 
 interface HomeViewProps {
   onSelectTab: (tab: ActiveTab) => void;
@@ -134,8 +134,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
       a: 'CHEMORA is a comprehensive chemistry learning platform combining an interactive 134-item knowledge library, guided practical experiments with video explainers, 100 progressive challenges, and an AI chemistry tutor.',
     },
     {
-      q: 'Can I track my learning progress?',
-      a: 'Yes! Challenge results, completed practical experiments, earned XP, accuracy metrics, and strengths across topics are automatically saved in your browser and account.',
+      q: 'What curriculum levels are covered in the Challenge Arena?',
+      a: 'The Challenge Arena features 100 progressive levels with over 1,000 curriculum-aligned questions covering organic synthesis, inorganic nomenclature, chemical bonding, stoichiometry, and physical chemistry.',
     },
     {
       q: 'Does CHEMORA replace a real laboratory?',
@@ -298,14 +298,14 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           </p>
         </div>
 
-        {/* 4-Item Asymmetric Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Card 1: Style A (Primary Bento - 2 Columns) - Know Library */}
+        {/* 3-Pillar Interactive Modules Bento Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Card 1: Knowledge Repository */}
           <div
             onClick={() => onSelectTab('know')}
-            className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061830]/90 via-[#051428]/80 to-[#020b18]/90 border border-cyan-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-cyan-400/60 hover:shadow-[0_20px_60px_rgba(20,163,196,0.22)] transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061830]/90 via-[#051428]/80 to-[#020b18]/90 border border-cyan-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-cyan-400/60 hover:shadow-[0_20px_60px_rgba(20,163,196,0.22)] transition-all duration-300 cursor-pointer"
           >
-            {/* Oversized Numbered Section Index (Item 4) */}
+            {/* Oversized Numbered Section Index */}
             <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-cyan-400/10 select-none pointer-events-none group-hover:text-cyan-400/15 transition-colors">
               01
             </span>
@@ -320,64 +320,72 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
                     KNOWLEDGE REPOSITORY
                   </div>
                   <h3 className="text-xl font-bold text-white group-hover:text-cyan-200 transition-colors">
-                    Apparatus &amp; Chemical Library
+                    Apparatus &amp; Library
                   </h3>
                 </div>
               </div>
 
-              <p className="text-slate-300 text-sm leading-relaxed max-w-xl mb-6">
-                Master 134 precision instruments, glassware, and active chemical reagents. Complete with NFPA 704 hazard diamonds, formula breakdowns, and usage guidelines.
+              {/* Stat Counter */}
+              <div className="my-4">
+                <div className="text-4xl font-black font-mono text-white tracking-tight">
+                  <AnimatedCounter end={134} suffix="+" />
+                </div>
+                <div className="text-xs font-mono text-cyan-300/80 mt-1">
+                  Cataloged Instruments &amp; Chemicals
+                </div>
+              </div>
+
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
+                Master 134 precision instruments, active chemical reagents, and the interactive 118-element periodic table with live PubChem structures and NFPA 704 safety standards.
               </p>
 
-              {/* Bento Content Preview Pills/Metrics */}
-              <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-300">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#091b33] border border-cyan-900/60">
-                  <span className="text-cyan-400 font-black text-sm">
-                    <AnimatedCounter end={134} suffix="+" />
-                  </span>
-                  <span className="text-slate-400">Items Cataloged</span>
+              {/* Bento Content Preview Pills */}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-300">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#091b33] border border-cyan-900/60">
+                  <span className="text-cyan-400 font-bold">118 Elements</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#091b33] border border-cyan-900/60">
-                  <span className="text-emerald-400 font-black text-sm">NFPA 704</span>
-                  <span className="text-slate-400">Safety Standards</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#091b33] border border-cyan-900/60">
+                  <span className="text-emerald-400 font-bold">NFPA 704</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#091b33] border border-cyan-900/60">
-                  <span className="text-purple-400 font-black text-sm">Glossary</span>
-                  <span className="text-slate-400">Chemistry Dictionary</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#091b33] border border-cyan-900/60">
+                  <span className="text-purple-400 font-bold">PubChem API</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-8 flex items-center justify-between border-t border-cyan-900/40 pt-4">
               <span className="text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
-                <span>Explore apparatus &amp; chemicals</span>
+                <span>Explore repository</span>
                 <ArrowRight className="w-4 h-4" />
               </span>
               <span className="text-[11px] font-mono text-slate-400">Interactive Database</span>
             </div>
           </div>
 
-          {/* Card 2: Style B (Compact Metric Bento - 1 Column) - Challenge Arena */}
+          {/* Card 2: Challenge Arena */}
           <div
             onClick={() => onSelectTab('challenge')}
-            className="col-span-1 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a1226]/90 via-[#070e1e]/85 to-[#040814]/90 border border-purple-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-purple-400/60 hover:shadow-[0_20px_60px_rgba(155,114,255,0.2)] transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a1226]/90 via-[#070e1e]/85 to-[#040814]/90 border border-purple-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-purple-400/60 hover:shadow-[0_20px_60px_rgba(155,114,255,0.2)] transition-all duration-300 cursor-pointer"
           >
-            {/* Oversized Numbered Section Index (Item 4) */}
+            {/* Oversized Numbered Section Index */}
             <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-purple-400/10 select-none pointer-events-none group-hover:text-purple-400/15 transition-colors">
               02
             </span>
 
             <div>
-              <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center text-purple-300 mb-4 group-hover:scale-105 transition-transform">
-                <Trophy className="w-5 h-5" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center text-purple-300 group-hover:scale-105 transition-transform">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-mono text-purple-400 font-semibold tracking-wider uppercase">
+                    COMPETITIVE ARENA
+                  </div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-purple-200 transition-colors">
+                    Chemistry Challenge
+                  </h3>
+                </div>
               </div>
-
-              <div className="text-[11px] font-mono text-purple-400 font-semibold tracking-wider uppercase mb-1">
-                COMPETITIVE ARENA
-              </div>
-              <h3 className="text-xl font-bold text-white group-hover:text-purple-200 transition-colors mb-3">
-                Chemistry Challenge
-              </h3>
 
               {/* Animated Stat Counter */}
               <div className="my-4">
@@ -389,9 +397,22 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
                 </div>
               </div>
 
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-                Test your mastery with 1,000 curriculum-aligned questions, streak multipliers, and instant answer explanations.
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
+                Test your mastery with 1,000 curriculum-aligned questions, streak multipliers, detailed chemical rationale, and instant explanation breakdowns.
               </p>
+
+              {/* Bento Content Preview Pills */}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-300">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#14122c] border border-purple-900/60">
+                  <span className="text-purple-400 font-bold">1,000+ Questions</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#14122c] border border-purple-900/60">
+                  <span className="text-cyan-400 font-bold">NCERT Aligned</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#14122c] border border-purple-900/60">
+                  <span className="text-amber-400 font-bold">Daily Streaks</span>
+                </div>
+              </div>
             </div>
 
             <div className="mt-8 border-t border-purple-900/40 pt-4 flex items-center justify-between">
@@ -399,64 +420,18 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
                 <span>Enter arena</span>
                 <ChevronRight className="w-4 h-4" />
               </span>
-              <span className="text-[10px] font-mono text-purple-400">1,000+ Questions</span>
+              <span className="text-[10px] font-mono text-purple-400">100 Levels</span>
             </div>
           </div>
 
-          {/* Card 3: Style B (Compact Metric Bento - 1 Column) - Progress Dashboard */}
-          <div
-            onClick={() => onSelectTab('progress')}
-            className="col-span-1 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#121624]/90 via-[#0d121c]/85 to-[#060912]/90 border border-amber-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-amber-400/60 hover:shadow-[0_20px_60px_rgba(245,158,11,0.2)] transition-all duration-300 cursor-pointer"
-          >
-            {/* Oversized Numbered Section Index (Item 4) */}
-            <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-amber-400/10 select-none pointer-events-none group-hover:text-amber-400/15 transition-colors">
-              03
-            </span>
-
-            <div>
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-300 mb-4 group-hover:scale-105 transition-transform">
-                <Compass className="w-5 h-5" />
-              </div>
-
-              <div className="text-[11px] font-mono text-amber-400 font-semibold tracking-wider uppercase mb-1">
-                RESEARCH METRICS
-              </div>
-              <h3 className="text-xl font-bold text-white group-hover:text-amber-200 transition-colors mb-3">
-                Discipline Mastery
-              </h3>
-
-              {/* Animated Stat Counter */}
-              <div className="my-4">
-                <div className="text-4xl font-black font-mono text-white tracking-tight">
-                  <AnimatedCounter end={4} suffix=" Disciplines" />
-                </div>
-                <div className="text-xs font-mono text-amber-300/80 mt-1">
-                  Organic · Inorganic · Physical · Analytical
-                </div>
-              </div>
-
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-                Concentric pure-SVG progress rings, GitHub-style 52-week activity heatmap, and researcher milestone ranks.
-              </p>
-            </div>
-
-            <div className="mt-8 border-t border-amber-900/40 pt-4 flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
-                <span>View analytics</span>
-                <ChevronRight className="w-4 h-4" />
-              </span>
-              <span className="text-[10px] font-mono text-amber-400">Activity Heatmap</span>
-            </div>
-          </div>
-
-          {/* Card 4: Style A (Primary Bento - 2 Columns) - Guided Practicals */}
+          {/* Card 3: Guided Laboratory Practicals */}
           <div
             onClick={() => onSelectTab('experiments')}
-            className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061c28]/90 via-[#041620]/80 to-[#020b12]/90 border border-emerald-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-emerald-400/60 hover:shadow-[0_20px_60px_rgba(70,226,176,0.22)] transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061c28]/90 via-[#041620]/80 to-[#020b12]/90 border border-emerald-500/30 p-7 sm:p-8 flex flex-col justify-between hover:border-emerald-400/60 hover:shadow-[0_20px_60px_rgba(70,226,176,0.22)] transition-all duration-300 cursor-pointer"
           >
-            {/* Oversized Numbered Section Index (Item 4) */}
+            {/* Oversized Numbered Section Index */}
             <span className="absolute right-6 top-3 text-7xl sm:text-8xl font-black font-mono text-emerald-400/10 select-none pointer-events-none group-hover:text-emerald-400/15 transition-colors">
-              04
+              03
             </span>
 
             <div>
@@ -469,37 +444,42 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
                     PRACTICAL PROTOCOLS
                   </div>
                   <h3 className="text-xl font-bold text-white group-hover:text-emerald-200 transition-colors">
-                    Guided Laboratory Practicals
+                    Laboratory Practicals
                   </h3>
                 </div>
               </div>
 
-              <p className="text-slate-300 text-sm leading-relaxed max-w-xl mb-6">
-                Step-by-step chemical procedures for 20 essential experiments. Includes high-fidelity demonstration videos with custom keyboard controls, persistent playback, and interactive step completion rings.
+              {/* Animated Stat Counter */}
+              <div className="my-4">
+                <div className="text-4xl font-black font-mono text-white tracking-tight">
+                  <AnimatedCounter end={20} />
+                </div>
+                <div className="text-xs font-mono text-emerald-300/80 mt-1">
+                  Verified Practical Protocols
+                </div>
+              </div>
+
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
+                Step-by-step chemical procedures for 20 essential experiments. Includes high-fidelity demonstration videos with custom keyboard controls and safety checklists.
               </p>
 
-              {/* Bento Content Preview Pills/Metrics */}
-              <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-300">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#09221b] border border-emerald-900/60">
-                  <span className="text-emerald-400 font-black text-sm">
-                    <AnimatedCounter end={20} />
-                  </span>
-                  <span className="text-slate-400">Verified Practicals</span>
+              {/* Bento Content Preview Pills */}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-300">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#09221b] border border-emerald-900/60">
+                  <span className="text-emerald-400 font-bold">HD Video</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#09221b] border border-emerald-900/60">
-                  <span className="text-cyan-400 font-black text-sm">HD Video</span>
-                  <span className="text-slate-400">Step Demonstrations</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#09221b] border border-emerald-900/60">
+                  <span className="text-amber-400 font-bold">Safety Protocols</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#09221b] border border-emerald-900/60">
-                  <span className="text-amber-400 font-black text-sm">Safety</span>
-                  <span className="text-slate-400">Hazchem Protocols</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#09221b] border border-emerald-900/60">
+                  <span className="text-cyan-400 font-bold">Checklists</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-8 flex items-center justify-between border-t border-emerald-900/40 pt-4">
               <span className="text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
-                <span>Start lab investigation</span>
+                <span>Start lab practicals</span>
                 <ArrowRight className="w-4 h-4" />
               </span>
               <span className="text-[11px] font-mono text-slate-400">Interactive Checklist</span>
@@ -507,6 +487,9 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           </div>
         </div>
       </section>
+
+      {/* Peer Reviews & Community Ratings Section (Connected to Supabase) */}
+      <ReviewsSection onOpenAuth={() => onSelectTab('account')} />
 
       {/* FAQ Accordion Section */}
       <section className="rounded-3xl bg-[#051124]/90 border border-cyan-900/50 p-6 sm:p-10 shadow-xl">

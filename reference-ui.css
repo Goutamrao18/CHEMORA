@@ -149,11 +149,6 @@ body:has(.profile-head) .profile-head{max-width:1250px!important;margin:0 auto 1
 body:has(.profile-head) .hero-stats{max-width:1250px!important;margin-left:auto!important;margin-right:auto!important}
 body:has(.profile-head) .progress-section,body:has(.profile-head) .achievements,body:has(.profile-head) .profile-settings{max-width:1250px!important;margin-left:auto!important;margin-right:auto!important}
 
-/* Light mode: keep the same product identity instead of mixing old styles */
-body.light{background:#07111f!important;color:#eef8ff!important}
-body.light:before{background:radial-gradient(circle at 25% 10%,rgba(38,139,255,.18),transparent 34%),radial-gradient(circle at 78% 28%,rgba(145,69,255,.12),transparent 32%),linear-gradient(180deg,#020816,#020510 70%,#01030a)!important}
-body.light .topbar,body.light .card,body.light .progress-card,body.light .knowledge-card,body.light .exp,body.light .bench,body.light .shelf,body.light .profile-settings{color:#f7fbff!important}
-
 /* Mobile: keep every destination reachable */
 @media(max-width:900px){
   :root{--cm-sidebar:0px}
@@ -311,11 +306,6 @@ button.secondary-btn{font:inherit;font-weight:700;cursor:pointer}
 }
 .chemora-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .chemora-toast[data-type="error"] { border-color: #ff8b8b; }
-body.light .cm-top-tools { background: rgba(248,251,255,.96); color: #14213b; border-color: rgba(42,78,130,.25); }
-body.light .cm-search { background: rgba(20,45,80,.04); }
-body.light .cm-search input::placeholder { color: #52627a; }
-body.light .cm-tool-btn { color: #14213b; }
-body.light .chemora-toast { background: #f7fbff; color: #14213b; }
 @media (max-width: 520px) {
   .cm-top-tools {
     right: 10px;
