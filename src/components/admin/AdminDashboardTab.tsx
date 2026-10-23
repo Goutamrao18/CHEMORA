@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { LiquidLoader } from '../ui/LiquidLoader';
 import {
   Users,
   UserPlus,
@@ -519,7 +520,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
               disabled={isCheckingVideos}
               className="px-3 py-1.5 rounded-xl border border-[var(--admin-card-border)] text-xs font-bold flex items-center gap-1.5 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 transition"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isCheckingVideos ? 'animate-spin' : ''}`} />
+              {isCheckingVideos ? <LiquidLoader size="xs" label="Scanning..." /> : <RefreshCw className="w-3.5 h-3.5" />}
               <span>{isCheckingVideos ? 'Scanning...' : 'Re-check'}</span>
             </button>
           </div>

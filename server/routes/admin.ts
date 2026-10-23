@@ -6,8 +6,6 @@ import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateSecret, generateURI, verifySync } from 'otplib';
-import QRCode from 'qrcode';
 import { Redis } from '@upstash/redis';
 import {
   getSupabaseAdminClient,
@@ -42,29 +40,22 @@ function sanitizeText(input: string): string {
     .trim();
 }
 
-const router = express.Router();
-const isProd = process.env.NODE_ENV === 'production';
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-
-/**
- * Validates a 6-digit TOTP code against a decrypted base32 secret.
- * Strictly uses time-based one-time password verification without static PIN bypasses.
- */
-export function verifyTotpToken(token: string, secret: string): boolean {
-  if (!token || !secret) return false;
-  const cleanToken = token.trim();
-  const cleanSecret = secret.trim();
-
-  try {
-    const result = verifySync({ token: cleanToken, secret: cleanSecret });
-    return result?.valid === true;
-  } catch {
-    return false;
-  }
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
+const router = express.Router();
+const isProd = process.env.NODE_ENV === 'production';
+export const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+export const ABSOLUTE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours absolute session ceiling
+
 // ============================================================================
-// 1. Session & 2FA Secrets Management (Stateless HMAC & AES-256-GCM)
+// 1. Session & Email OTP Challenge Management (Stateless HMAC & Resend API)
 // ============================================================================
 export interface AdminSessionPayload {
   userId: string;
@@ -73,95 +64,55 @@ export interface AdminSessionPayload {
   role: 'super_admin' | 'admin' | 'moderator';
   sessionId: string;
   iat: number; // issued-at timestamp in ms
-  exp: number; // expiration timestamp in ms
+  exp: number; // sliding expiration timestamp in ms (max 30 min idle)
+  absExp: number; // absolute expiration timestamp in ms (max 8 hours)
 }
 
-export interface Temp2faPayload {
+export interface AdminPreauthPayload {
   userId: string;
+  challengeId: string;
   email: string;
-  fullName: string;
-  role: 'super_admin' | 'admin' | 'moderator';
-  type: 'temp_2fa';
   exp: number;
 }
 
 /**
  * Retrieves the session signing secret.
- * If ADMIN_SESSION_SECRET is missing, derives a deterministic 256-bit HMAC key
- * from Supabase keys to prevent runtime 500 errors in production environments.
+ * Fail-closed: Throws if ADMIN_SESSION_SECRET is missing or shorter than 32 characters.
  */
 export function getAdminSessionSecret(): string {
   const secret = process.env.ADMIN_SESSION_SECRET?.trim();
-  if (secret) {
-    return secret;
+  if (!secret || secret.length < 32) {
+    safeLogError('Fatal Security Error: ADMIN_SESSION_SECRET is missing or shorter than 32 characters.');
+    throw new Error('ADMIN_SESSION_SECRET must be configured with at least 32 characters.');
   }
-
-  const fallbackSource =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.SUPABASE_ANON_KEY?.trim() ||
-    process.env.VITE_SUPABASE_ANON_KEY?.trim();
-
-  if (fallbackSource) {
-    return crypto.createHmac('sha256', fallbackSource).update('chemora-admin-session-signing-key').digest('hex');
-  }
-
-  return 'chemora-default-admin-session-fallback-secret-key-32chars';
+  return secret;
 }
 
 /**
- * Derives a 32-byte key for AES-256-GCM 2FA secret encryption.
+ * Derives a key for HMAC-SHA256 OTP challenge hashing with purpose separation.
  */
-function get2faEncryptionKey(): Buffer {
-  const keySource =
-    process.env.ADMIN_2FA_ENCRYPTION_KEY?.trim() ||
-    process.env.ADMIN_SESSION_SECRET?.trim() ||
-    getAdminSessionSecret();
-  return crypto.createHash('sha256').update(keySource).digest();
+function getOtpSecretKey(): Buffer {
+  const secret = getAdminSessionSecret();
+  return crypto.createHmac('sha256', secret).update('chemora-admin-otp-challenge-key').digest();
 }
 
 /**
- * Encrypts a TOTP secret at rest with AES-256-GCM.
- * Output format: enc:<ivHex>:<tagHex>:<ciphertextHex>
+ * Computes deterministic HMAC-SHA256 hash of challengeId + ':' + code.
  */
-export function encrypt2faSecret(plainSecret: string): string {
-  const key = get2faEncryptionKey();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  let encrypted = cipher.update(plainSecret, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const tag = cipher.getAuthTag().toString('hex');
-  return `enc:${iv.toString('hex')}:${tag}:${encrypted}`;
+export function hashOtpCode(challengeId: string, code: string): string {
+  const key = getOtpSecretKey();
+  return crypto.createHmac('sha256', key).update(`${challengeId}:${code}`).digest('hex');
 }
 
 /**
- * Decrypts an AES-256-GCM encrypted TOTP secret.
- * Handles backward-compatibility for unencrypted base32 strings and raw PINs.
+ * Masks an admin email address for user presentation (e.g. s•••••@gmail.com).
  */
-export function decrypt2faSecret(storedSecret: string): string {
-  if (!storedSecret) return '';
-  const trimmed = storedSecret.trim();
-  if (!trimmed.startsWith('enc:')) {
-    // Unencrypted legacy base32 or plain string fallback
-    return trimmed;
-  }
-  try {
-    const parts = trimmed.split(':');
-    if (parts.length !== 4) {
-      return trimmed;
-    }
-    const [, ivHex, tagHex, cipherHex] = parts;
-    const key = get2faEncryptionKey();
-    const iv = Buffer.from(ivHex, 'hex');
-    const tag = Buffer.from(tagHex, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
-    let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted.trim();
-  } catch (err) {
-    safeLogWarn('Failed to decrypt 2FA secret with AES-256-GCM, using raw string:', err);
-    return trimmed;
-  }
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return '•••••@chemora.lab';
+  const [local, domain] = email.trim().toLowerCase().split('@');
+  const first = local.charAt(0) || '•';
+  const dots = '•'.repeat(Math.max(3, Math.min(5, local.length - 1)));
+  return `${first}${dots}@${domain}`;
 }
 
 /**
@@ -192,7 +143,11 @@ export function verifyAdminToken(token: string): AdminSessionPayload | null {
     }
 
     const payload: AdminSessionPayload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
-    if (!payload.userId || !payload.exp || Date.now() > payload.exp) {
+    const now = Date.now();
+    if (!payload.userId || !payload.exp || now > payload.exp) {
+      return null;
+    }
+    if (payload.absExp && now > payload.absExp) {
       return null;
     }
     return payload;
@@ -202,40 +157,408 @@ export function verifyAdminToken(token: string): AdminSessionPayload | null {
 }
 
 /**
- * Signs a short-lived (5 min) temporary 2FA pending token.
+ * Signs a short-lived (10 min) signed httpOnly admin_preauth token.
  */
-export function signTemp2faToken(payload: Omit<Temp2faPayload, 'type' | 'exp'>): string {
+export function signAdminPreauthToken(payload: Omit<AdminPreauthPayload, 'exp'>, expiresInMs = 10 * 60 * 1000): string {
   const secret = getAdminSessionSecret();
-  const fullPayload: Temp2faPayload = {
+  const fullPayload: AdminPreauthPayload = {
     ...payload,
-    type: 'temp_2fa',
-    exp: Date.now() + 5 * 60 * 1000,
+    exp: Date.now() + expiresInMs,
   };
   const payloadStr = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
-  const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(`preauth:${payloadStr}`).digest('base64url');
   return `${payloadStr}.${signature}`;
 }
 
-export function verifyTemp2faToken(token: string): Temp2faPayload | null {
+export function verifyAdminPreauthToken(token: string): AdminPreauthPayload | null {
   try {
     const secret = getAdminSessionSecret();
     const parts = token.split('.');
     if (parts.length !== 2) return null;
     const [payloadStr, signature] = parts;
-    const expectedSig = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
+    const expectedSig = crypto.createHmac('sha256', secret).update(`preauth:${payloadStr}`).digest('base64url');
     const sigBuf = Buffer.from(signature);
     const expBuf = Buffer.from(expectedSig);
     if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       return null;
     }
-    const payload: Temp2faPayload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
-    if (payload.type !== 'temp_2fa' || Date.now() > payload.exp) {
+    const payload: AdminPreauthPayload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
+    if (!payload.userId || !payload.challengeId || !payload.exp || Date.now() > payload.exp) {
       return null;
     }
     return payload;
   } catch {
     return null;
   }
+}
+
+// ============================================================================
+// Email Delivery via AgentMail REST API (Zero new dependencies)
+// ============================================================================
+export interface SendOtpResult {
+  ok: boolean;
+  code?: 'otp_unavailable' | 'otp_send_failed';
+  error?: string;
+  status?: number;
+}
+
+export async function sendAdminOtpEmail(params: {
+  toEmail: string;
+  code: string;
+  ip: string;
+  requestTime: string;
+}): Promise<SendOtpResult> {
+  const apiKey = process.env.AGENTMAIL_API_KEY?.trim();
+  const inboxId = process.env.AGENTMAIL_INBOX_ID?.trim();
+  const apiBase = (process.env.AGENTMAIL_API_BASE?.trim() || 'https://api.agentmail.to').replace(/\/+$/, '');
+  const isDevAllowed = !isProd && process.env.ALLOW_DEV_ADMIN === 'true' && process.env.TEST_SIMULATE_NO_EMAIL !== 'true';
+
+  if (!apiKey || !inboxId) {
+    safeLogError('AgentMail email delivery failed closed: AGENTMAIL_API_KEY or AGENTMAIL_INBOX_ID is not configured.');
+    if (isDevAllowed) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      code: 'otp_unavailable',
+      error: 'AgentMail configuration missing',
+    };
+  }
+
+  const safeCode = escapeHtml(params.code);
+  const safeIp = escapeHtml(params.ip);
+  const safeTime = escapeHtml(params.requestTime);
+
+  const textContent = [
+    `Your Chemora admin sign-in code is: ${params.code}`,
+    '',
+    'This code is valid for 10 minutes and can only be used once.',
+    `Request time: ${params.requestTime}`,
+    `Approximate IP: ${params.ip}`,
+    '',
+    'If this wasn\'t you, change your password now and report unauthorized access.',
+  ].join('\n');
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #040914; color: #f1f5f9; padding: 32px 16px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #081120; border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h1 style="color: #38bdf8; font-size: 20px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: 1px;">CHEMORA CONTROL ROOM</h1>
+      <p style="color: #94a3b8; font-size: 13px; margin: 0;">Administrative Authentication Code</p>
+    </div>
+    <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 14px; padding: 20px; text-align: center; margin: 24px 0;">
+      <div style="font-family: monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #38bdf8;">
+        ${safeCode}
+      </div>
+      <p style="color: #06b6d4; font-size: 11px; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">
+        Valid for 10 minutes
+      </p>
+    </div>
+    <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 0 0 16px 0;">
+      A sign-in request was initiated for your Chemora administrator account. Enter this code to complete authentication.
+    </p>
+    <div style="background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 12px 16px; font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 20px;">
+      <div>Time: ${safeTime}</div>
+      <div>Approximate IP: ${safeIp}</div>
+    </div>
+    <div style="border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 16px; font-size: 11px; color: #f43f5e;">
+      <strong>Security notice:</strong> If this wasn't you, change your password now and report unauthorized access.
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const endpoint = `${apiBase}/inboxes/${encodeURIComponent(inboxId)}/messages/send`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: params.toEmail,
+        subject: 'Your Chemora admin sign-in code',
+        text: textContent,
+        html: htmlContent,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      let errorDetail = errText.slice(0, 500);
+      try {
+        const json = JSON.parse(errText);
+        errorDetail = json.message || json.name || errorDetail;
+      } catch {}
+      safeLogError(`AgentMail API returned error status ${res.status}: ${errorDetail}`);
+      return {
+        ok: false,
+        code: 'otp_send_failed',
+        error: `AgentMail HTTP error ${res.status}`,
+        status: res.status,
+      };
+    }
+
+    return { ok: true };
+  } catch (err: any) {
+    const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError' || err?.code === 23;
+    const errorMsg = isTimeout ? 'Request timed out after 8s' : (err?.message || 'Network error');
+    safeLogError(`Failed to send admin OTP email via AgentMail API: ${errorMsg}`);
+    return {
+      ok: false,
+      code: 'otp_send_failed',
+      error: errorMsg,
+    };
+  }
+}
+
+// ============================================================================
+// admin_otp_challenges Storage & Verification Layer
+// ============================================================================
+export interface AdminOtpChallengeRecord {
+  id: string;
+  user_id: string;
+  code_hash: string;
+  expires_at: string;
+  attempts: number;
+  max_attempts: number;
+  consumed_at: string | null;
+  ip: string;
+  created_at: string;
+}
+
+const inMemoryOtpChallenges = new Map<string, AdminOtpChallengeRecord>();
+
+// Development test hook: keeps last generated code for local test suites only
+let devLastGeneratedOtp: { userId: string; challengeId: string; code: string } | null = null;
+
+export function getDevLastGeneratedOtpCode(): { userId: string; challengeId: string; code: string } | null {
+  if (process.env.NODE_ENV === 'production') return null;
+  return devLastGeneratedOtp;
+}
+
+export async function createOtpChallenge(challenge: {
+  challengeId: string;
+  userId: string;
+  codeHash: string;
+  expiresAt: string;
+  ip: string;
+}): Promise<AdminOtpChallengeRecord> {
+  const record: AdminOtpChallengeRecord = {
+    id: challenge.challengeId,
+    user_id: challenge.userId,
+    code_hash: challenge.codeHash,
+    expires_at: challenge.expiresAt,
+    attempts: 0,
+    max_attempts: 5,
+    consumed_at: null,
+    ip: challenge.ip,
+    created_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseAdminConfigured() && !challenge.userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data, error } = await client
+          .from('admin_otp_challenges')
+          .insert({
+            id: challenge.challengeId,
+            user_id: challenge.userId,
+            code_hash: challenge.codeHash,
+            expires_at: challenge.expiresAt,
+            attempts: 0,
+            max_attempts: 5,
+            consumed_at: null,
+            ip: challenge.ip,
+          })
+          .select('*')
+          .single();
+
+        if (!error && data) {
+          return data as AdminOtpChallengeRecord;
+        }
+        if (error) {
+          safeLogWarn('Supabase admin_otp_challenges insert failed, using in-memory store:', error.message);
+        }
+      }
+    } catch (err: any) {
+      safeLogWarn('Failed to insert admin_otp_challenges row in Supabase:', err);
+    }
+  }
+
+  inMemoryOtpChallenges.set(challenge.challengeId, record);
+  return record;
+}
+
+export async function invalidateUserChallenges(userId: string): Promise<void> {
+  const now = new Date().toISOString();
+  if (isSupabaseAdminConfigured() && !userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        await client
+          .from('admin_otp_challenges')
+          .update({ consumed_at: now })
+          .eq('user_id', userId)
+          .is('consumed_at', null);
+      }
+    } catch (err) {
+      safeLogWarn('Failed to invalidate previous challenges in Supabase:', err);
+    }
+  }
+
+  for (const [id, c] of inMemoryOtpChallenges.entries()) {
+    if (c.user_id === userId && !c.consumed_at) {
+      c.consumed_at = now;
+      inMemoryOtpChallenges.set(id, c);
+    }
+  }
+}
+
+export async function getChallenge(challengeId: string, userId: string): Promise<AdminOtpChallengeRecord | null> {
+  if (isSupabaseAdminConfigured() && !userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data, error } = await client
+          .from('admin_otp_challenges')
+          .select('*')
+          .eq('id', challengeId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!error && data) {
+          return data as AdminOtpChallengeRecord;
+        }
+      }
+    } catch (err) {
+      safeLogWarn('Failed to query challenge from Supabase:', err);
+    }
+  }
+
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem && mem.user_id === userId) {
+    return mem;
+  }
+  return null;
+}
+
+export async function incrementChallengeAttempts(challengeId: string, userId: string): Promise<number> {
+  if (isSupabaseAdminConfigured() && !userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data } = await client
+          .from('admin_otp_challenges')
+          .select('attempts')
+          .eq('id', challengeId)
+          .maybeSingle();
+        const nextAttempts = (data?.attempts || 0) + 1;
+        await client
+          .from('admin_otp_challenges')
+          .update({ attempts: nextAttempts })
+          .eq('id', challengeId);
+        return nextAttempts;
+      }
+    } catch (err) {
+      safeLogWarn('Failed to increment attempts in Supabase:', err);
+    }
+  }
+
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem) {
+    mem.attempts += 1;
+    inMemoryOtpChallenges.set(challengeId, mem);
+    return mem.attempts;
+  }
+  return 1;
+}
+
+export async function consumeChallenge(challengeId: string, userId: string): Promise<boolean> {
+  const now = new Date().toISOString();
+  if (isSupabaseAdminConfigured() && !userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data, error } = await client
+          .from('admin_otp_challenges')
+          .update({ consumed_at: now })
+          .eq('id', challengeId)
+          .is('consumed_at', null)
+          .select('id');
+        if (!error && data && data.length > 0) {
+          return true;
+        }
+        return false;
+      }
+    } catch (err) {
+      safeLogWarn('Failed to consume challenge in Supabase:', err);
+    }
+  }
+
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem && !mem.consumed_at) {
+    mem.consumed_at = now;
+    inMemoryOtpChallenges.set(challengeId, mem);
+    return true;
+  }
+  return false;
+}
+
+export async function invalidateChallenge(challengeId: string): Promise<void> {
+  const now = new Date().toISOString();
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        await client
+          .from('admin_otp_challenges')
+          .update({ consumed_at: now })
+          .eq('id', challengeId);
+      }
+    } catch {}
+  }
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem) {
+    mem.consumed_at = now;
+    inMemoryOtpChallenges.set(challengeId, mem);
+  }
+}
+
+export async function getLatestChallenge(userId: string): Promise<AdminOtpChallengeRecord | null> {
+  if (isSupabaseAdminConfigured() && !userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data } = await client
+          .from('admin_otp_challenges')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data) return data as AdminOtpChallengeRecord;
+      }
+    } catch {}
+  }
+
+  let latest: AdminOtpChallengeRecord | null = null;
+  for (const c of inMemoryOtpChallenges.values()) {
+    if (c.user_id === userId) {
+      if (!latest || new Date(c.created_at).getTime() > new Date(latest.created_at).getTime()) {
+        latest = c;
+      }
+    }
+  }
+  return latest;
 }
 
 // In-memory revocation tracking fallback (for dev or if sessions_valid_after is used across restarts)
@@ -251,8 +574,6 @@ export interface DevAdminAccount {
   fullName: string;
   role: 'super_admin';
   passwordHash: string;
-  twoFactorSecret?: string;
-  twoFactorEnabled?: boolean;
 }
 
 // Mutable dev state for local testing (only active when ALLOW_DEV_ADMIN=true in development)
@@ -281,8 +602,6 @@ export function getDevAdmin(): DevAdminAccount | null {
       fullName: 'Development Administrator',
       role: 'super_admin',
       passwordHash: bcrypt.hashSync(password, 10),
-      twoFactorSecret: process.env.DEV_ADMIN_2FA_SECRET || undefined,
-      twoFactorEnabled: process.env.DEV_ADMIN_2FA_ENABLED === 'true',
     };
   }
   return devAdminState;
@@ -398,7 +717,7 @@ export async function clearAdminLockouts(options: { email?: string; ip?: string;
 }
 
 /**
- * Express middleware for admin login & 2FA endpoints.
+ * Express middleware for admin login & OTP endpoints.
  * Returns 429 if the IP is already locked out (>= 5 failures within 15 min).
  */
 export async function adminLoginRateLimiter(req: Request, res: Response, next: NextFunction) {
@@ -588,12 +907,21 @@ export async function requireAdmin(
     return res.status(404).json({ error: 'Endpoint not found' });
   }
 
-  // Sliding expiry: issue refreshed session token extending the 30-minute idle window
+  // Sliding expiry: issue refreshed session token extending the 30-minute idle window up to 8h absolute ceiling
   try {
+    const now = Date.now();
+    const absExp = payload.absExp || (payload.iat + ABSOLUTE_TIMEOUT_MS);
+    if (now > absExp) {
+      res.clearCookie('chemora_admin_session');
+      return res.status(404).json({ error: 'Endpoint not found' });
+    }
+
+    const nextExp = Math.min(now + IDLE_TIMEOUT_MS, absExp);
     const refreshedPayload: AdminSessionPayload = {
       ...payload,
       role: currentRole,
-      exp: Date.now() + IDLE_TIMEOUT_MS,
+      exp: nextExp,
+      absExp,
     };
     const refreshedToken = signAdminToken(refreshedPayload);
     res.cookie('chemora_admin_session', refreshedToken, {
@@ -601,7 +929,7 @@ export async function requireAdmin(
       secure: isProd,
       sameSite: 'strict',
       path: '/',
-      maxAge: IDLE_TIMEOUT_MS,
+      maxAge: Math.max(1000, nextExp - now),
     });
   } catch {}
 
@@ -642,14 +970,17 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // ============================================================================
-// 6. Admin Authentication Endpoints (/login, /verify-2fa, /me, /logout, /logout-all)
+// 6. Admin Authentication Endpoints (/login, /otp/verify, /otp/resend, /me, /logout, /logout-all)
 // ============================================================================
 
 // Minimum 6 character password for Supabase compatibility
 const AdminLoginSchema = z.object({
   email: z.string().trim().email('Invalid email address format.'),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
-  twoFactorCode: z.string().trim().optional(),
+});
+
+const AdminOtpVerifySchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, 'Verification code must be exactly 6 digits.'),
 });
 
 type LoginFailureReason =
@@ -669,6 +1000,14 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
   const ip = getClientIp(req);
 
   try {
+    // 0. Ensure session secret is configured (Fail closed)
+    try {
+      getAdminSessionSecret();
+    } catch {
+      safeLogError('Admin login blocked: ADMIN_SESSION_SECRET is missing or invalid.');
+      return res.status(503).json({ error: 'Administrative authentication unavailable.' });
+    }
+
     // 1. Validate Input Schema (400 on malformed input)
     const parsed = AdminLoginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -678,7 +1017,7 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
       });
     }
 
-    const { email, password, twoFactorCode } = parsed.data;
+    const { email, password } = parsed.data;
 
     // 2. Check per-email rate limit (5 attempts / 15 min)
     const emailFailures = await getFailureCount('email', email);
@@ -696,13 +1035,11 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
       email: string;
       fullName: string;
       role: 'super_admin' | 'admin' | 'moderator';
-      twoFactorSecret?: string;
-      twoFactorEnabled?: boolean;
     } | null = null;
 
     let failureReason: LoginFailureReason = 'wrong_password';
 
-    // 4. Try Supabase verification if configured
+    // 3. Try Supabase verification if configured
     if (isSupabaseAdminConfigured()) {
       try {
         const anonClient = getSupabaseAnonClient();
@@ -718,7 +1055,7 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
             safeLogWarn('Supabase admin authentication failure:', authErr?.message || 'invalid auth');
             failureReason = 'wrong_password';
           } else {
-            // Verify user is in admin_users table (use select('*') to prevent schema cache failures on optional columns)
+            // Verify user is in admin_users table
             const { data: adminRow, error: adminErr } = await adminClient
               .from('admin_users')
               .select('*')
@@ -729,17 +1066,11 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
               safeLogWarn('User authenticated in Supabase but no admin_users row found:', adminErr?.message || 'no row');
               failureReason = 'no_admin_row';
             } else {
-              const has2fa =
-                adminRow.two_factor_enabled === true ||
-                Boolean(adminRow.two_factor_secret && String(adminRow.two_factor_secret).trim().length > 0);
-
               authenticatedAdmin = {
                 id: authData.user.id,
                 email: authData.user.email || email,
                 fullName: authData.user.user_metadata?.full_name || 'Administrator',
                 role: adminRow.role as any,
-                twoFactorSecret: adminRow.two_factor_secret || undefined,
-                twoFactorEnabled: has2fa,
               };
             }
           }
@@ -750,8 +1081,7 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
       }
     }
 
-    // 5. Dev Fallback: ONLY when NODE_ENV === 'development' AND ALLOW_DEV_ADMIN === 'true'
-    // In production, getDevAdmin() unconditionally returns null.
+    // 4. Dev Fallback: ONLY when NODE_ENV === 'development' AND ALLOW_DEV_ADMIN === 'true'
     if (!authenticatedAdmin && !isProd) {
       const dev = getDevAdmin();
       if (dev && dev.email.toLowerCase() === email.toLowerCase()) {
@@ -762,8 +1092,6 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
             email: dev.email,
             fullName: dev.fullName,
             role: dev.role,
-            twoFactorSecret: dev.twoFactorSecret,
-            twoFactorEnabled: dev.twoFactorEnabled,
           };
         } else {
           failureReason = 'wrong_password';
@@ -771,63 +1099,110 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
       }
     }
 
-    // Handle Authentication Failure
+    // Handle Authentication Failure (generic 401 response)
     if (!authenticatedAdmin) {
       await recordFailure('ip', ip);
       await recordFailure('email', email);
       logLoginFailure(failureReason, ip, email);
       await writeAdminAudit('anonymous', email, 'LOGIN_FAILED', 'admin_auth', { reason: failureReason }, ip);
 
-      // Keep generic 401 wording to prevent user enumeration
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    // 6. Direct Authentication (2FA removed from Admin panels)
-    // Clear rate limit counters upon successful credential authentication
+    // Check Email service configuration (Fail closed in production)
+    const agentMailKey = process.env.AGENTMAIL_API_KEY?.trim();
+    const agentMailInbox = process.env.AGENTMAIL_INBOX_ID?.trim();
+    const isDevAdminAllowed = !isProd && process.env.ALLOW_DEV_ADMIN === 'true' && process.env.TEST_SIMULATE_NO_EMAIL !== 'true';
 
-    // Reset rate limit counters upon successful authentication
-    await clearRateLimit('ip', ip);
-    await clearRateLimit('email', email);
+    if (!agentMailKey || !agentMailInbox) {
+      if (!isDevAdminAllowed) {
+        safeLogError('Admin login failed closed: AGENTMAIL_API_KEY or AGENTMAIL_INBOX_ID is not configured.');
+        return res.status(503).json({
+          code: 'otp_unavailable',
+          error: 'Email verification is not configured on this server.',
+        });
+      }
+    }
 
-    // Generate stateless HMAC-signed admin session token
-    const now = Date.now();
-    const sessionPayload: AdminSessionPayload = {
+    // Invalidate older unconsumed challenges for that user
+    await invalidateUserChallenges(authenticatedAdmin.id);
+
+    // Generate 6-digit random code
+    const codeNum = crypto.randomInt(100000, 1000000);
+    const code = codeNum.toString();
+    const challengeId = crypto.randomUUID();
+    const codeHash = hashOtpCode(challengeId, code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await createOtpChallenge({
+      challengeId,
       userId: authenticatedAdmin.id,
+      codeHash,
+      expiresAt,
+      ip,
+    });
+
+    if (!isProd && isDevAdminAllowed) {
+      devLastGeneratedOtp = {
+        userId: authenticatedAdmin.id,
+        challengeId,
+        code,
+      };
+    }
+
+    // Send email to the ADMIN'S OWN verified address
+    const emailResult = await sendAdminOtpEmail({
+      toEmail: authenticatedAdmin.email,
+      code,
+      ip,
+      requestTime: new Date().toUTCString(),
+    });
+
+    if (!emailResult.ok) {
+      await invalidateChallenge(challengeId);
+      if (emailResult.code === 'otp_unavailable') {
+        return res.status(503).json({
+          code: 'otp_unavailable',
+          error: 'Email verification is not configured on this server.',
+        });
+      }
+      return res.status(503).json({
+        code: 'otp_send_failed',
+        error: "We couldn't send the code. Please try again.",
+      });
+    }
+
+    // Issue short-lived (10 min) signed httpOnly admin_preauth cookie
+    const preauthToken = signAdminPreauthToken({
+      userId: authenticatedAdmin.id,
+      challengeId,
       email: authenticatedAdmin.email,
-      fullName: authenticatedAdmin.fullName,
-      role: authenticatedAdmin.role,
-      sessionId: crypto.randomBytes(16).toString('hex'),
-      iat: now,
-      exp: now + IDLE_TIMEOUT_MS,
-    };
+    });
 
-    const token = signAdminToken(sessionPayload);
-
-    res.cookie('chemora_admin_session', token, {
+    res.cookie('admin_preauth', preauthToken, {
       httpOnly: true,
       secure: isProd,
       sameSite: 'strict',
       path: '/',
-      maxAge: IDLE_TIMEOUT_MS,
+      maxAge: 10 * 60 * 1000,
     });
+
+    const maskedEmail = maskEmail(authenticatedAdmin.email);
 
     await writeAdminAudit(
       authenticatedAdmin.id,
       authenticatedAdmin.email,
-      'LOGIN_SUCCESS',
+      'OTP_SENT',
       'admin_auth',
-      { role: authenticatedAdmin.role },
+      { challengeId, maskedEmail, expiresIn: 600 },
       ip
     );
 
     return res.json({
-      success: true,
-      admin: {
-        id: authenticatedAdmin.id,
-        email: authenticatedAdmin.email,
-        fullName: authenticatedAdmin.fullName,
-        role: authenticatedAdmin.role,
-      },
+      step: 'otp',
+      maskedEmail,
+      expiresIn: 600,
+      resendAfter: 60,
     });
   } catch (err: any) {
     safeLogError('Unhandled error in admin /login endpoint:', err);
@@ -835,11 +1210,316 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
   }
 });
 
-// Standalone 2FA Verification Route (Deprecated - 2FA removed from Admin panels)
-router.post('/verify-2fa', adminLoginRateLimiter, async (req: Request, res: Response) => {
+// ============================================================================
+// POST /api/admin/otp/verify - Mandatory OTP Verification Route
+// ============================================================================
+router.post('/otp/verify', adminLoginRateLimiter, async (req: Request, res: Response) => {
+  const ip = getClientIp(req);
+  const preauthCookie = req.cookies?.admin_preauth;
+
+  if (!preauthCookie || typeof preauthCookie !== 'string') {
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification session has expired or is missing. Please sign in again.',
+    });
+  }
+
+  const preauth = verifyAdminPreauthToken(preauthCookie);
+  if (!preauth) {
+    res.clearCookie('admin_preauth', { path: '/' });
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification session has expired or is invalid. Please sign in again.',
+    });
+  }
+
+  const parsed = AdminOtpVerifySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Verification code must be exactly 6 digits.',
+    });
+  }
+
+  const { code } = parsed.data;
+
+  // Retrieve challenge
+  const challenge = await getChallenge(preauth.challengeId, preauth.userId);
+  if (!challenge || challenge.consumed_at) {
+    res.clearCookie('admin_preauth', { path: '/' });
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification code has expired or already been used. Please sign in again.',
+    });
+  }
+
+  // Check if expired
+  if (new Date(challenge.expires_at).getTime() < Date.now()) {
+    await invalidateChallenge(challenge.id);
+    res.clearCookie('admin_preauth', { path: '/' });
+    await writeAdminAudit(preauth.userId, preauth.email, 'OTP_FAILED', 'admin_auth', { reason: 'expired', challengeId: challenge.id }, ip);
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification code has expired. Please sign in again.',
+    });
+  }
+
+  // Atomically increment attempts BEFORE comparing
+  const currentAttempts = await incrementChallengeAttempts(challenge.id, preauth.userId);
+  if (currentAttempts > challenge.max_attempts) {
+    await invalidateChallenge(challenge.id);
+    res.clearCookie('admin_preauth', { path: '/' });
+    await writeAdminAudit(preauth.userId, preauth.email, 'OTP_LOCKED', 'admin_auth', { challengeId: challenge.id, attempts: currentAttempts }, ip);
+    return res.status(429).json({
+      code: 'otp_locked',
+      error: 'Too many failed attempts. This verification code has been locked. Please sign in again.',
+    });
+  }
+
+  // Compare with crypto.timingSafeEqual on HMACs
+  const candidateHash = hashOtpCode(challenge.id, code);
+  const expBuf = Buffer.from(challenge.code_hash, 'hex');
+  const candBuf = Buffer.from(candidateHash, 'hex');
+  const isMatch = expBuf.length === candBuf.length && crypto.timingSafeEqual(expBuf, candBuf);
+
+  if (!isMatch) {
+    const attemptsLeft = Math.max(0, challenge.max_attempts - currentAttempts);
+    await writeAdminAudit(preauth.userId, preauth.email, 'OTP_FAILED', 'admin_auth', { challengeId: challenge.id, attemptsLeft }, ip);
+
+    if (attemptsLeft === 0) {
+      await invalidateChallenge(challenge.id);
+      res.clearCookie('admin_preauth', { path: '/' });
+      await writeAdminAudit(preauth.userId, preauth.email, 'OTP_LOCKED', 'admin_auth', { challengeId: challenge.id }, ip);
+      return res.status(429).json({
+        code: 'otp_locked',
+        error: 'Too many failed attempts. This verification code has been locked. Please sign in again.',
+        attemptsLeft: 0,
+      });
+    }
+
+    return res.status(401).json({
+      code: 'otp_invalid',
+      error: 'Invalid verification code.',
+      attemptsLeft,
+    });
+  }
+
+  // Success: atomically consume challenge
+  const consumed = await consumeChallenge(challenge.id, preauth.userId);
+  if (!consumed) {
+    res.clearCookie('admin_preauth', { path: '/' });
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification code has already been consumed.',
+    });
+  }
+
+  // Clear admin_preauth cookie
+  res.clearCookie('admin_preauth', { path: '/' });
+
+  // Clear rate limits
+  await clearRateLimit('ip', ip);
+  await clearRateLimit('email', preauth.email);
+
+  // Fetch admin user record for role & fullName
+  let adminRecord: { id: string; email: string; fullName: string; role: 'super_admin' | 'admin' | 'moderator' } = {
+    id: preauth.userId,
+    email: preauth.email,
+    fullName: 'Administrator',
+    role: 'admin',
+  };
+
+  if (isSupabaseAdminConfigured() && !preauth.userId.startsWith('admin_dev')) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data: adminRow } = await client
+          .from('admin_users')
+          .select('role')
+          .eq('user_id', preauth.userId)
+          .maybeSingle();
+        if (adminRow?.role) {
+          adminRecord.role = adminRow.role as any;
+        }
+      }
+    } catch {}
+  } else if (!isProd) {
+    const dev = getDevAdmin();
+    if (dev && dev.id === preauth.userId) {
+      adminRecord = {
+        id: dev.id,
+        email: dev.email,
+        fullName: dev.fullName,
+        role: dev.role,
+      };
+    }
+  }
+
+  // Issue normal signed admin session cookie: 30 min idle timeout, 8 hr absolute limit
+  const now = Date.now();
+  const sessionPayload: AdminSessionPayload = {
+    userId: adminRecord.id,
+    email: adminRecord.email,
+    fullName: adminRecord.fullName,
+    role: adminRecord.role,
+    sessionId: crypto.randomBytes(16).toString('hex'),
+    iat: now,
+    exp: now + IDLE_TIMEOUT_MS,
+    absExp: now + ABSOLUTE_TIMEOUT_MS,
+  };
+
+  const sessionToken = signAdminToken(sessionPayload);
+
+  res.cookie('chemora_admin_session', sessionToken, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: IDLE_TIMEOUT_MS,
+  });
+
+  await writeAdminAudit(adminRecord.id, adminRecord.email, 'OTP_VERIFIED', 'admin_auth', { challengeId: challenge.id }, ip);
+  await writeAdminAudit(adminRecord.id, adminRecord.email, 'LOGIN_SUCCESS', 'admin_auth', { role: adminRecord.role }, ip);
+
   return res.json({
     success: true,
-    message: 'Two-factor authentication has been completely removed from administrative panels.',
+    admin: {
+      id: adminRecord.id,
+      email: adminRecord.email,
+      fullName: adminRecord.fullName,
+      role: adminRecord.role,
+    },
+  });
+});
+
+// ============================================================================
+// POST /api/admin/otp/resend - Request New OTP Code with Cooldown & Hourly Cap
+// ============================================================================
+router.post('/otp/resend', adminLoginRateLimiter, async (req: Request, res: Response) => {
+  const ip = getClientIp(req);
+  const preauthCookie = req.cookies?.admin_preauth;
+
+  if (!preauthCookie || typeof preauthCookie !== 'string') {
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification session has expired. Please sign in again.',
+    });
+  }
+
+  const preauth = verifyAdminPreauthToken(preauthCookie);
+  if (!preauth) {
+    res.clearCookie('admin_preauth', { path: '/' });
+    return res.status(401).json({
+      code: 'otp_expired',
+      error: 'Verification session has expired. Please sign in again.',
+    });
+  }
+
+  // Check 60 s cooldown from last challenge
+  const latest = await getLatestChallenge(preauth.userId);
+  if (latest) {
+    const elapsedMs = Date.now() - new Date(latest.created_at).getTime();
+    if (elapsedMs < 60 * 1000) {
+      const waitSeconds = Math.ceil((60 * 1000 - elapsedMs) / 1000);
+      return res.status(429).json({
+        error: `Please wait ${waitSeconds}s before requesting a new code.`,
+        retryAfterSeconds: waitSeconds,
+      });
+    }
+  }
+
+  // Max 5 sends per hour per admin
+  const hourlyCount = await recordFailure('otp_hourly_resend', preauth.userId, 3600);
+  if (hourlyCount > 5) {
+    return res.status(429).json({
+      error: 'Hourly verification code limit reached (max 5 per hour). Please wait before trying again.',
+      retryAfterSeconds: 3600,
+    });
+  }
+
+  // Check email config (Fail closed in production)
+  const agentMailKey = process.env.AGENTMAIL_API_KEY?.trim();
+  const agentMailInbox = process.env.AGENTMAIL_INBOX_ID?.trim();
+  const isDevAdminAllowed = !isProd && process.env.ALLOW_DEV_ADMIN === 'true' && process.env.TEST_SIMULATE_NO_EMAIL !== 'true';
+
+  if (!agentMailKey || !agentMailInbox) {
+    if (!isDevAdminAllowed) {
+      safeLogError('Admin OTP resend failed closed: AGENTMAIL_API_KEY or AGENTMAIL_INBOX_ID is not configured.');
+      return res.status(503).json({
+        code: 'otp_unavailable',
+        error: 'Email verification is not configured on this server.',
+      });
+    }
+  }
+
+  // Invalidate older challenges
+  await invalidateUserChallenges(preauth.userId);
+
+  // Generate new 6-digit code
+  const codeNum = crypto.randomInt(100000, 1000000);
+  const code = codeNum.toString();
+  const newChallengeId = crypto.randomUUID();
+  const codeHash = hashOtpCode(newChallengeId, code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  await createOtpChallenge({
+    challengeId: newChallengeId,
+    userId: preauth.userId,
+    codeHash,
+    expiresAt,
+    ip,
+  });
+
+  if (!isProd && isDevAdminAllowed) {
+    devLastGeneratedOtp = {
+      userId: preauth.userId,
+      challengeId: newChallengeId,
+      code,
+    };
+  }
+
+  // Send email to admin's own verified email
+  const emailResult = await sendAdminOtpEmail({
+    toEmail: preauth.email,
+    code,
+    ip,
+    requestTime: new Date().toUTCString(),
+  });
+
+  if (!emailResult.ok) {
+    await invalidateChallenge(newChallengeId);
+    if (emailResult.code === 'otp_unavailable') {
+      return res.status(503).json({
+        code: 'otp_unavailable',
+        error: 'Email verification is not configured on this server.',
+      });
+    }
+    return res.status(503).json({
+      code: 'otp_send_failed',
+      error: "We couldn't send the code. Please try again.",
+    });
+  }
+
+  // Update admin_preauth cookie with new challengeId
+  const newPreauthToken = signAdminPreauthToken({
+    userId: preauth.userId,
+    challengeId: newChallengeId,
+    email: preauth.email,
+  });
+
+  res.cookie('admin_preauth', newPreauthToken, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 10 * 60 * 1000,
+  });
+
+  await writeAdminAudit(preauth.userId, preauth.email, 'OTP_SENT', 'admin_auth', { challengeId: newChallengeId, resend: true }, ip);
+
+  return res.json({
+    success: true,
+    resendAfter: 60,
+    expiresIn: 600,
   });
 });
 
@@ -883,30 +1563,6 @@ router.post('/logout-all', requireAdmin, async (req: AuthenticatedAdminRequest, 
   res.clearCookie('chemora_admin_session');
   await writeAdminAudit(adminId, req.admin!.email, 'LOGOUT_ALL', 'admin_auth', {}, getClientIp(req));
   return res.json({ success: true, message: 'Signed out of all administrative sessions.' });
-});
-
-// ============================================================================
-// 7. Real 2FA Enrolment Flow (TOTP + QR Code + Encryption at Rest)
-// ============================================================================
-
-// Check 2FA status for the logged-in administrator (2FA removed)
-router.get('/2fa/status', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  return res.json({ enabled: false, message: 'Two-factor authentication is disabled on this platform.' });
-});
-
-// Generate new 2FA enrolment secret & QR code (2FA removed)
-router.post('/2fa/generate', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  return res.status(400).json({ error: 'Two-factor authentication has been removed from this system.' });
-});
-
-// Confirm & Enable 2FA with a valid TOTP code (2FA removed)
-router.post('/2fa/enable', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  return res.status(400).json({ error: 'Two-factor authentication has been removed from this system.' });
-});
-
-// Disable 2FA (2FA removed)
-router.post('/2fa/disable', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  return res.json({ success: true, message: 'Two-factor authentication is already disabled.' });
 });
 
 // ============================================================================
@@ -1412,7 +2068,7 @@ const handleAuditQuery = async (req: AuthenticatedAdminRequest, res: Response) =
   const getCategoryPrefixes = (cat: string): string[] => {
     switch (cat) {
       case 'auth':
-        return ['LOGIN', '2FA', 'LOGOUT'];
+        return ['LOGIN', 'OTP', '2FA', 'LOGOUT'];
       case 'reviews':
         return ['REVIEW', 'APPROVE_REVIEW', 'REJECT_REVIEW', 'DELETE_REVIEW', 'AUTOMOD'];
       case 'users':
@@ -1546,7 +2202,7 @@ const handleAuditQuery = async (req: AuthenticatedAdminRequest, res: Response) =
   const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
   const recent24hCount = allKnownLogs.filter((l) => new Date(l.created_at).getTime() > oneDayAgo).length;
 
-  const authCount = allKnownLogs.filter((l) => /LOGIN|2FA|LOGOUT/i.test(l.action)).length;
+  const authCount = allKnownLogs.filter((l) => /LOGIN|OTP|2FA|LOGOUT/i.test(l.action)).length;
   const moderationCount = allKnownLogs.filter((l) => /REVIEW|MODERAT/i.test(l.action)).length;
   const settingsCount = allKnownLogs.filter((l) => /SETTING|CONFIG/i.test(l.action)).length;
   const securityCount = allKnownLogs.filter((l) => /LOCKOUT|REVOKE|FAIL|RATE/i.test(l.action)).length;

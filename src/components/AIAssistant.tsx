@@ -17,7 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import { EquationText } from './EquationText';
-import { FlaskBubbles } from './Loaders/FlaskBubbles';
+import { LiquidLoader } from './ui/LiquidLoader';
 
 export interface AIModelOption {
   id: string;
@@ -931,7 +931,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, onOpe
                   ✦
                 </div>
                 <div className="bg-[#0f1d33]/90 border border-cyan-900/40 rounded-2xl rounded-tl-none px-4 py-2.5 text-cyan-300 text-xs flex items-center gap-2.5">
-                  <FlaskBubbles size="sm" label="Analyzing chemistry solution..." />
+                  <LiquidLoader size="sm" label="Analyzing chemistry solution..." />
                   <span className="text-slate-300 text-xs font-medium">
                     {attachedImage ? 'Decoding question picture with AI vision...' : 'Analyzing chemistry solution...'}
                   </span>

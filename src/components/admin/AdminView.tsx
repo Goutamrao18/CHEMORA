@@ -13,7 +13,7 @@ import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminExperimentDrawer } from './AdminExperimentDrawer';
 import { AdminAIAssistant, AdminAIOrbTrigger } from './AdminAIAssistant';
 import { Experiment } from '../../data/experimentsData';
-import { AtomSpinner } from '../Loaders/AtomSpinner';
+import { LiquidLoaderScreen } from '../ui/LiquidLoader';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 interface AdminUserData {
@@ -28,12 +28,27 @@ export const AdminView: React.FC = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [adminUser, setAdminUser] = useState<AdminUserData | null>(null);
 
-  // Login form state
+  // Login form & OTP step state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [authStep, setAuthStep] = useState<'login' | 'otp'>('login');
+  const [maskedEmail, setMaskedEmail] = useState('');
+  const [authErrorCode, setAuthErrorCode] = useState<string | null>(null);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [resendCountdown, setResendCountdown] = useState<number>(0);
+  const [expiresIn, setExpiresIn] = useState<number>(600);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCountdown]);
 
   // Navigation & Theme
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -134,11 +149,13 @@ export const AdminView: React.FC = () => {
     }
   }, [adminUser, fetchStats, fetchVideoHealth]);
 
-  // Handle Login (State A)
+  // Step 1: Submit email & password
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     setAuthSuccess(null);
+    setAuthErrorCode(null);
+    setAttemptsLeft(null);
     setIsSubmitting(true);
 
     try {
@@ -149,8 +166,20 @@ export const AdminView: React.FC = () => {
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 200 && data.step === 'otp') {
+        setMaskedEmail(data.maskedEmail || loginEmail);
+        setResendCountdown(data.resendAfter || 60);
+        if (data.expiresIn) {
+          setExpiresIn(data.expiresIn);
+        }
+        setAuthStep('otp');
+        setAuthSuccess('Verification code sent to your email.');
+        return;
+      }
+
       if (res.status === 400) {
-        const data = await res.json().catch(() => ({}));
         setAuthError(data.error || 'Please check your input details (valid email and minimum 6 character password required).');
         return;
       }
@@ -166,30 +195,147 @@ export const AdminView: React.FC = () => {
       }
 
       if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
+        setAuthErrorCode('rate_limited');
         setAuthError(data.error || 'Too many admin login attempts. Account temporarily locked for 15 minutes.');
         return;
       }
 
+      if (data.code === 'otp_unavailable') {
+        setAuthErrorCode('otp_unavailable');
+        setAuthError(data.error || 'Email verification is not configured on this server.');
+        return;
+      }
+
+      if (data.code === 'otp_send_failed') {
+        setAuthErrorCode('otp_send_failed');
+        setAuthError("We couldn't send the code. Please try again.");
+        return;
+      }
+
+      if (res.status === 503) {
+        setAuthErrorCode('otp_unavailable');
+        setAuthError(data.error || 'Email verification is not configured on this server.');
+        return;
+      }
+
       if (res.status >= 500) {
-        const data = await res.json().catch(() => ({}));
         setAuthError(data.error || 'Server error encountered. Please check server logs or try again later.');
         return;
       }
 
-      const data = await res.json();
-
-      if (data.admin) {
-        setAdminUser(data.admin);
-        setAuthSuccess('Authenticated successfully.');
-      } else if (data.error) {
+      if (data.error) {
         setAuthError(data.error);
       }
-    } catch (err) {
+    } catch {
       setAuthError('Connection error. Could not verify administrator identity.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Step 2: Verify 6-digit OTP code
+  const handleVerifyOtp = async (code: string) => {
+    if (!code || code.length !== 6 || isSubmitting) return;
+    setAuthError(null);
+    setAuthSuccess(null);
+    setAuthErrorCode(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/admin/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.admin) {
+        setAdminUser(data.admin);
+        setAuthStep('login');
+        setAuthSuccess('Session authenticated successfully.');
+        return;
+      }
+
+      if (res.status === 401) {
+        setAuthErrorCode(data.code || 'otp_invalid');
+        setAttemptsLeft(data.attemptsLeft ?? null);
+        setAuthError(data.error || 'Invalid verification code.');
+        return;
+      }
+
+      if (res.status === 429) {
+        setAuthErrorCode(data.code || 'otp_locked');
+        setAttemptsLeft(0);
+        setAuthError(data.error || 'Too many failed attempts. This code has been locked.');
+        return;
+      }
+
+      setAuthError(data.error || 'Verification failed. Please try again.');
+    } catch {
+      setAuthError('Connection error. Could not verify code.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Step 2b: Resend OTP code
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || isSubmitting) return;
+    setAuthError(null);
+    setAuthErrorCode(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/admin/otp/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setResendCountdown(data.resendAfter || 60);
+        setAuthSuccess('A fresh verification code was sent to your email.');
+        return;
+      }
+
+      if (res.status === 429) {
+        setAuthError(data.error || 'Please wait before requesting another code.');
+        if (data.retryAfterSeconds) {
+          setResendCountdown(data.retryAfterSeconds);
+        }
+        return;
+      }
+
+      if (data.code === 'otp_unavailable') {
+        setAuthErrorCode('otp_unavailable');
+        setAuthError(data.error || 'Email verification is not configured on this server.');
+        return;
+      }
+
+      if (data.code === 'otp_send_failed') {
+        setAuthErrorCode('otp_send_failed');
+        setAuthError("We couldn't send the code. Please try again.");
+        return;
+      }
+
+      setAuthError(data.error || 'Could not resend code. Please sign in again.');
+    } catch {
+      setAuthError('Connection error during code resend.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetToLogin = () => {
+    setAuthStep('login');
+    setAuthError(null);
+    setAuthErrorCode(null);
+    setAttemptsLeft(null);
+    setLoginPassword('');
   };
 
   // Sign out
@@ -199,6 +345,7 @@ export const AdminView: React.FC = () => {
     } catch {}
     setAdminUser(null);
     setLoginPassword('');
+    setAuthStep('login');
   };
 
   // Moderation quick actions from dashboard
@@ -232,10 +379,10 @@ export const AdminView: React.FC = () => {
   if (checkingAuth) {
     return (
       <div className="admin-portal-root min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--admin-page-bg)]">
-        <AtomSpinner size="lg" label="Validating Administrator Clearance..." />
-        <p className="mt-4 text-xs font-mono font-bold tracking-widest text-cyan-600 dark:text-cyan-400 uppercase">
-          SECURE ENCLAVE INITIALIZING
-        </p>
+        <LiquidLoaderScreen
+          label="Validating Administrator Clearance..."
+          subtitle="SECURE ENCLAVE INITIALIZING"
+        />
       </div>
     );
   }
@@ -278,10 +425,19 @@ export const AdminView: React.FC = () => {
             onPasswordChange={setLoginPassword}
             isSubmitting={isSubmitting}
             error={authError}
+            errorCode={authErrorCode}
+            attemptsLeft={attemptsLeft}
             onClearError={() => setAuthError(null)}
             success={authSuccess}
             onClearSuccess={() => setAuthSuccess(null)}
             onSignIn={handleSignIn}
+            step={authStep}
+            maskedEmail={maskedEmail}
+            onVerifyOtp={handleVerifyOtp}
+            onResendOtp={handleResendOtp}
+            onResetToLogin={handleResetToLogin}
+            resendCountdown={resendCountdown}
+            expiresIn={expiresIn}
           />
         </div>
 

@@ -170,7 +170,8 @@ async function startServer() {
   app.use('/api/account', accountRouter);
   app.use('/api/reviews', reviewsRouter);
   app.use('/api/admin/login', adminLoginRateLimiter);
-  app.use('/api/admin/verify-2fa', adminLoginRateLimiter);
+  app.use('/api/admin/otp/verify', adminLoginRateLimiter);
+  app.use('/api/admin/otp/resend', adminLoginRateLimiter);
   app.use('/api/admin', adminRouter);
 
   // Mount assistant route handler if available (with its own 12MB limit for homework images)

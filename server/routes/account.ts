@@ -17,6 +17,7 @@ import {
   getUserScopedSupabaseClient,
   safeLogError,
 } from '../supabase.ts';
+import { verifyAdminToken } from './admin.ts';
 
 const router = express.Router();
 const isProd = process.env.NODE_ENV === 'production';
@@ -198,22 +199,29 @@ function clearSessionCookies(res: Response) {
   }
 }
 
-// GET /api/account/status
-router.get('/status', (_req: Request, res: Response) => {
-  res.json({
-    status: 'online',
-    databaseConnected: isSupabaseConfigured(),
-  });
+// GET /api/account/status - Anonymous users get only {"status":"online"}, detailed diagnostics require verified admin
+router.get('/status', (req: Request, res: Response) => {
+  const token =
+    req.cookies?.chemora_admin_session ||
+    (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
+  const admin = token ? verifyAdminToken(token) : null;
+  if (admin) {
+    return res.json({
+      status: 'online',
+      databaseConnected: isSupabaseConfigured(),
+    });
+  }
+  return res.json({ status: 'online' });
 });
 
-// GET /api/account/database
+// GET /api/account/database - Detailed diagnostics only behind verified admin
 router.get('/database', (req: Request, res: Response) => {
-  const adminToken = req.cookies?.chemora_admin_session;
-  if (!adminToken) {
-    return res.status(200).json({
-      status: 'active',
-      healthy: true,
-    });
+  const token =
+    req.cookies?.chemora_admin_session ||
+    (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
+  const admin = token ? verifyAdminToken(token) : null;
+  if (!admin) {
+    return res.json({ status: 'online' });
   }
   return res.json(getSupabaseSystemDiagnostics());
 });

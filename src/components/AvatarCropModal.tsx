@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Check, X, AlertCircle } from 'lucide-react';
-import { BubbleDots } from './Loaders';
+import { LiquidLoader } from './ui/LiquidLoader';
 
 export interface AvatarCropModalProps {
   isOpen: boolean;
@@ -308,7 +308,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
             className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 active:scale-98 text-xs font-bold text-[#04212b] shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
           >
             {isUploading ? (
-              <BubbleDots label="Uploading profile picture..." />
+              <LiquidLoader size="xs" label="Uploading profile picture..." />
             ) : (
               <Check className="w-4 h-4" />
             )}

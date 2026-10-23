@@ -1,5 +1,5 @@
 import React from 'react';
-import { BubbleDots } from '../Loaders/BubbleDots';
+import { LiquidLoader } from './LiquidLoader';
 
 export type ButtonVariant = 'cyan' | 'purple' | 'emerald' | 'ghost' | 'outline' | 'glass';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -49,7 +49,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <BubbleDots label="Processing..." />
+          <LiquidLoader size="xs" label="Processing..." />
         ) : icon ? (
           <span className="flex-shrink-0">{icon}</span>
         ) : null}

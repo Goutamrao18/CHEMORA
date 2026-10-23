@@ -1,5 +1,6 @@
 import React from 'react';
-import { Droplet, Loader2 } from 'lucide-react';
+import { Droplet } from 'lucide-react';
+import { LiquidLoader } from './LiquidLoader';
 import './liquid-button.css';
 
 export interface LiquidButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -37,7 +38,7 @@ export const LiquidButton: React.FC<LiquidButtonProps> = ({
       {/* Button Content */}
       <span className="liquid-content">
         {loading ? (
-          <Loader2 className="w-4 h-4 text-[#7fdcef] animate-spin flex-shrink-0" aria-hidden="true" />
+          <LiquidLoader size="xs" className="flex-shrink-0" />
         ) : showDroplet ? (
           <Droplet
             className="w-4 h-4 text-[#7fdcef] flex-shrink-0 transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(127,220,239,0.7)]"

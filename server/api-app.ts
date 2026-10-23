@@ -62,7 +62,8 @@ app.use('/api/account/password', authRateLimiter);
 app.use('/api/account', databaseRateLimiter);
 app.use('/api/reviews', databaseRateLimiter);
 app.use('/api/admin/login', adminLoginRateLimiter);
-app.use('/api/admin/verify-2fa', adminLoginRateLimiter);
+app.use('/api/admin/otp/verify', adminLoginRateLimiter);
+app.use('/api/admin/otp/resend', adminLoginRateLimiter);
 
 // API routes
 app.use('/api/account', accountRouter);

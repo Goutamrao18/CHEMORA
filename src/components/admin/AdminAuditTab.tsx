@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { LiquidLoader } from '../ui/LiquidLoader';
 import {
   ShieldCheck,
   Search,
@@ -198,7 +199,7 @@ export const AdminAuditTab: React.FC = () => {
         icon: AlertTriangle,
       };
     }
-    if (act.includes('2FA') || act.includes('ENROLL')) {
+    if (act.includes('OTP') || act.includes('AUTH') || act.includes('2FA')) {
       return {
         bg: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
         icon: Lock,
@@ -314,7 +315,7 @@ export const AdminAuditTab: React.FC = () => {
             disabled={loading}
             className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--admin-text-main)] flex items-center gap-1.5 transition border border-[var(--admin-card-border)] cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? <LiquidLoader size="xs" label="Refreshing logs..." /> : <RefreshCw className="w-3.5 h-3.5" />}
             <span>Refresh</span>
           </button>
 
@@ -387,7 +388,7 @@ export const AdminAuditTab: React.FC = () => {
               {stats?.authCount ?? 0}
             </div>
             <p className="text-[11px] text-[var(--admin-text-muted)] mt-0.5">
-              Stateless HMAC & 2FA verifications
+              Stateless HMAC & Email OTP verifications
             </p>
           </div>
         </div>
@@ -474,7 +475,7 @@ export const AdminAuditTab: React.FC = () => {
           {(
             [
               { id: 'all', label: 'All Actions' },
-              { id: 'auth', label: 'Authentication & 2FA' },
+              { id: 'auth', label: 'Authentication & OTP' },
               { id: 'reviews', label: 'Review Moderation' },
               { id: 'security', label: 'Security & Lockouts' },
               { id: 'settings', label: 'System Settings' },
@@ -503,7 +504,7 @@ export const AdminAuditTab: React.FC = () => {
       <div className="bg-[var(--admin-card-bg)] rounded-[24px] shadow-[var(--admin-card-shadow)] border border-[var(--admin-card-border)] overflow-hidden">
         {loading && logs.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin mx-auto" />
+            <LiquidLoader size="md" label="Querying cryptographic records from Supabase admin_audit_logs..." />
             <p className="text-xs font-medium text-[var(--admin-text-muted)]">
               Querying cryptographic records from Supabase <code className="font-mono text-cyan-600 dark:text-cyan-400">admin_audit_logs</code>...
             </p>

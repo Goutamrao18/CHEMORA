@@ -688,8 +688,8 @@ import express4 from "express";
 import cookieParser from "cookie-parser";
 
 // server/routes/account.ts
-import express from "express";
-import { z } from "zod";
+import express2 from "express";
+import { z as z2 } from "zod";
 
 // server/supabase.ts
 import { createClient } from "@supabase/supabase-js";
@@ -1280,656 +1280,14 @@ function getDevStatsSummary() {
   };
 }
 
-// server/routes/account.ts
-var router = express.Router();
-var isProd2 = process.env.NODE_ENV === "production";
-var ALLOWED_ORIGINS = new Set([
-  "https://chemora.work.gd",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  process.env.SITE_URL?.trim().replace(/\/$/, "")
-].filter(Boolean));
-function isAllowedOrigin(originHeader) {
-  if (!originHeader) return false;
-  const originStr = Array.isArray(originHeader) ? originHeader[0] : originHeader;
-  try {
-    const parsed = new URL(originStr);
-    const origin = parsed.origin;
-    if (ALLOWED_ORIGINS.has(origin)) return true;
-    if (origin.endsWith(".vercel.app") || origin.endsWith(".run.app") || origin.includes(".googleusercontent.com") || origin.includes(".aistudio.google.com") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-router.use((req, res, next) => {
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    const origin = req.headers.origin || req.headers.referer;
-    if (!origin && !isProd2) {
-      return next();
-    }
-    if (!origin || !isAllowedOrigin(origin)) {
-      return res.status(403).json({ error: "Invalid or untrusted request origin." });
-    }
-  }
-  next();
-});
-var SignUpSchema = z.object({
-  email: z.string().trim().email("Invalid email address").max(120),
-  password: z.string().min(10, "Password must be at least 10 characters").max(120),
-  full_name: z.string().trim().max(80).optional()
-});
-var LoginSchema = z.object({
-  email: z.string().trim().email("Invalid email address").max(120),
-  password: z.string().min(10, "Password must be at least 10 characters").max(120)
-});
-var ALLOWED_PRESET_AVATARS = /* @__PURE__ */ new Set([
-  "/favicon.png",
-  "/assets/chemistry/carbon.svg",
-  "/icon-192.png",
-  "/icon-512.png",
-  "/assets/chemistry/oxygen.svg",
-  "/assets/chemora-mark.svg"
-]);
-function isValidAvatarUrl(url, userId) {
-  if (!url || typeof url !== "string" || url.length > 255) return false;
-  const trimmed = url.trim();
-  if (ALLOWED_PRESET_AVATARS.has(trimmed)) return true;
-  if (trimmed.startsWith("https://lh3.googleusercontent.com/")) return true;
-  const expectedPrefix = `/storage/v1/object/public/avatars/${userId}/`;
-  if (trimmed.startsWith(expectedPrefix)) return true;
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.pathname.startsWith(expectedPrefix)) return true;
-  } catch {
-  }
-  return false;
-}
-var ProfileUpdateSchema = z.object({
-  full_name: z.string().trim().max(80).optional(),
-  avatar_url: z.string().trim().max(255).optional()
-});
-var PasswordUpdateSchema = z.object({
-  new_password: z.string().min(10, "New password must be at least 10 characters").max(120)
-});
-var ForgotPasswordSchema = z.object({
-  email: z.string().trim().email("Invalid email address").max(120)
-});
-var ResetPasswordWithTokenSchema = z.object({
-  token: z.string().trim().min(10, "Invalid token").max(255),
-  new_password: z.string().min(10, "New password must be at least 10 characters").max(120)
-});
-var DeleteAccountSchema = z.object({
-  password: z.string().min(1, "Password confirmation is required")
-});
-var SyncProgressSchema = z.object({
-  experimentsCompleted: z.number().int().min(0).max(1e3).optional(),
-  challengesCompleted: z.number().int().min(0).max(1e3).optional(),
-  streakDays: z.number().int().min(0).max(1e4).optional(),
-  totalXp: z.number().int().min(0).max(1e7).optional(),
-  completedExperimentIds: z.array(z.string().trim().max(60)).max(200).optional()
-});
-function extractToken(req) {
-  if (req.cookies && (req.cookies.chemora_session || req.cookies["__Host-chemora_session"])) {
-    return req.cookies.chemora_session || req.cookies["__Host-chemora_session"];
-  }
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    return authHeader.substring(7).trim();
-  }
-  return null;
-}
-function setSessionCookies(res, token) {
-  const maxAge = 7 * 24 * 60 * 60 * 1e3;
-  res.cookie("chemora_session", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProd2,
-    maxAge,
-    path: "/"
-  });
-  if (isProd2) {
-    res.cookie("__Host-chemora_session", token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      maxAge,
-      path: "/"
-    });
-  }
-}
-function clearSessionCookies(res) {
-  res.clearCookie("chemora_session", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProd2,
-    path: "/"
-  });
-  if (isProd2) {
-    res.clearCookie("__Host-chemora_session", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/"
-    });
-  }
-}
-router.get("/status", (_req, res) => {
-  res.json({
-    status: "online",
-    databaseConnected: isSupabaseConfigured()
-  });
-});
-router.get("/database", (req, res) => {
-  const adminToken = req.cookies?.chemora_admin_session;
-  if (!adminToken) {
-    return res.status(200).json({
-      status: "active",
-      healthy: true
-    });
-  }
-  return res.json(getSupabaseSystemDiagnostics());
-});
-router.get("/progress", async (req, res) => {
-  try {
-    const token = extractToken(req);
-    if (!token) return res.status(401).json({ error: "Not authenticated" });
-    const verified = await verifyUserSessionToken(token);
-    if (!verified) return res.status(401).json({ error: "Session expired" });
-    const result = await backendGetProgress(verified.id);
-    return res.json(result);
-  } catch {
-    return res.status(503).json({ error: "Service temporarily unavailable." });
-  }
-});
-router.post("/sync", async (req, res) => {
-  try {
-    const token = extractToken(req);
-    if (!token) return res.status(401).json({ error: "Not authenticated" });
-    const verified = await verifyUserSessionToken(token);
-    if (!verified) return res.status(401).json({ error: "Session expired" });
-    const parsed = SyncProgressSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "Invalid progress data schema" });
-    }
-    const syncResult = await backendSyncProgress(verified.id, parsed.data);
-    return res.json(syncResult);
-  } catch {
-    return res.status(503).json({ error: "Service temporarily unavailable." });
-  }
-});
-router.get("/me", async (req, res) => {
-  try {
-    const token = extractToken(req);
-    if (!token) {
-      return res.status(401).json({ authenticated: false, error: "Not authenticated" });
-    }
-    const verified = await verifyUserSessionToken(token);
-    if (!verified) {
-      return res.status(401).json({ authenticated: false, error: "Session expired or invalid" });
-    }
-    const profile = await backendGetProfile(verified.id, verified.email, void 0, token);
-    return res.json({
-      authenticated: true,
-      user: {
-        id: verified.id,
-        email: verified.email
-      },
-      profile
-    });
-  } catch {
-    return res.status(500).json({ error: "Internal server error occurred." });
-  }
-});
-router.post("/signup", async (req, res) => {
-  try {
-    const parsed = SignUpSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "Password must be at least 10 characters long." });
-    }
-    const { email, password, full_name } = parsed.data;
-    const result = await backendSignUp(email, password, full_name || "");
-    if (result.session?.access_token) {
-      setSessionCookies(res, result.session.access_token);
-    }
-    return res.status(201).json({
-      success: true,
-      user: result.user,
-      requiresEmailConfirmation: result.requiresEmailConfirmation,
-      message: result.message || "Researcher account created successfully."
-    });
-  } catch (err) {
-    safeLogError("Signup failed");
-    return res.status(400).json({ error: "Registration failed. Please check your details." });
-  }
-});
-router.post("/login", async (req, res) => {
-  try {
-    const parsed = LoginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(401).json({ error: "Invalid email or password." });
-    }
-    const { email, password } = parsed.data;
-    const result = await backendSignIn(email, password);
-    if (result.session?.access_token) {
-      setSessionCookies(res, result.session.access_token);
-    }
-    return res.json({
-      success: true,
-      user: result.user,
-      profile: result.profile
-    });
-  } catch {
-    return res.status(401).json({ error: "Invalid email or password." });
-  }
-});
-router.post("/logout", async (req, res) => {
-  const token = extractToken(req);
-  if (token) {
-    try {
-      const client = getUserScopedSupabaseClient(token);
-      if (client) {
-        await client.auth.signOut();
-      }
-    } catch {
-    }
-  }
-  clearSessionCookies(res);
-  return res.json({ success: true, message: "Logged out successfully." });
-});
-router.delete("/me", async (req, res) => {
-  try {
-    const token = extractToken(req);
-    if (!token) return res.status(401).json({ error: "Not authenticated" });
-    const verified = await verifyUserSessionToken(token);
-    if (!verified) return res.status(401).json({ error: "Session expired or invalid" });
-    const parsed = DeleteAccountSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "Password confirmation is required." });
-    }
-    await backendDeleteAccount(verified.id, verified.email, parsed.data.password);
-    clearSessionCookies(res);
-    return res.json({
-      success: true,
-      message: "Your researcher account and learning data have been permanently erased."
-    });
-  } catch (err) {
-    return res.status(400).json({ error: err.message || "Failed to delete account." });
-  }
-});
-router.put("/profile", async (req, res) => {
-  try {
-    const token = extractToken(req);
-    if (!token) return res.status(401).json({ error: "Not authenticated" });
-    const verified = await verifyUserSessionToken(token);
-    if (!verified) return res.status(401).json({ error: "Session expired" });
-    const parsed = ProfileUpdateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "Invalid profile update format" });
-    }
-    if (parsed.data.avatar_url !== void 0 && !isValidAvatarUrl(parsed.data.avatar_url, verified.id)) {
-      return res.status(400).json({
-        error: "Invalid avatar URL. Allowed: your uploaded avatar, preset badges, or Google photo."
-      });
-    }
-    const updatedProfile = await backendUpdateProfile(
-      verified.id,
-      verified.email,
-      parsed.data,
-      token
-    );
-    return res.json({
-      success: true,
-      profile: updatedProfile
-    });
-  } catch {
-    return res.status(500).json({ error: "Failed to update profile." });
-  }
-});
-router.put("/password", async (req, res) => {
-  try {
-    const token = extractToken(req);
-    if (!token) return res.status(401).json({ error: "Not authenticated" });
-    const parsed = PasswordUpdateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "New password must be at least 10 characters long." });
-    }
-    await backendUpdatePassword(token, parsed.data.new_password);
-    return res.json({ success: true, message: "Password updated successfully." });
-  } catch (err) {
-    return res.status(400).json({ error: err.message || "Failed to update password." });
-  }
-});
-router.post("/forgot-password", async (req, res) => {
-  try {
-    const parsed = ForgotPasswordSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "A valid email address is required." });
-    }
-    await backendResetPasswordRequest(parsed.data.email);
-    return res.json({
-      success: true,
-      message: "If an account exists with that email, password reset instructions have been sent."
-    });
-  } catch {
-    return res.json({
-      success: true,
-      message: "If an account exists with that email, password reset instructions have been sent."
-    });
-  }
-});
-var account_default = router;
-
-// server/routes/reviews.ts
-import express2 from "express";
-import { z as z2 } from "zod";
-var router2 = express2.Router();
-var isProd3 = process.env.NODE_ENV === "production";
-function extractToken2(req) {
-  if (req.cookies && (req.cookies.chemora_session || req.cookies["__Host-chemora_session"])) {
-    return req.cookies.chemora_session || req.cookies["__Host-chemora_session"];
-  }
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    return authHeader.substring(7).trim();
-  }
-  return null;
-}
-function validateReviewPlainText(text) {
-  if (/<[a-z\/\!][\s\S]*>/i.test(text)) {
-    return { valid: false, error: "HTML formatting is not permitted in reviews." };
-  }
-  const linkMatches = text.match(/https?:\/\/|www\./gi) || [];
-  if (linkMatches.length > 1) {
-    return { valid: false, error: "Reviews may not contain more than one link." };
-  }
-  if (/(.)\1{5,}/.test(text)) {
-    return { valid: false, error: "Excessive repeated characters are not permitted." };
-  }
-  return { valid: true };
-}
-var devReviews = [];
-var devVotes = /* @__PURE__ */ new Set();
-function calculateSummary(records) {
-  const totalCount = records.length;
-  if (totalCount === 0) {
-    return {
-      averageRating: 0,
-      totalCount: 0,
-      recommendationRate: 0,
-      ratingCounts: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
-      categoryCounts: {}
-    };
-  }
-  let ratingSum = 0;
-  let recommendCount = 0;
-  const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  const categoryCounts = {};
-  for (const r of records) {
-    ratingSum += r.rating;
-    if (r.wouldRecommend) recommendCount++;
-    const clampedRating = Math.max(1, Math.min(5, Math.round(r.rating)));
-    ratingCounts[clampedRating] = (ratingCounts[clampedRating] || 0) + 1;
-    categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1;
-  }
-  const averageRating = parseFloat((ratingSum / totalCount).toFixed(1));
-  const recommendationRate = Math.round(recommendCount / totalCount * 100);
-  return {
-    averageRating,
-    totalCount,
-    recommendationRate,
-    ratingCounts,
-    categoryCounts
-  };
-}
-var ReviewsQuerySchema = z2.object({
-  category: z2.string().trim().max(60).optional(),
-  rating: z2.coerce.number().int().min(1).max(5).optional(),
-  sort: z2.enum(["helpful", "recent"]).optional()
-});
-var ReviewIdParamSchema = z2.object({
-  id: z2.string().trim().min(3).max(100)
-});
-var CreateReviewSchema = z2.object({
-  rating: z2.coerce.number().int().min(1, "Rating must be at least 1").max(5, "Rating must be at most 5"),
-  category: z2.string().trim().max(60).optional(),
-  title: z2.string().trim().min(2, "Review title is required").max(120),
-  content: z2.string().trim().min(5, "Review content must be at least 5 characters").max(1500),
-  wouldRecommend: z2.boolean().optional()
-});
-router2.get("/", async (req, res) => {
-  try {
-    const parsedQuery = ReviewsQuerySchema.safeParse(req.query);
-    if (!parsedQuery.success) {
-      return res.status(400).json({ error: "Invalid query parameters" });
-    }
-    const { category, rating: minRating, sort = "helpful" } = parsedQuery.data;
-    const admin = getSupabaseAdminClient();
-    let approvedReviews = [];
-    if (admin) {
-      let query = admin.from("chemora_reviews").select("*").eq("status", "approved");
-      if (category && category !== "all") {
-        query = query.ilike("category", `%${category}%`);
-      }
-      if (minRating !== void 0) {
-        query = query.gte("rating", minRating);
-      }
-      if (sort === "recent") {
-        query = query.order("created_at", { ascending: false });
-      } else {
-        query = query.order("helpful", { ascending: false }).order("rating", { ascending: false });
-      }
-      const { data, error } = await query;
-      if (!error && data) {
-        approvedReviews = data.map((r) => ({
-          id: r.id,
-          user_id: r.user_id,
-          authorName: r.author_name || "Verified Chemist",
-          role: r.role || "Chemistry Learner",
-          avatarUrl: r.avatar_url || "/favicon.png",
-          rating: Number(r.rating || 5),
-          category: r.category || "General Experience",
-          title: r.title,
-          content: r.comment || r.content,
-          wouldRecommend: r.would_recommend !== false,
-          helpful: Number(r.helpful || 0),
-          verified: Boolean(r.verified),
-          status: "approved",
-          createdAt: r.created_at || (/* @__PURE__ */ new Date()).toISOString()
-        }));
-      }
-    } else if (!isProd3 || !admin) {
-      approvedReviews = devReviews.filter((r) => r.status === "approved");
-      if (category && category !== "all") {
-        approvedReviews = approvedReviews.filter((r) => r.category.toLowerCase().includes(category.toLowerCase()));
-      }
-      if (minRating !== void 0) {
-        approvedReviews = approvedReviews.filter((r) => r.rating >= minRating);
-      }
-    }
-    const summary = calculateSummary(approvedReviews);
-    return res.json({
-      reviews: approvedReviews,
-      summary
-    });
-  } catch (err) {
-    return res.status(500).json({ error: "Failed to retrieve reviews." });
-  }
-});
-router2.get("/stats", async (_req, res) => {
-  try {
-    const admin = getSupabaseAdminClient();
-    let approvedReviews = [];
-    if (admin) {
-      const { data } = await admin.from("chemora_reviews").select("*").eq("status", "approved");
-      if (data) {
-        approvedReviews = data.map((r) => ({
-          id: r.id,
-          authorName: r.author_name,
-          role: r.role || "Chemistry Learner",
-          rating: Number(r.rating || 5),
-          category: r.category || "General Experience",
-          title: r.title,
-          content: r.comment || r.content,
-          wouldRecommend: r.would_recommend !== false,
-          helpful: Number(r.helpful || 0),
-          verified: Boolean(r.verified),
-          status: "approved",
-          createdAt: r.created_at
-        }));
-      }
-    } else if (!isProd3 || !admin) {
-      approvedReviews = devReviews.filter((r) => r.status === "approved");
-    }
-    return res.json(calculateSummary(approvedReviews));
-  } catch {
-    return res.status(500).json({ error: "Failed to calculate stats" });
-  }
-});
-router2.post("/", async (req, res) => {
-  try {
-    const token = extractToken2(req);
-    if (!token) {
-      return res.status(401).json({ error: "You must be logged in to submit a review." });
-    }
-    const verifiedUser = await verifyUserSessionToken(token);
-    if (!verifiedUser || !verifiedUser.id) {
-      return res.status(401).json({ error: "Invalid or expired session. Please sign in." });
-    }
-    const parsed = CreateReviewSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "Invalid review fields." });
-    }
-    const { rating, category, title, content, wouldRecommend } = parsed.data;
-    const titleCheck = validateReviewPlainText(title);
-    if (!titleCheck.valid) return res.status(400).json({ error: titleCheck.error });
-    const contentCheck = validateReviewPlainText(content);
-    if (!contentCheck.valid) return res.status(400).json({ error: contentCheck.error });
-    const profile = await backendGetProfile(verifiedUser.id, verifiedUser.email, void 0, token);
-    const authorName = profile.full_name || "Verified Chemist";
-    const avatarUrl = profile.avatar_url || "/favicon.png";
-    const role = profile.rank || "Chemistry Learner";
-    const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const admin = getSupabaseAdminClient();
-    if (admin) {
-      const existing = await admin.from("chemora_reviews").select("id").eq("user_id", verifiedUser.id).maybeSingle();
-      if (existing.data) {
-        return res.status(400).json({ error: "You have already submitted a review." });
-      }
-      const { error: insertErr } = await admin.from("chemora_reviews").insert({
-        id: reviewId,
-        user_id: verifiedUser.id,
-        author_name: authorName,
-        role,
-        avatar_url: avatarUrl,
-        rating,
-        category: category || "General Experience",
-        title,
-        comment: content,
-        would_recommend: wouldRecommend !== false,
-        helpful: 0,
-        verified: true,
-        // 3.5: Verified can only be set by the server
-        status: "pending",
-        created_at: (/* @__PURE__ */ new Date()).toISOString()
-      });
-      if (insertErr) {
-        return res.status(500).json({ error: "Failed to record review." });
-      }
-    } else if (!isProd3 || !admin) {
-      devReviews.unshift({
-        id: reviewId,
-        user_id: verifiedUser.id,
-        authorName,
-        role,
-        avatarUrl,
-        rating,
-        category: category || "General Experience",
-        title,
-        content,
-        wouldRecommend: wouldRecommend !== false,
-        helpful: 0,
-        verified: true,
-        status: "pending",
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      });
-    } else {
-      return res.status(503).json({ error: "Database service is currently unavailable." });
-    }
-    return res.status(201).json({
-      success: true,
-      message: "Your review has been submitted and is pending moderation.",
-      status: "pending"
-    });
-  } catch (err) {
-    return res.status(500).json({ error: "An unexpected error occurred while saving review." });
-  }
-});
-router2.post("/:id/helpful", async (req, res) => {
-  try {
-    const token = extractToken2(req);
-    if (!token) {
-      return res.status(401).json({ error: "Login required to vote on reviews." });
-    }
-    const verifiedUser = await verifyUserSessionToken(token);
-    if (!verifiedUser || !verifiedUser.id) {
-      return res.status(401).json({ error: "Invalid or expired session. Please sign in." });
-    }
-    const parsed = ReviewIdParamSchema.safeParse(req.params);
-    if (!parsed.success) {
-      return res.status(400).json({ error: "Invalid review ID format" });
-    }
-    const { id: reviewId } = parsed.data;
-    const admin = getSupabaseAdminClient();
-    if (admin) {
-      const { error: voteErr } = await admin.from("review_votes").insert({
-        review_id: reviewId,
-        user_id: verifiedUser.id
-      });
-      if (voteErr) {
-        if (voteErr.code === "23505") {
-          return res.status(400).json({ error: "You have already marked this review as helpful." });
-        }
-      }
-      const countRes = await admin.from("review_votes").select("user_id", { count: "exact", head: true }).eq("review_id", reviewId);
-      const totalHelpful = countRes.count || 1;
-      await admin.from("chemora_reviews").update({ helpful: totalHelpful }).eq("id", reviewId);
-      return res.json({
-        success: true,
-        id: reviewId,
-        helpful: totalHelpful
-      });
-    } else if (!isProd3 || !admin) {
-      const voteKey = `${reviewId}:${verifiedUser.id}`;
-      if (devVotes.has(voteKey)) {
-        return res.status(400).json({ error: "You have already marked this review as helpful." });
-      }
-      devVotes.add(voteKey);
-      const rev = devReviews.find((r) => r.id === reviewId);
-      if (rev) {
-        rev.helpful = (rev.helpful || 0) + 1;
-        return res.json({ success: true, id: reviewId, helpful: rev.helpful });
-      }
-      return res.json({ success: true, id: reviewId, helpful: 1 });
-    }
-    return res.status(503).json({ error: "Database service is currently unavailable." });
-  } catch {
-    return res.status(500).json({ error: "Failed to record vote." });
-  }
-});
-var reviews_default = router2;
-
 // server/routes/admin.ts
-import express3 from "express";
-import { z as z3 } from "zod";
+import express from "express";
+import { z } from "zod";
 import crypto2 from "node:crypto";
 import bcrypt2 from "bcryptjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { verifySync } from "otplib";
 import { Redis } from "@upstash/redis";
 
 // server/middleware/rateLimit.ts
@@ -2093,19 +1451,35 @@ function sanitizeText(input) {
   if (!input || typeof input !== "string") return "";
   return input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "").replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "").replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "").replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, "").replace(/javascript\s*:/gi, "").replace(/on\w+\s*=\s*(?:["'][^"']*["']|[^\s>]+)/gi, "").trim();
 }
-var router3 = express3.Router();
-var isProd4 = process.env.NODE_ENV === "production";
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+var router = express.Router();
+var isProd2 = process.env.NODE_ENV === "production";
 var IDLE_TIMEOUT_MS = 30 * 60 * 1e3;
+var ABSOLUTE_TIMEOUT_MS = 8 * 60 * 60 * 1e3;
 function getAdminSessionSecret() {
   const secret = process.env.ADMIN_SESSION_SECRET?.trim();
-  if (secret) {
-    return secret;
+  if (!secret || secret.length < 32) {
+    safeLogError("Fatal Security Error: ADMIN_SESSION_SECRET is missing or shorter than 32 characters.");
+    throw new Error("ADMIN_SESSION_SECRET must be configured with at least 32 characters.");
   }
-  const fallbackSource = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim() || process.env.VITE_SUPABASE_ANON_KEY?.trim();
-  if (fallbackSource) {
-    return crypto2.createHmac("sha256", fallbackSource).update("chemora-admin-session-signing-key").digest("hex");
-  }
-  return "chemora-default-admin-session-fallback-secret-key-32chars";
+  return secret;
+}
+function getOtpSecretKey() {
+  const secret = getAdminSessionSecret();
+  return crypto2.createHmac("sha256", secret).update("chemora-admin-otp-challenge-key").digest();
+}
+function hashOtpCode(challengeId, code) {
+  const key = getOtpSecretKey();
+  return crypto2.createHmac("sha256", key).update(`${challengeId}:${code}`).digest("hex");
+}
+function maskEmail(email) {
+  if (!email || !email.includes("@")) return "\u2022\u2022\u2022\u2022\u2022@chemora.lab";
+  const [local, domain] = email.trim().toLowerCase().split("@");
+  const first = local.charAt(0) || "\u2022";
+  const dots = "\u2022".repeat(Math.max(3, Math.min(5, local.length - 1)));
+  return `${first}${dots}@${domain}`;
 }
 function signAdminToken(payload) {
   const secret = getAdminSessionSecret();
@@ -2126,13 +1500,317 @@ function verifyAdminToken(token) {
       return null;
     }
     const payload = JSON.parse(Buffer.from(payloadStr, "base64url").toString("utf8"));
-    if (!payload.userId || !payload.exp || Date.now() > payload.exp) {
+    const now = Date.now();
+    if (!payload.userId || !payload.exp || now > payload.exp) {
+      return null;
+    }
+    if (payload.absExp && now > payload.absExp) {
       return null;
     }
     return payload;
   } catch {
     return null;
   }
+}
+function signAdminPreauthToken(payload, expiresInMs = 10 * 60 * 1e3) {
+  const secret = getAdminSessionSecret();
+  const fullPayload = {
+    ...payload,
+    exp: Date.now() + expiresInMs
+  };
+  const payloadStr = Buffer.from(JSON.stringify(fullPayload)).toString("base64url");
+  const signature = crypto2.createHmac("sha256", secret).update(`preauth:${payloadStr}`).digest("base64url");
+  return `${payloadStr}.${signature}`;
+}
+function verifyAdminPreauthToken(token) {
+  try {
+    const secret = getAdminSessionSecret();
+    const parts = token.split(".");
+    if (parts.length !== 2) return null;
+    const [payloadStr, signature] = parts;
+    const expectedSig = crypto2.createHmac("sha256", secret).update(`preauth:${payloadStr}`).digest("base64url");
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length || !crypto2.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+    const payload = JSON.parse(Buffer.from(payloadStr, "base64url").toString("utf8"));
+    if (!payload.userId || !payload.challengeId || !payload.exp || Date.now() > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+async function sendAdminOtpEmail(params) {
+  const apiKey = process.env.AGENTMAIL_API_KEY?.trim();
+  const inboxId = process.env.AGENTMAIL_INBOX_ID?.trim();
+  const apiBase = (process.env.AGENTMAIL_API_BASE?.trim() || "https://api.agentmail.to").replace(/\/+$/, "");
+  const isDevAllowed = !isProd2 && process.env.ALLOW_DEV_ADMIN === "true" && process.env.TEST_SIMULATE_NO_EMAIL !== "true";
+  if (!apiKey || !inboxId) {
+    safeLogError("AgentMail email delivery failed closed: AGENTMAIL_API_KEY or AGENTMAIL_INBOX_ID is not configured.");
+    if (isDevAllowed) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      code: "otp_unavailable",
+      error: "AgentMail configuration missing"
+    };
+  }
+  const safeCode = escapeHtml(params.code);
+  const safeIp = escapeHtml(params.ip);
+  const safeTime = escapeHtml(params.requestTime);
+  const textContent = [
+    `Your Chemora admin sign-in code is: ${params.code}`,
+    "",
+    "This code is valid for 10 minutes and can only be used once.",
+    `Request time: ${params.requestTime}`,
+    `Approximate IP: ${params.ip}`,
+    "",
+    "If this wasn't you, change your password now and report unauthorized access."
+  ].join("\n");
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #040914; color: #f1f5f9; padding: 32px 16px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #081120; border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h1 style="color: #38bdf8; font-size: 20px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: 1px;">CHEMORA CONTROL ROOM</h1>
+      <p style="color: #94a3b8; font-size: 13px; margin: 0;">Administrative Authentication Code</p>
+    </div>
+    <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 14px; padding: 20px; text-align: center; margin: 24px 0;">
+      <div style="font-family: monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #38bdf8;">
+        ${safeCode}
+      </div>
+      <p style="color: #06b6d4; font-size: 11px; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">
+        Valid for 10 minutes
+      </p>
+    </div>
+    <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 0 0 16px 0;">
+      A sign-in request was initiated for your Chemora administrator account. Enter this code to complete authentication.
+    </p>
+    <div style="background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 12px 16px; font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 20px;">
+      <div>Time: ${safeTime}</div>
+      <div>Approximate IP: ${safeIp}</div>
+    </div>
+    <div style="border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 16px; font-size: 11px; color: #f43f5e;">
+      <strong>Security notice:</strong> If this wasn't you, change your password now and report unauthorized access.
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+  const endpoint = `${apiBase}/inboxes/${encodeURIComponent(inboxId)}/messages/send`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        to: params.toEmail,
+        subject: "Your Chemora admin sign-in code",
+        text: textContent,
+        html: htmlContent
+      }),
+      signal: AbortSignal.timeout(8e3)
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      let errorDetail = errText.slice(0, 500);
+      try {
+        const json = JSON.parse(errText);
+        errorDetail = json.message || json.name || errorDetail;
+      } catch {
+      }
+      safeLogError(`AgentMail API returned error status ${res.status}: ${errorDetail}`);
+      return {
+        ok: false,
+        code: "otp_send_failed",
+        error: `AgentMail HTTP error ${res.status}`,
+        status: res.status
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError" || err?.code === 23;
+    const errorMsg = isTimeout ? "Request timed out after 8s" : err?.message || "Network error";
+    safeLogError(`Failed to send admin OTP email via AgentMail API: ${errorMsg}`);
+    return {
+      ok: false,
+      code: "otp_send_failed",
+      error: errorMsg
+    };
+  }
+}
+var inMemoryOtpChallenges = /* @__PURE__ */ new Map();
+var devLastGeneratedOtp = null;
+async function createOtpChallenge(challenge) {
+  const record = {
+    id: challenge.challengeId,
+    user_id: challenge.userId,
+    code_hash: challenge.codeHash,
+    expires_at: challenge.expiresAt,
+    attempts: 0,
+    max_attempts: 5,
+    consumed_at: null,
+    ip: challenge.ip,
+    created_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  if (isSupabaseAdminConfigured() && !challenge.userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data, error } = await client.from("admin_otp_challenges").insert({
+          id: challenge.challengeId,
+          user_id: challenge.userId,
+          code_hash: challenge.codeHash,
+          expires_at: challenge.expiresAt,
+          attempts: 0,
+          max_attempts: 5,
+          consumed_at: null,
+          ip: challenge.ip
+        }).select("*").single();
+        if (!error && data) {
+          return data;
+        }
+        if (error) {
+          safeLogWarn("Supabase admin_otp_challenges insert failed, using in-memory store:", error.message);
+        }
+      }
+    } catch (err) {
+      safeLogWarn("Failed to insert admin_otp_challenges row in Supabase:", err);
+    }
+  }
+  inMemoryOtpChallenges.set(challenge.challengeId, record);
+  return record;
+}
+async function invalidateUserChallenges(userId) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (isSupabaseAdminConfigured() && !userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        await client.from("admin_otp_challenges").update({ consumed_at: now }).eq("user_id", userId).is("consumed_at", null);
+      }
+    } catch (err) {
+      safeLogWarn("Failed to invalidate previous challenges in Supabase:", err);
+    }
+  }
+  for (const [id, c] of inMemoryOtpChallenges.entries()) {
+    if (c.user_id === userId && !c.consumed_at) {
+      c.consumed_at = now;
+      inMemoryOtpChallenges.set(id, c);
+    }
+  }
+}
+async function getChallenge(challengeId, userId) {
+  if (isSupabaseAdminConfigured() && !userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data, error } = await client.from("admin_otp_challenges").select("*").eq("id", challengeId).eq("user_id", userId).maybeSingle();
+        if (!error && data) {
+          return data;
+        }
+      }
+    } catch (err) {
+      safeLogWarn("Failed to query challenge from Supabase:", err);
+    }
+  }
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem && mem.user_id === userId) {
+    return mem;
+  }
+  return null;
+}
+async function incrementChallengeAttempts(challengeId, userId) {
+  if (isSupabaseAdminConfigured() && !userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data } = await client.from("admin_otp_challenges").select("attempts").eq("id", challengeId).maybeSingle();
+        const nextAttempts = (data?.attempts || 0) + 1;
+        await client.from("admin_otp_challenges").update({ attempts: nextAttempts }).eq("id", challengeId);
+        return nextAttempts;
+      }
+    } catch (err) {
+      safeLogWarn("Failed to increment attempts in Supabase:", err);
+    }
+  }
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem) {
+    mem.attempts += 1;
+    inMemoryOtpChallenges.set(challengeId, mem);
+    return mem.attempts;
+  }
+  return 1;
+}
+async function consumeChallenge(challengeId, userId) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (isSupabaseAdminConfigured() && !userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data, error } = await client.from("admin_otp_challenges").update({ consumed_at: now }).eq("id", challengeId).is("consumed_at", null).select("id");
+        if (!error && data && data.length > 0) {
+          return true;
+        }
+        return false;
+      }
+    } catch (err) {
+      safeLogWarn("Failed to consume challenge in Supabase:", err);
+    }
+  }
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem && !mem.consumed_at) {
+    mem.consumed_at = now;
+    inMemoryOtpChallenges.set(challengeId, mem);
+    return true;
+  }
+  return false;
+}
+async function invalidateChallenge(challengeId) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        await client.from("admin_otp_challenges").update({ consumed_at: now }).eq("id", challengeId);
+      }
+    } catch {
+    }
+  }
+  const mem = inMemoryOtpChallenges.get(challengeId);
+  if (mem) {
+    mem.consumed_at = now;
+    inMemoryOtpChallenges.set(challengeId, mem);
+  }
+}
+async function getLatestChallenge(userId) {
+  if (isSupabaseAdminConfigured() && !userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data } = await client.from("admin_otp_challenges").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (data) return data;
+      }
+    } catch {
+    }
+  }
+  let latest = null;
+  for (const c of inMemoryOtpChallenges.values()) {
+    if (c.user_id === userId) {
+      if (!latest || new Date(c.created_at).getTime() > new Date(latest.created_at).getTime()) {
+        latest = c;
+      }
+    }
+  }
+  return latest;
 }
 var devRevokedSessionsAfter = /* @__PURE__ */ new Map();
 var devAdminState = null;
@@ -2154,9 +1832,7 @@ function getDevAdmin() {
       email,
       fullName: "Development Administrator",
       role: "super_admin",
-      passwordHash: bcrypt2.hashSync(password, 10),
-      twoFactorSecret: process.env.DEV_ADMIN_2FA_SECRET || void 0,
-      twoFactorEnabled: process.env.DEV_ADMIN_2FA_ENABLED === "true"
+      passwordHash: bcrypt2.hashSync(password, 10)
     };
   }
   return devAdminState;
@@ -2344,7 +2020,7 @@ async function requireAdmin(req, res, next) {
       userActive = false;
     }
   }
-  if (!userActive && !isProd4) {
+  if (!userActive && !isProd2) {
     const dev = getDevAdmin();
     if (dev && dev.id === payload.userId) {
       userActive = true;
@@ -2361,18 +2037,26 @@ async function requireAdmin(req, res, next) {
     return res.status(404).json({ error: "Endpoint not found" });
   }
   try {
+    const now = Date.now();
+    const absExp = payload.absExp || payload.iat + ABSOLUTE_TIMEOUT_MS;
+    if (now > absExp) {
+      res.clearCookie("chemora_admin_session");
+      return res.status(404).json({ error: "Endpoint not found" });
+    }
+    const nextExp = Math.min(now + IDLE_TIMEOUT_MS, absExp);
     const refreshedPayload = {
       ...payload,
       role: currentRole,
-      exp: Date.now() + IDLE_TIMEOUT_MS
+      exp: nextExp,
+      absExp
     };
     const refreshedToken = signAdminToken(refreshedPayload);
     res.cookie("chemora_admin_session", refreshedToken, {
       httpOnly: true,
-      secure: isProd4,
+      secure: isProd2,
       sameSite: "strict",
       path: "/",
-      maxAge: IDLE_TIMEOUT_MS
+      maxAge: Math.max(1e3, nextExp - now)
     });
   } catch {
   }
@@ -2385,10 +2069,10 @@ async function requireAdmin(req, res, next) {
   };
   next();
 }
-router3.use((req, res, next) => {
+router.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
     const origin = req.headers.origin || req.headers.referer;
-    if (!origin && !isProd4) return next();
+    if (!origin && !isProd2) return next();
     if (origin) {
       try {
         const u = new URL(Array.isArray(origin) ? origin[0] : origin);
@@ -2403,17 +2087,25 @@ router3.use((req, res, next) => {
   }
   next();
 });
-var AdminLoginSchema = z3.object({
-  email: z3.string().trim().email("Invalid email address format."),
-  password: z3.string().min(6, "Password must be at least 6 characters."),
-  twoFactorCode: z3.string().trim().optional()
+var AdminLoginSchema = z.object({
+  email: z.string().trim().email("Invalid email address format."),
+  password: z.string().min(6, "Password must be at least 6 characters.")
+});
+var AdminOtpVerifySchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, "Verification code must be exactly 6 digits.")
 });
 function logLoginFailure(reason, ip, email) {
   safeLogWarn(`Admin login failure: reason=${reason}, ip=${ip}, email_hash=${crypto2.createHash("sha256").update(email.toLowerCase().trim()).digest("hex").slice(0, 10)}`);
 }
-router3.post("/login", adminLoginRateLimiter, async (req, res) => {
+router.post("/login", adminLoginRateLimiter, async (req, res) => {
   const ip = getClientIp(req);
   try {
+    try {
+      getAdminSessionSecret();
+    } catch {
+      safeLogError("Admin login blocked: ADMIN_SESSION_SECRET is missing or invalid.");
+      return res.status(503).json({ error: "Administrative authentication unavailable." });
+    }
     const parsed = AdminLoginSchema.safeParse(req.body);
     if (!parsed.success) {
       logLoginFailure("bad_format", ip, req.body?.email || "unknown");
@@ -2421,7 +2113,7 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
         error: "Invalid login format. Please provide a valid email and password (minimum 6 characters)."
       });
     }
-    const { email, password, twoFactorCode } = parsed.data;
+    const { email, password } = parsed.data;
     const emailFailures = await getFailureCount("email", email);
     if (emailFailures >= 5) {
       logLoginFailure("rate_limited", ip, email);
@@ -2451,14 +2143,11 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
               safeLogWarn("User authenticated in Supabase but no admin_users row found:", adminErr?.message || "no row");
               failureReason = "no_admin_row";
             } else {
-              const has2fa = adminRow.two_factor_enabled === true || Boolean(adminRow.two_factor_secret && String(adminRow.two_factor_secret).trim().length > 0);
               authenticatedAdmin = {
                 id: authData.user.id,
                 email: authData.user.email || email,
                 fullName: authData.user.user_metadata?.full_name || "Administrator",
-                role: adminRow.role,
-                twoFactorSecret: adminRow.two_factor_secret || void 0,
-                twoFactorEnabled: has2fa
+                role: adminRow.role
               };
             }
           }
@@ -2468,7 +2157,7 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
         failureReason = "supabase_error";
       }
     }
-    if (!authenticatedAdmin && !isProd4) {
+    if (!authenticatedAdmin && !isProd2) {
       const dev = getDevAdmin();
       if (dev && dev.email.toLowerCase() === email.toLowerCase()) {
         const match = await bcrypt2.compare(password, dev.passwordHash);
@@ -2477,9 +2166,7 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
             id: dev.id,
             email: dev.email,
             fullName: dev.fullName,
-            role: dev.role,
-            twoFactorSecret: dev.twoFactorSecret,
-            twoFactorEnabled: dev.twoFactorEnabled
+            role: dev.role
           };
         } else {
           failureReason = "wrong_password";
@@ -2493,65 +2180,349 @@ router3.post("/login", adminLoginRateLimiter, async (req, res) => {
       await writeAdminAudit("anonymous", email, "LOGIN_FAILED", "admin_auth", { reason: failureReason }, ip);
       return res.status(401).json({ error: "Invalid email or password." });
     }
-    await clearRateLimit("ip", ip);
-    await clearRateLimit("email", email);
-    const now = Date.now();
-    const sessionPayload = {
+    const agentMailKey = process.env.AGENTMAIL_API_KEY?.trim();
+    const agentMailInbox = process.env.AGENTMAIL_INBOX_ID?.trim();
+    const isDevAdminAllowed = !isProd2 && process.env.ALLOW_DEV_ADMIN === "true" && process.env.TEST_SIMULATE_NO_EMAIL !== "true";
+    if (!agentMailKey || !agentMailInbox) {
+      if (!isDevAdminAllowed) {
+        safeLogError("Admin login failed closed: AGENTMAIL_API_KEY or AGENTMAIL_INBOX_ID is not configured.");
+        return res.status(503).json({
+          code: "otp_unavailable",
+          error: "Email verification is not configured on this server."
+        });
+      }
+    }
+    await invalidateUserChallenges(authenticatedAdmin.id);
+    const codeNum = crypto2.randomInt(1e5, 1e6);
+    const code = codeNum.toString();
+    const challengeId = crypto2.randomUUID();
+    const codeHash = hashOtpCode(challengeId, code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
+    await createOtpChallenge({
+      challengeId,
       userId: authenticatedAdmin.id,
-      email: authenticatedAdmin.email,
-      fullName: authenticatedAdmin.fullName,
-      role: authenticatedAdmin.role,
-      sessionId: crypto2.randomBytes(16).toString("hex"),
-      iat: now,
-      exp: now + IDLE_TIMEOUT_MS
-    };
-    const token = signAdminToken(sessionPayload);
-    res.cookie("chemora_admin_session", token, {
+      codeHash,
+      expiresAt,
+      ip
+    });
+    if (!isProd2 && isDevAdminAllowed) {
+      devLastGeneratedOtp = {
+        userId: authenticatedAdmin.id,
+        challengeId,
+        code
+      };
+    }
+    const emailResult = await sendAdminOtpEmail({
+      toEmail: authenticatedAdmin.email,
+      code,
+      ip,
+      requestTime: (/* @__PURE__ */ new Date()).toUTCString()
+    });
+    if (!emailResult.ok) {
+      await invalidateChallenge(challengeId);
+      if (emailResult.code === "otp_unavailable") {
+        return res.status(503).json({
+          code: "otp_unavailable",
+          error: "Email verification is not configured on this server."
+        });
+      }
+      return res.status(503).json({
+        code: "otp_send_failed",
+        error: "We couldn't send the code. Please try again."
+      });
+    }
+    const preauthToken = signAdminPreauthToken({
+      userId: authenticatedAdmin.id,
+      challengeId,
+      email: authenticatedAdmin.email
+    });
+    res.cookie("admin_preauth", preauthToken, {
       httpOnly: true,
-      secure: isProd4,
+      secure: isProd2,
       sameSite: "strict",
       path: "/",
-      maxAge: IDLE_TIMEOUT_MS
+      maxAge: 10 * 60 * 1e3
     });
+    const maskedEmail = maskEmail(authenticatedAdmin.email);
     await writeAdminAudit(
       authenticatedAdmin.id,
       authenticatedAdmin.email,
-      "LOGIN_SUCCESS",
+      "OTP_SENT",
       "admin_auth",
-      { role: authenticatedAdmin.role },
+      { challengeId, maskedEmail, expiresIn: 600 },
       ip
     );
     return res.json({
-      success: true,
-      admin: {
-        id: authenticatedAdmin.id,
-        email: authenticatedAdmin.email,
-        fullName: authenticatedAdmin.fullName,
-        role: authenticatedAdmin.role
-      }
+      step: "otp",
+      maskedEmail,
+      expiresIn: 600,
+      resendAfter: 60
     });
   } catch (err) {
     safeLogError("Unhandled error in admin /login endpoint:", err);
     return res.status(500).json({ error: "Internal server error occurred during authentication." });
   }
 });
-router3.post("/verify-2fa", adminLoginRateLimiter, async (req, res) => {
+router.post("/otp/verify", adminLoginRateLimiter, async (req, res) => {
+  const ip = getClientIp(req);
+  const preauthCookie = req.cookies?.admin_preauth;
+  if (!preauthCookie || typeof preauthCookie !== "string") {
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification session has expired or is missing. Please sign in again."
+    });
+  }
+  const preauth = verifyAdminPreauthToken(preauthCookie);
+  if (!preauth) {
+    res.clearCookie("admin_preauth", { path: "/" });
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification session has expired or is invalid. Please sign in again."
+    });
+  }
+  const parsed = AdminOtpVerifySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Verification code must be exactly 6 digits."
+    });
+  }
+  const { code } = parsed.data;
+  const challenge = await getChallenge(preauth.challengeId, preauth.userId);
+  if (!challenge || challenge.consumed_at) {
+    res.clearCookie("admin_preauth", { path: "/" });
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification code has expired or already been used. Please sign in again."
+    });
+  }
+  if (new Date(challenge.expires_at).getTime() < Date.now()) {
+    await invalidateChallenge(challenge.id);
+    res.clearCookie("admin_preauth", { path: "/" });
+    await writeAdminAudit(preauth.userId, preauth.email, "OTP_FAILED", "admin_auth", { reason: "expired", challengeId: challenge.id }, ip);
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification code has expired. Please sign in again."
+    });
+  }
+  const currentAttempts = await incrementChallengeAttempts(challenge.id, preauth.userId);
+  if (currentAttempts > challenge.max_attempts) {
+    await invalidateChallenge(challenge.id);
+    res.clearCookie("admin_preauth", { path: "/" });
+    await writeAdminAudit(preauth.userId, preauth.email, "OTP_LOCKED", "admin_auth", { challengeId: challenge.id, attempts: currentAttempts }, ip);
+    return res.status(429).json({
+      code: "otp_locked",
+      error: "Too many failed attempts. This verification code has been locked. Please sign in again."
+    });
+  }
+  const candidateHash = hashOtpCode(challenge.id, code);
+  const expBuf = Buffer.from(challenge.code_hash, "hex");
+  const candBuf = Buffer.from(candidateHash, "hex");
+  const isMatch = expBuf.length === candBuf.length && crypto2.timingSafeEqual(expBuf, candBuf);
+  if (!isMatch) {
+    const attemptsLeft = Math.max(0, challenge.max_attempts - currentAttempts);
+    await writeAdminAudit(preauth.userId, preauth.email, "OTP_FAILED", "admin_auth", { challengeId: challenge.id, attemptsLeft }, ip);
+    if (attemptsLeft === 0) {
+      await invalidateChallenge(challenge.id);
+      res.clearCookie("admin_preauth", { path: "/" });
+      await writeAdminAudit(preauth.userId, preauth.email, "OTP_LOCKED", "admin_auth", { challengeId: challenge.id }, ip);
+      return res.status(429).json({
+        code: "otp_locked",
+        error: "Too many failed attempts. This verification code has been locked. Please sign in again.",
+        attemptsLeft: 0
+      });
+    }
+    return res.status(401).json({
+      code: "otp_invalid",
+      error: "Invalid verification code.",
+      attemptsLeft
+    });
+  }
+  const consumed = await consumeChallenge(challenge.id, preauth.userId);
+  if (!consumed) {
+    res.clearCookie("admin_preauth", { path: "/" });
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification code has already been consumed."
+    });
+  }
+  res.clearCookie("admin_preauth", { path: "/" });
+  await clearRateLimit("ip", ip);
+  await clearRateLimit("email", preauth.email);
+  let adminRecord = {
+    id: preauth.userId,
+    email: preauth.email,
+    fullName: "Administrator",
+    role: "admin"
+  };
+  if (isSupabaseAdminConfigured() && !preauth.userId.startsWith("admin_dev")) {
+    try {
+      const client = getSupabaseAdminClient();
+      if (client) {
+        const { data: adminRow } = await client.from("admin_users").select("role").eq("user_id", preauth.userId).maybeSingle();
+        if (adminRow?.role) {
+          adminRecord.role = adminRow.role;
+        }
+      }
+    } catch {
+    }
+  } else if (!isProd2) {
+    const dev = getDevAdmin();
+    if (dev && dev.id === preauth.userId) {
+      adminRecord = {
+        id: dev.id,
+        email: dev.email,
+        fullName: dev.fullName,
+        role: dev.role
+      };
+    }
+  }
+  const now = Date.now();
+  const sessionPayload = {
+    userId: adminRecord.id,
+    email: adminRecord.email,
+    fullName: adminRecord.fullName,
+    role: adminRecord.role,
+    sessionId: crypto2.randomBytes(16).toString("hex"),
+    iat: now,
+    exp: now + IDLE_TIMEOUT_MS,
+    absExp: now + ABSOLUTE_TIMEOUT_MS
+  };
+  const sessionToken = signAdminToken(sessionPayload);
+  res.cookie("chemora_admin_session", sessionToken, {
+    httpOnly: true,
+    secure: isProd2,
+    sameSite: "strict",
+    path: "/",
+    maxAge: IDLE_TIMEOUT_MS
+  });
+  await writeAdminAudit(adminRecord.id, adminRecord.email, "OTP_VERIFIED", "admin_auth", { challengeId: challenge.id }, ip);
+  await writeAdminAudit(adminRecord.id, adminRecord.email, "LOGIN_SUCCESS", "admin_auth", { role: adminRecord.role }, ip);
   return res.json({
     success: true,
-    message: "Two-factor authentication has been completely removed from administrative panels."
+    admin: {
+      id: adminRecord.id,
+      email: adminRecord.email,
+      fullName: adminRecord.fullName,
+      role: adminRecord.role
+    }
   });
 });
-router3.get("/me", requireAdmin, (req, res) => {
+router.post("/otp/resend", adminLoginRateLimiter, async (req, res) => {
+  const ip = getClientIp(req);
+  const preauthCookie = req.cookies?.admin_preauth;
+  if (!preauthCookie || typeof preauthCookie !== "string") {
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification session has expired. Please sign in again."
+    });
+  }
+  const preauth = verifyAdminPreauthToken(preauthCookie);
+  if (!preauth) {
+    res.clearCookie("admin_preauth", { path: "/" });
+    return res.status(401).json({
+      code: "otp_expired",
+      error: "Verification session has expired. Please sign in again."
+    });
+  }
+  const latest = await getLatestChallenge(preauth.userId);
+  if (latest) {
+    const elapsedMs = Date.now() - new Date(latest.created_at).getTime();
+    if (elapsedMs < 60 * 1e3) {
+      const waitSeconds = Math.ceil((60 * 1e3 - elapsedMs) / 1e3);
+      return res.status(429).json({
+        error: `Please wait ${waitSeconds}s before requesting a new code.`,
+        retryAfterSeconds: waitSeconds
+      });
+    }
+  }
+  const hourlyCount = await recordFailure("otp_hourly_resend", preauth.userId, 3600);
+  if (hourlyCount > 5) {
+    return res.status(429).json({
+      error: "Hourly verification code limit reached (max 5 per hour). Please wait before trying again.",
+      retryAfterSeconds: 3600
+    });
+  }
+  const agentMailKey = process.env.AGENTMAIL_API_KEY?.trim();
+  const agentMailInbox = process.env.AGENTMAIL_INBOX_ID?.trim();
+  const isDevAdminAllowed = !isProd2 && process.env.ALLOW_DEV_ADMIN === "true" && process.env.TEST_SIMULATE_NO_EMAIL !== "true";
+  if (!agentMailKey || !agentMailInbox) {
+    if (!isDevAdminAllowed) {
+      safeLogError("Admin OTP resend failed closed: AGENTMAIL_API_KEY or AGENTMAIL_INBOX_ID is not configured.");
+      return res.status(503).json({
+        code: "otp_unavailable",
+        error: "Email verification is not configured on this server."
+      });
+    }
+  }
+  await invalidateUserChallenges(preauth.userId);
+  const codeNum = crypto2.randomInt(1e5, 1e6);
+  const code = codeNum.toString();
+  const newChallengeId = crypto2.randomUUID();
+  const codeHash = hashOtpCode(newChallengeId, code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
+  await createOtpChallenge({
+    challengeId: newChallengeId,
+    userId: preauth.userId,
+    codeHash,
+    expiresAt,
+    ip
+  });
+  if (!isProd2 && isDevAdminAllowed) {
+    devLastGeneratedOtp = {
+      userId: preauth.userId,
+      challengeId: newChallengeId,
+      code
+    };
+  }
+  const emailResult = await sendAdminOtpEmail({
+    toEmail: preauth.email,
+    code,
+    ip,
+    requestTime: (/* @__PURE__ */ new Date()).toUTCString()
+  });
+  if (!emailResult.ok) {
+    await invalidateChallenge(newChallengeId);
+    if (emailResult.code === "otp_unavailable") {
+      return res.status(503).json({
+        code: "otp_unavailable",
+        error: "Email verification is not configured on this server."
+      });
+    }
+    return res.status(503).json({
+      code: "otp_send_failed",
+      error: "We couldn't send the code. Please try again."
+    });
+  }
+  const newPreauthToken = signAdminPreauthToken({
+    userId: preauth.userId,
+    challengeId: newChallengeId,
+    email: preauth.email
+  });
+  res.cookie("admin_preauth", newPreauthToken, {
+    httpOnly: true,
+    secure: isProd2,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 10 * 60 * 1e3
+  });
+  await writeAdminAudit(preauth.userId, preauth.email, "OTP_SENT", "admin_auth", { challengeId: newChallengeId, resend: true }, ip);
+  return res.json({
+    success: true,
+    resendAfter: 60,
+    expiresIn: 600
+  });
+});
+router.get("/me", requireAdmin, (req, res) => {
   return res.json({
     admin: req.admin
   });
 });
-router3.post("/logout", requireAdmin, async (req, res) => {
+router.post("/logout", requireAdmin, async (req, res) => {
   res.clearCookie("chemora_admin_session");
   await writeAdminAudit(req.admin.id, req.admin.email, "LOGOUT", "admin_auth", {}, getClientIp(req));
   return res.json({ success: true });
 });
-router3.post("/logout-all", requireAdmin, async (req, res) => {
+router.post("/logout-all", requireAdmin, async (req, res) => {
   const adminId = req.admin.id;
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
@@ -2570,25 +2541,13 @@ router3.post("/logout-all", requireAdmin, async (req, res) => {
   await writeAdminAudit(adminId, req.admin.email, "LOGOUT_ALL", "admin_auth", {}, getClientIp(req));
   return res.json({ success: true, message: "Signed out of all administrative sessions." });
 });
-router3.get("/2fa/status", requireAdmin, async (req, res) => {
-  return res.json({ enabled: false, message: "Two-factor authentication is disabled on this platform." });
-});
-router3.post("/2fa/generate", requireAdmin, async (req, res) => {
-  return res.status(400).json({ error: "Two-factor authentication has been removed from this system." });
-});
-router3.post("/2fa/enable", requireAdmin, async (req, res) => {
-  return res.status(400).json({ error: "Two-factor authentication has been removed from this system." });
-});
-router3.post("/2fa/disable", requireAdmin, async (req, res) => {
-  return res.json({ success: true, message: "Two-factor authentication is already disabled." });
-});
-router3.post("/clear-lockout", requireAdmin, async (req, res) => {
+router.post("/clear-lockout", requireAdmin, async (req, res) => {
   const { email, ip, all } = req.body;
   const result = await clearAdminLockouts({ email, ip, all: Boolean(all) });
   await writeAdminAudit(req.admin.id, req.admin.email, "CLEAR_LOCKOUT", "rate_limit", result, getClientIp(req));
   return res.json({ success: true, ...result });
 });
-router3.get("/stats", requireAdmin, async (req, res) => {
+router.get("/stats", requireAdmin, async (req, res) => {
   try {
     let totalUsers = 0;
     let newThisWeek = 0;
@@ -2693,7 +2652,7 @@ router3.get("/stats", requireAdmin, async (req, res) => {
     return res.status(500).json({ error: "Failed to compute administrative metrics." });
   }
 });
-router3.get("/reviews", requireAdmin, async (req, res) => {
+router.get("/reviews", requireAdmin, async (req, res) => {
   const statusFilter = req.query.status || "all";
   const search = (req.query.search || "").toLowerCase().trim();
   let list = [];
@@ -2726,7 +2685,7 @@ router3.get("/reviews", requireAdmin, async (req, res) => {
   }
   return res.json({ reviews: list, total: list.length });
 });
-router3.patch("/reviews/:id", requireAdmin, async (req, res) => {
+router.patch("/reviews/:id", requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const { status, comment } = req.body;
   if (!["approved", "rejected", "pending", "flagged"].includes(status)) {
@@ -2755,7 +2714,7 @@ router3.patch("/reviews/:id", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "REVIEW_STATUS_UPDATE", id, { newStatus: status }, getClientIp(req));
   return res.json({ success: true, id, status });
 });
-router3.post("/reviews/:id/approve", requireAdmin, async (req, res) => {
+router.post("/reviews/:id/approve", requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const existing = fallbackAdminReviews.get(id);
   if (existing) existing.status = "approved";
@@ -2768,7 +2727,7 @@ router3.post("/reviews/:id/approve", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "REVIEW_APPROVE", id, { status: "approved" }, getClientIp(req));
   return res.json({ success: true, id, status: "approved" });
 });
-router3.post("/reviews/:id/reject", requireAdmin, async (req, res) => {
+router.post("/reviews/:id/reject", requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const existing = fallbackAdminReviews.get(id);
   if (existing) existing.status = "rejected";
@@ -2781,7 +2740,7 @@ router3.post("/reviews/:id/reject", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "REVIEW_REJECT", id, { status: "rejected" }, getClientIp(req));
   return res.json({ success: true, id, status: "rejected" });
 });
-router3.delete("/reviews/:id", requireAdmin, async (req, res) => {
+router.delete("/reviews/:id", requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   fallbackAdminReviews.delete(id);
   if (isSupabaseAdminConfigured()) {
@@ -2793,7 +2752,7 @@ router3.delete("/reviews/:id", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "REVIEW_DELETE", id, {}, getClientIp(req));
   return res.json({ success: true, id });
 });
-router3.post("/reviews/bulk", requireAdmin, async (req, res) => {
+router.post("/reviews/bulk", requireAdmin, async (req, res) => {
   const ids = req.body.ids || req.body.reviewIds;
   const action = req.body.action;
   if (!Array.isArray(ids) || !["approve", "reject", "delete"].includes(action)) {
@@ -2824,7 +2783,7 @@ router3.post("/reviews/bulk", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, `REVIEW_BULK_${action.toUpperCase()}`, `${ids.length} reviews`, { ids }, getClientIp(req));
   return res.json({ success: true, count: ids.length, action });
 });
-router3.get("/users", requireAdmin, async (req, res) => {
+router.get("/users", requireAdmin, async (req, res) => {
   const search = (req.query.search || "").toLowerCase().trim();
   let users = [];
   if (isSupabaseAdminConfigured()) {
@@ -2871,7 +2830,7 @@ router3.get("/users", requireAdmin, async (req, res) => {
   }
   return res.json({ users, total: users.length });
 });
-router3.patch("/users/:id", requireAdmin, async (req, res) => {
+router.patch("/users/:id", requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const { status } = req.body;
   if (!["active", "disabled"].includes(status)) {
@@ -2885,7 +2844,7 @@ router3.patch("/users/:id", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "USER_STATUS_UPDATE", id, { newStatus: status }, getClientIp(req));
   return res.json({ success: true, id, status });
 });
-router3.post("/users/:id/toggle-disabled", requireAdmin, async (req, res) => {
+router.post("/users/:id/toggle-disabled", requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const shouldDisable = req.body.disabled ?? !disabledUsers.has(id);
   if (shouldDisable) {
@@ -2896,7 +2855,7 @@ router3.post("/users/:id/toggle-disabled", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "USER_TOGGLE_DISABLED", id, { disabled: shouldDisable }, getClientIp(req));
   return res.json({ success: true, id, disabled: shouldDisable });
 });
-router3.get("/videos/health", requireAdmin, async (req, res) => {
+router.get("/videos/health", requireAdmin, async (req, res) => {
   try {
     const manifestPath = path.join(rootDir, "videos/manifest.json");
     let manifestData = {};
@@ -2959,7 +2918,7 @@ router3.get("/videos/health", requireAdmin, async (req, res) => {
     return res.status(500).json({ error: "Video health check failed" });
   }
 });
-router3.get("/settings", requireAdmin, (req, res) => {
+router.get("/settings", requireAdmin, (req, res) => {
   return res.json({ settings: fallbackSettings });
 });
 var handleSettingsUpdate = async (req, res) => {
@@ -2988,8 +2947,8 @@ var handleSettingsUpdate = async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "UPDATE_SETTINGS", "system_settings", req.body, getClientIp(req));
   return res.json({ success: true, settings: fallbackSettings });
 };
-router3.patch("/settings", requireAdmin, handleSettingsUpdate);
-router3.post("/settings", requireAdmin, handleSettingsUpdate);
+router.patch("/settings", requireAdmin, handleSettingsUpdate);
+router.post("/settings", requireAdmin, handleSettingsUpdate);
 var handleAuditQuery = async (req, res) => {
   const actionFilter = (req.query.action || "").trim();
   const categoryFilter = (req.query.category || "").trim().toLowerCase();
@@ -3002,7 +2961,7 @@ var handleAuditQuery = async (req, res) => {
   const getCategoryPrefixes = (cat) => {
     switch (cat) {
       case "auth":
-        return ["LOGIN", "2FA", "LOGOUT"];
+        return ["LOGIN", "OTP", "2FA", "LOGOUT"];
       case "reviews":
         return ["REVIEW", "APPROVE_REVIEW", "REJECT_REVIEW", "DELETE_REVIEW", "AUTOMOD"];
       case "users":
@@ -3112,7 +3071,7 @@ var handleAuditQuery = async (req, res) => {
   const uniqueEmails = new Set(allKnownLogs.map((l) => l.admin_email).filter(Boolean));
   const oneDayAgo = Date.now() - 24 * 60 * 60 * 1e3;
   const recent24hCount = allKnownLogs.filter((l) => new Date(l.created_at).getTime() > oneDayAgo).length;
-  const authCount = allKnownLogs.filter((l) => /LOGIN|2FA|LOGOUT/i.test(l.action)).length;
+  const authCount = allKnownLogs.filter((l) => /LOGIN|OTP|2FA|LOGOUT/i.test(l.action)).length;
   const moderationCount = allKnownLogs.filter((l) => /REVIEW|MODERAT/i.test(l.action)).length;
   const settingsCount = allKnownLogs.filter((l) => /SETTING|CONFIG/i.test(l.action)).length;
   const securityCount = allKnownLogs.filter((l) => /LOCKOUT|REVOKE|FAIL|RATE/i.test(l.action)).length;
@@ -3188,15 +3147,15 @@ var handleAuditExport = async (req, res) => {
   ];
   return res.send(csvRows.join("\r\n"));
 };
-router3.get("/audit", requireAdmin, handleAuditQuery);
-router3.get("/audit-log", requireAdmin, handleAuditQuery);
-router3.get("/audit-logs", requireAdmin, handleAuditQuery);
-router3.get("/audit/export", requireAdmin, handleAuditExport);
-router3.get("/audit-logs/export", requireAdmin, handleAuditExport);
-var AdminAssistantSchema = z3.object({
-  query: z3.string().trim().min(2).max(1e3)
+router.get("/audit", requireAdmin, handleAuditQuery);
+router.get("/audit-log", requireAdmin, handleAuditQuery);
+router.get("/audit-logs", requireAdmin, handleAuditQuery);
+router.get("/audit/export", requireAdmin, handleAuditExport);
+router.get("/audit-logs/export", requireAdmin, handleAuditExport);
+var AdminAssistantSchema = z.object({
+  query: z.string().trim().min(2).max(1e3)
 });
-router3.post("/assistant", requireAdmin, async (req, res) => {
+router.post("/assistant", requireAdmin, async (req, res) => {
   const parsed = AdminAssistantSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid question format." });
@@ -3265,7 +3224,651 @@ ${contextData}`;
   await writeAdminAudit(req.admin.id, req.admin.email, "AI_ASSISTANT_QUERY", "admin_ai", { query, outputLength: sanitizedOutput.length }, ip);
   return res.json({ answer: sanitizedOutput, reply: sanitizedOutput });
 });
-var admin_default = router3;
+var admin_default = router;
+
+// server/routes/account.ts
+var router2 = express2.Router();
+var isProd3 = process.env.NODE_ENV === "production";
+var ALLOWED_ORIGINS = new Set([
+  "https://chemora.work.gd",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  process.env.SITE_URL?.trim().replace(/\/$/, "")
+].filter(Boolean));
+function isAllowedOrigin(originHeader) {
+  if (!originHeader) return false;
+  const originStr = Array.isArray(originHeader) ? originHeader[0] : originHeader;
+  try {
+    const parsed = new URL(originStr);
+    const origin = parsed.origin;
+    if (ALLOWED_ORIGINS.has(origin)) return true;
+    if (origin.endsWith(".vercel.app") || origin.endsWith(".run.app") || origin.includes(".googleusercontent.com") || origin.includes(".aistudio.google.com") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+router2.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    const origin = req.headers.origin || req.headers.referer;
+    if (!origin && !isProd3) {
+      return next();
+    }
+    if (!origin || !isAllowedOrigin(origin)) {
+      return res.status(403).json({ error: "Invalid or untrusted request origin." });
+    }
+  }
+  next();
+});
+var SignUpSchema = z2.object({
+  email: z2.string().trim().email("Invalid email address").max(120),
+  password: z2.string().min(10, "Password must be at least 10 characters").max(120),
+  full_name: z2.string().trim().max(80).optional()
+});
+var LoginSchema = z2.object({
+  email: z2.string().trim().email("Invalid email address").max(120),
+  password: z2.string().min(10, "Password must be at least 10 characters").max(120)
+});
+var ALLOWED_PRESET_AVATARS = /* @__PURE__ */ new Set([
+  "/favicon.png",
+  "/assets/chemistry/carbon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/assets/chemistry/oxygen.svg",
+  "/assets/chemora-mark.svg"
+]);
+function isValidAvatarUrl(url, userId) {
+  if (!url || typeof url !== "string" || url.length > 255) return false;
+  const trimmed = url.trim();
+  if (ALLOWED_PRESET_AVATARS.has(trimmed)) return true;
+  if (trimmed.startsWith("https://lh3.googleusercontent.com/")) return true;
+  const expectedPrefix = `/storage/v1/object/public/avatars/${userId}/`;
+  if (trimmed.startsWith(expectedPrefix)) return true;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname.startsWith(expectedPrefix)) return true;
+  } catch {
+  }
+  return false;
+}
+var ProfileUpdateSchema = z2.object({
+  full_name: z2.string().trim().max(80).optional(),
+  avatar_url: z2.string().trim().max(255).optional()
+});
+var PasswordUpdateSchema = z2.object({
+  new_password: z2.string().min(10, "New password must be at least 10 characters").max(120)
+});
+var ForgotPasswordSchema = z2.object({
+  email: z2.string().trim().email("Invalid email address").max(120)
+});
+var ResetPasswordWithTokenSchema = z2.object({
+  token: z2.string().trim().min(10, "Invalid token").max(255),
+  new_password: z2.string().min(10, "New password must be at least 10 characters").max(120)
+});
+var DeleteAccountSchema = z2.object({
+  password: z2.string().min(1, "Password confirmation is required")
+});
+var SyncProgressSchema = z2.object({
+  experimentsCompleted: z2.number().int().min(0).max(1e3).optional(),
+  challengesCompleted: z2.number().int().min(0).max(1e3).optional(),
+  streakDays: z2.number().int().min(0).max(1e4).optional(),
+  totalXp: z2.number().int().min(0).max(1e7).optional(),
+  completedExperimentIds: z2.array(z2.string().trim().max(60)).max(200).optional()
+});
+function extractToken(req) {
+  if (req.cookies && (req.cookies.chemora_session || req.cookies["__Host-chemora_session"])) {
+    return req.cookies.chemora_session || req.cookies["__Host-chemora_session"];
+  }
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7).trim();
+  }
+  return null;
+}
+function setSessionCookies(res, token) {
+  const maxAge = 7 * 24 * 60 * 60 * 1e3;
+  res.cookie("chemora_session", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProd3,
+    maxAge,
+    path: "/"
+  });
+  if (isProd3) {
+    res.cookie("__Host-chemora_session", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
+      maxAge,
+      path: "/"
+    });
+  }
+}
+function clearSessionCookies(res) {
+  res.clearCookie("chemora_session", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProd3,
+    path: "/"
+  });
+  if (isProd3) {
+    res.clearCookie("__Host-chemora_session", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
+      path: "/"
+    });
+  }
+}
+router2.get("/status", (req, res) => {
+  const token = req.cookies?.chemora_admin_session || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+  const admin = token ? verifyAdminToken(token) : null;
+  if (admin) {
+    return res.json({
+      status: "online",
+      databaseConnected: isSupabaseConfigured()
+    });
+  }
+  return res.json({ status: "online" });
+});
+router2.get("/database", (req, res) => {
+  const token = req.cookies?.chemora_admin_session || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+  const admin = token ? verifyAdminToken(token) : null;
+  if (!admin) {
+    return res.json({ status: "online" });
+  }
+  return res.json(getSupabaseSystemDiagnostics());
+});
+router2.get("/progress", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const verified = await verifyUserSessionToken(token);
+    if (!verified) return res.status(401).json({ error: "Session expired" });
+    const result = await backendGetProgress(verified.id);
+    return res.json(result);
+  } catch {
+    return res.status(503).json({ error: "Service temporarily unavailable." });
+  }
+});
+router2.post("/sync", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const verified = await verifyUserSessionToken(token);
+    if (!verified) return res.status(401).json({ error: "Session expired" });
+    const parsed = SyncProgressSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid progress data schema" });
+    }
+    const syncResult = await backendSyncProgress(verified.id, parsed.data);
+    return res.json(syncResult);
+  } catch {
+    return res.status(503).json({ error: "Service temporarily unavailable." });
+  }
+});
+router2.get("/me", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) {
+      return res.status(401).json({ authenticated: false, error: "Not authenticated" });
+    }
+    const verified = await verifyUserSessionToken(token);
+    if (!verified) {
+      return res.status(401).json({ authenticated: false, error: "Session expired or invalid" });
+    }
+    const profile = await backendGetProfile(verified.id, verified.email, void 0, token);
+    return res.json({
+      authenticated: true,
+      user: {
+        id: verified.id,
+        email: verified.email
+      },
+      profile
+    });
+  } catch {
+    return res.status(500).json({ error: "Internal server error occurred." });
+  }
+});
+router2.post("/signup", async (req, res) => {
+  try {
+    const parsed = SignUpSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Password must be at least 10 characters long." });
+    }
+    const { email, password, full_name } = parsed.data;
+    const result = await backendSignUp(email, password, full_name || "");
+    if (result.session?.access_token) {
+      setSessionCookies(res, result.session.access_token);
+    }
+    return res.status(201).json({
+      success: true,
+      user: result.user,
+      requiresEmailConfirmation: result.requiresEmailConfirmation,
+      message: result.message || "Researcher account created successfully."
+    });
+  } catch (err) {
+    safeLogError("Signup failed");
+    return res.status(400).json({ error: "Registration failed. Please check your details." });
+  }
+});
+router2.post("/login", async (req, res) => {
+  try {
+    const parsed = LoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(401).json({ error: "Invalid email or password." });
+    }
+    const { email, password } = parsed.data;
+    const result = await backendSignIn(email, password);
+    if (result.session?.access_token) {
+      setSessionCookies(res, result.session.access_token);
+    }
+    return res.json({
+      success: true,
+      user: result.user,
+      profile: result.profile
+    });
+  } catch {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+});
+router2.post("/logout", async (req, res) => {
+  const token = extractToken(req);
+  if (token) {
+    try {
+      const client = getUserScopedSupabaseClient(token);
+      if (client) {
+        await client.auth.signOut();
+      }
+    } catch {
+    }
+  }
+  clearSessionCookies(res);
+  return res.json({ success: true, message: "Logged out successfully." });
+});
+router2.delete("/me", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const verified = await verifyUserSessionToken(token);
+    if (!verified) return res.status(401).json({ error: "Session expired or invalid" });
+    const parsed = DeleteAccountSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Password confirmation is required." });
+    }
+    await backendDeleteAccount(verified.id, verified.email, parsed.data.password);
+    clearSessionCookies(res);
+    return res.json({
+      success: true,
+      message: "Your researcher account and learning data have been permanently erased."
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message || "Failed to delete account." });
+  }
+});
+router2.put("/profile", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const verified = await verifyUserSessionToken(token);
+    if (!verified) return res.status(401).json({ error: "Session expired" });
+    const parsed = ProfileUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid profile update format" });
+    }
+    if (parsed.data.avatar_url !== void 0 && !isValidAvatarUrl(parsed.data.avatar_url, verified.id)) {
+      return res.status(400).json({
+        error: "Invalid avatar URL. Allowed: your uploaded avatar, preset badges, or Google photo."
+      });
+    }
+    const updatedProfile = await backendUpdateProfile(
+      verified.id,
+      verified.email,
+      parsed.data,
+      token
+    );
+    return res.json({
+      success: true,
+      profile: updatedProfile
+    });
+  } catch {
+    return res.status(500).json({ error: "Failed to update profile." });
+  }
+});
+router2.put("/password", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const parsed = PasswordUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "New password must be at least 10 characters long." });
+    }
+    await backendUpdatePassword(token, parsed.data.new_password);
+    return res.json({ success: true, message: "Password updated successfully." });
+  } catch (err) {
+    return res.status(400).json({ error: err.message || "Failed to update password." });
+  }
+});
+router2.post("/forgot-password", async (req, res) => {
+  try {
+    const parsed = ForgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "A valid email address is required." });
+    }
+    await backendResetPasswordRequest(parsed.data.email);
+    return res.json({
+      success: true,
+      message: "If an account exists with that email, password reset instructions have been sent."
+    });
+  } catch {
+    return res.json({
+      success: true,
+      message: "If an account exists with that email, password reset instructions have been sent."
+    });
+  }
+});
+var account_default = router2;
+
+// server/routes/reviews.ts
+import express3 from "express";
+import { z as z3 } from "zod";
+var router3 = express3.Router();
+var isProd4 = process.env.NODE_ENV === "production";
+function extractToken2(req) {
+  if (req.cookies && (req.cookies.chemora_session || req.cookies["__Host-chemora_session"])) {
+    return req.cookies.chemora_session || req.cookies["__Host-chemora_session"];
+  }
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7).trim();
+  }
+  return null;
+}
+function validateReviewPlainText(text) {
+  if (/<[a-z\/\!][\s\S]*>/i.test(text)) {
+    return { valid: false, error: "HTML formatting is not permitted in reviews." };
+  }
+  const linkMatches = text.match(/https?:\/\/|www\./gi) || [];
+  if (linkMatches.length > 1) {
+    return { valid: false, error: "Reviews may not contain more than one link." };
+  }
+  if (/(.)\1{5,}/.test(text)) {
+    return { valid: false, error: "Excessive repeated characters are not permitted." };
+  }
+  return { valid: true };
+}
+var devReviews = [];
+var devVotes = /* @__PURE__ */ new Set();
+function calculateSummary(records) {
+  const totalCount = records.length;
+  if (totalCount === 0) {
+    return {
+      averageRating: 0,
+      totalCount: 0,
+      recommendationRate: 0,
+      ratingCounts: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+      categoryCounts: {}
+    };
+  }
+  let ratingSum = 0;
+  let recommendCount = 0;
+  const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  const categoryCounts = {};
+  for (const r of records) {
+    ratingSum += r.rating;
+    if (r.wouldRecommend) recommendCount++;
+    const clampedRating = Math.max(1, Math.min(5, Math.round(r.rating)));
+    ratingCounts[clampedRating] = (ratingCounts[clampedRating] || 0) + 1;
+    categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1;
+  }
+  const averageRating = parseFloat((ratingSum / totalCount).toFixed(1));
+  const recommendationRate = Math.round(recommendCount / totalCount * 100);
+  return {
+    averageRating,
+    totalCount,
+    recommendationRate,
+    ratingCounts,
+    categoryCounts
+  };
+}
+var ReviewsQuerySchema = z3.object({
+  category: z3.string().trim().max(60).optional(),
+  rating: z3.coerce.number().int().min(1).max(5).optional(),
+  sort: z3.enum(["helpful", "recent"]).optional()
+});
+var ReviewIdParamSchema = z3.object({
+  id: z3.string().trim().min(3).max(100)
+});
+var CreateReviewSchema = z3.object({
+  rating: z3.coerce.number().int().min(1, "Rating must be at least 1").max(5, "Rating must be at most 5"),
+  category: z3.string().trim().max(60).optional(),
+  title: z3.string().trim().min(2, "Review title is required").max(120),
+  content: z3.string().trim().min(5, "Review content must be at least 5 characters").max(1500),
+  wouldRecommend: z3.boolean().optional()
+});
+router3.get("/", async (req, res) => {
+  try {
+    const parsedQuery = ReviewsQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return res.status(400).json({ error: "Invalid query parameters" });
+    }
+    const { category, rating: minRating, sort = "helpful" } = parsedQuery.data;
+    const admin = getSupabaseAdminClient();
+    let approvedReviews = [];
+    if (admin) {
+      let query = admin.from("chemora_reviews").select("*").eq("status", "approved");
+      if (category && category !== "all") {
+        query = query.ilike("category", `%${category}%`);
+      }
+      if (minRating !== void 0) {
+        query = query.gte("rating", minRating);
+      }
+      if (sort === "recent") {
+        query = query.order("created_at", { ascending: false });
+      } else {
+        query = query.order("helpful", { ascending: false }).order("rating", { ascending: false });
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        approvedReviews = data.map((r) => ({
+          id: r.id,
+          user_id: r.user_id,
+          authorName: r.author_name || "Verified Chemist",
+          role: r.role || "Chemistry Learner",
+          avatarUrl: r.avatar_url || "/favicon.png",
+          rating: Number(r.rating || 5),
+          category: r.category || "General Experience",
+          title: r.title,
+          content: r.comment || r.content,
+          wouldRecommend: r.would_recommend !== false,
+          helpful: Number(r.helpful || 0),
+          verified: Boolean(r.verified),
+          status: "approved",
+          createdAt: r.created_at || (/* @__PURE__ */ new Date()).toISOString()
+        }));
+      }
+    } else if (!isProd4 || !admin) {
+      approvedReviews = devReviews.filter((r) => r.status === "approved");
+      if (category && category !== "all") {
+        approvedReviews = approvedReviews.filter((r) => r.category.toLowerCase().includes(category.toLowerCase()));
+      }
+      if (minRating !== void 0) {
+        approvedReviews = approvedReviews.filter((r) => r.rating >= minRating);
+      }
+    }
+    const summary = calculateSummary(approvedReviews);
+    return res.json({
+      reviews: approvedReviews,
+      summary
+    });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to retrieve reviews." });
+  }
+});
+router3.get("/stats", async (_req, res) => {
+  try {
+    const admin = getSupabaseAdminClient();
+    let approvedReviews = [];
+    if (admin) {
+      const { data } = await admin.from("chemora_reviews").select("*").eq("status", "approved");
+      if (data) {
+        approvedReviews = data.map((r) => ({
+          id: r.id,
+          authorName: r.author_name,
+          role: r.role || "Chemistry Learner",
+          rating: Number(r.rating || 5),
+          category: r.category || "General Experience",
+          title: r.title,
+          content: r.comment || r.content,
+          wouldRecommend: r.would_recommend !== false,
+          helpful: Number(r.helpful || 0),
+          verified: Boolean(r.verified),
+          status: "approved",
+          createdAt: r.created_at
+        }));
+      }
+    } else if (!isProd4 || !admin) {
+      approvedReviews = devReviews.filter((r) => r.status === "approved");
+    }
+    return res.json(calculateSummary(approvedReviews));
+  } catch {
+    return res.status(500).json({ error: "Failed to calculate stats" });
+  }
+});
+router3.post("/", async (req, res) => {
+  try {
+    const token = extractToken2(req);
+    if (!token) {
+      return res.status(401).json({ error: "You must be logged in to submit a review." });
+    }
+    const verifiedUser = await verifyUserSessionToken(token);
+    if (!verifiedUser || !verifiedUser.id) {
+      return res.status(401).json({ error: "Invalid or expired session. Please sign in." });
+    }
+    const parsed = CreateReviewSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid review fields." });
+    }
+    const { rating, category, title, content, wouldRecommend } = parsed.data;
+    const titleCheck = validateReviewPlainText(title);
+    if (!titleCheck.valid) return res.status(400).json({ error: titleCheck.error });
+    const contentCheck = validateReviewPlainText(content);
+    if (!contentCheck.valid) return res.status(400).json({ error: contentCheck.error });
+    const profile = await backendGetProfile(verifiedUser.id, verifiedUser.email, void 0, token);
+    const authorName = profile.full_name || "Verified Chemist";
+    const avatarUrl = profile.avatar_url || "/favicon.png";
+    const role = profile.rank || "Chemistry Learner";
+    const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const admin = getSupabaseAdminClient();
+    if (admin) {
+      const existing = await admin.from("chemora_reviews").select("id").eq("user_id", verifiedUser.id).maybeSingle();
+      if (existing.data) {
+        return res.status(400).json({ error: "You have already submitted a review." });
+      }
+      const { error: insertErr } = await admin.from("chemora_reviews").insert({
+        id: reviewId,
+        user_id: verifiedUser.id,
+        author_name: authorName,
+        role,
+        avatar_url: avatarUrl,
+        rating,
+        category: category || "General Experience",
+        title,
+        comment: content,
+        would_recommend: wouldRecommend !== false,
+        helpful: 0,
+        verified: true,
+        // 3.5: Verified can only be set by the server
+        status: "pending",
+        created_at: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      if (insertErr) {
+        return res.status(500).json({ error: "Failed to record review." });
+      }
+    } else if (!isProd4 || !admin) {
+      devReviews.unshift({
+        id: reviewId,
+        user_id: verifiedUser.id,
+        authorName,
+        role,
+        avatarUrl,
+        rating,
+        category: category || "General Experience",
+        title,
+        content,
+        wouldRecommend: wouldRecommend !== false,
+        helpful: 0,
+        verified: true,
+        status: "pending",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    } else {
+      return res.status(503).json({ error: "Database service is currently unavailable." });
+    }
+    return res.status(201).json({
+      success: true,
+      message: "Your review has been submitted and is pending moderation.",
+      status: "pending"
+    });
+  } catch (err) {
+    return res.status(500).json({ error: "An unexpected error occurred while saving review." });
+  }
+});
+router3.post("/:id/helpful", async (req, res) => {
+  try {
+    const token = extractToken2(req);
+    if (!token) {
+      return res.status(401).json({ error: "Login required to vote on reviews." });
+    }
+    const verifiedUser = await verifyUserSessionToken(token);
+    if (!verifiedUser || !verifiedUser.id) {
+      return res.status(401).json({ error: "Invalid or expired session. Please sign in." });
+    }
+    const parsed = ReviewIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid review ID format" });
+    }
+    const { id: reviewId } = parsed.data;
+    const admin = getSupabaseAdminClient();
+    if (admin) {
+      const { error: voteErr } = await admin.from("review_votes").insert({
+        review_id: reviewId,
+        user_id: verifiedUser.id
+      });
+      if (voteErr) {
+        if (voteErr.code === "23505") {
+          return res.status(400).json({ error: "You have already marked this review as helpful." });
+        }
+      }
+      const countRes = await admin.from("review_votes").select("user_id", { count: "exact", head: true }).eq("review_id", reviewId);
+      const totalHelpful = countRes.count || 1;
+      await admin.from("chemora_reviews").update({ helpful: totalHelpful }).eq("id", reviewId);
+      return res.json({
+        success: true,
+        id: reviewId,
+        helpful: totalHelpful
+      });
+    } else if (!isProd4 || !admin) {
+      const voteKey = `${reviewId}:${verifiedUser.id}`;
+      if (devVotes.has(voteKey)) {
+        return res.status(400).json({ error: "You have already marked this review as helpful." });
+      }
+      devVotes.add(voteKey);
+      const rev = devReviews.find((r) => r.id === reviewId);
+      if (rev) {
+        rev.helpful = (rev.helpful || 0) + 1;
+        return res.json({ success: true, id: reviewId, helpful: rev.helpful });
+      }
+      return res.json({ success: true, id: reviewId, helpful: 1 });
+    }
+    return res.status(503).json({ error: "Database service is currently unavailable." });
+  } catch {
+    return res.status(500).json({ error: "Failed to record vote." });
+  }
+});
+var reviews_default = router3;
 
 // server/api-app.ts
 var app = express4();
@@ -3304,7 +3907,8 @@ app.use("/api/account/password", authRateLimiter);
 app.use("/api/account", databaseRateLimiter);
 app.use("/api/reviews", databaseRateLimiter);
 app.use("/api/admin/login", adminLoginRateLimiter);
-app.use("/api/admin/verify-2fa", adminLoginRateLimiter);
+app.use("/api/admin/otp/verify", adminLoginRateLimiter);
+app.use("/api/admin/otp/resend", adminLoginRateLimiter);
 app.use("/api/account", account_default);
 app.use("/api/reviews", reviews_default);
 app.use("/api/admin", admin_default);

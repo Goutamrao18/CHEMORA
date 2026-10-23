@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { fireConfetti } from '../utils/confetti';
 import { hasVideoAsset, videoUrl } from '../utils/videoUrl';
-import { BeakerFill, Skeleton } from './Loaders';
+import { Skeleton } from './Loaders';
+import { LiquidLoader } from './ui/LiquidLoader';
 import { useDelayedLoading } from '../hooks/useDelayedLoading';
 import { playSoftClick, playSuccessChime } from '../utils/soundEffects';
 
@@ -440,7 +441,7 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({ onAskAI }) => 
 
                       {showBuffering && !mediaLoadFailed && (
                         <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 pointer-events-none anim-fade-in z-20" role="status" aria-live="polite">
-                          <BeakerFill size="lg" label="Buffering experiment video..." />
+                          <LiquidLoader size="lg" label="Buffering experiment video..." />
                           <span className="text-xs font-mono font-bold text-cyan-300">Buffering experiment...</span>
                         </div>
                       )}

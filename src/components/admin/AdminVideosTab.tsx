@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { LiquidLoader } from '../ui/LiquidLoader';
 import {
   Video,
   CheckCircle2,
@@ -113,8 +114,8 @@ export const AdminVideosTab: React.FC = () => {
             disabled={refreshing}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#04212b] to-[#14a3c4] text-white hover:opacity-90 disabled:opacity-50 text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Scanning...' : 'Re-check All'}
+            {refreshing ? <LiquidLoader size="xs" label="Scanning..." /> : <RefreshCw className="w-3.5 h-3.5" />}
+            <span>{refreshing ? 'Scanning...' : 'Re-check All'}</span>
           </button>
         </div>
       </div>
@@ -122,8 +123,9 @@ export const AdminVideosTab: React.FC = () => {
       {/* Video Stream Detail Table */}
       <div className="bg-[var(--admin-card-bg)] rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-[var(--admin-card-border)] overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-xs text-[var(--admin-text-muted)]">
-            Executing server-side HEAD requests across storage bucket...
+          <div className="p-12 text-center text-xs text-[var(--admin-text-muted)] space-y-3">
+            <LiquidLoader size="md" label="Executing server-side HEAD requests across storage bucket..." />
+            <p>Executing server-side HEAD requests across storage bucket...</p>
           </div>
         ) : !data || data.results.length === 0 ? (
           <div className="p-12 text-center text-xs text-[var(--admin-text-muted)]">

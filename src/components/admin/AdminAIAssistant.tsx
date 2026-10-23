@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, X, Send, Bot, Shield, Loader2 } from 'lucide-react';
+import { Sparkles, X, Send, Bot, Shield } from 'lucide-react';
+import { LiquidLoader } from '../ui/LiquidLoader';
 
 interface AdminAIAssistantProps {
   isOpen: boolean;
@@ -22,6 +23,53 @@ const SUGGESTIONS = [
   'Any videos failing?',
   'How is this week vs last week?',
 ];
+
+function renderSafeFormattedMessage(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  return lines.map((line, lineIdx) => {
+    const parts: React.ReactNode[] = [];
+    const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(line.substring(lastIndex, match.index));
+      }
+      const token = match[0];
+      if (token.startsWith('**') && token.endsWith('**')) {
+        parts.push(
+          <strong key={`${lineIdx}-${match.index}`} className="font-semibold text-cyan-400 dark:text-cyan-300">
+            {token.slice(2, -2)}
+          </strong>
+        );
+      } else if (token.startsWith('*') && token.endsWith('*')) {
+        parts.push(<em key={`${lineIdx}-${match.index}`}>{token.slice(1, -1)}</em>);
+      } else if (token.startsWith('`') && token.endsWith('`')) {
+        parts.push(
+          <code
+            key={`${lineIdx}-${match.index}`}
+            className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[11px] text-cyan-600 dark:text-cyan-300"
+          >
+            {token.slice(1, -1)}
+          </code>
+        );
+      }
+      lastIndex = match.index + token.length;
+    }
+
+    if (lastIndex < line.length) {
+      parts.push(line.substring(lastIndex));
+    }
+
+    return (
+      <React.Fragment key={lineIdx}>
+        {parts}
+        {lineIdx < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
+}
 
 export const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({
   isOpen,
@@ -178,7 +226,7 @@ export const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({
                         : 'bg-black/5 dark:bg-white/5 border border-[var(--admin-card-border)] text-[var(--admin-text-main)] rounded-bl-xs'
                     }`}
                   >
-                    <div dangerouslySetInnerHTML={{ __html: m.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                    <div>{renderSafeFormattedMessage(m.text)}</div>
                   </div>
                   <span className="text-[9px] font-mono text-[var(--admin-text-muted)] mt-1 px-1">
                     {m.time}
@@ -188,7 +236,7 @@ export const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({
 
               {isLoading && (
                 <div className="flex items-center gap-2 p-3 text-xs text-[var(--admin-text-muted)]">
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+                  <LiquidLoader size="xs" label="Synthesizing platform data..." />
                   <span>Synthesizing platform data...</span>
                 </div>
               )}

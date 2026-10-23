@@ -22,7 +22,7 @@ import {
 } from '../services/accountApi';
 import { supabase } from '../services/supabaseClient';
 import type { User as SupabaseUser, AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { PhRing, BubbleDots } from './Loaders';
+import { LiquidLoader } from './ui/LiquidLoader';
 import {
   User,
   Shield,
@@ -1146,7 +1146,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
         {/* Loading state indicator */}
         {isLoadingAuth && (
           <div className="p-8 text-center bg-[#04212b]/80 border border-cyan-900/40 rounded-3xl mb-8 flex items-center justify-center gap-3.5 text-cyan-300 text-sm anim-popup" role="status" aria-live="polite">
-            <PhRing size="sm" label="Synchronizing credentials..." />
+            <LiquidLoader size="sm" label="Synchronizing credentials..." />
             <span>Synchronizing with laboratory authentication services...</span>
           </div>
         )}
@@ -1376,7 +1376,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                         disabled={isSavingProfile || nameInput.trim() === profile.name}
                         className="px-4 py-2.5 rounded-xl bg-[#04212b] hover:bg-[#073646] text-white text-xs font-bold transition disabled:opacity-40 min-h-[44px]"
                       >
-                        {isSavingProfile ? <BubbleDots label="Saving..." /> : 'Save'}
+                        {isSavingProfile ? <LiquidLoader size="xs" label="Saving..." /> : 'Save'}
                       </button>
                     </div>
                   </div>
@@ -1558,7 +1558,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                       disabled={isChangingPassword || !newPassword || !confirmPassword}
                       className="w-full py-2.5 rounded-xl bg-[#04212b] hover:bg-[#073646] text-white text-xs font-bold transition disabled:opacity-40 min-h-[44px]"
                     >
-                      {isChangingPassword ? <BubbleDots label="Updating password..." /> : 'Update Password'}
+                      {isChangingPassword ? <LiquidLoader size="xs" label="Updating password..." /> : 'Update Password'}
                     </button>
                   </form>
 
@@ -1648,7 +1648,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onThemeChanged }) => {
                     disabled={isSyncingDb}
                     className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-2 shadow-sm min-h-[44px]"
                   >
-                    {isSyncingDb ? <BubbleDots label="Syncing..." /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    {isSyncingDb ? <LiquidLoader size="xs" label="Syncing..." /> : <RefreshCw className="w-3.5 h-3.5" />}
                     <span>{isSyncingDb ? 'Syncing...' : 'Sync Lab Data'}</span>
                   </button>
                 </div>

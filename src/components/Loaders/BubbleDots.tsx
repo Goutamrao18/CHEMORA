@@ -1,4 +1,5 @@
 import React from 'react';
+import { LiquidLoader } from '../ui/LiquidLoader';
 
 export interface BubbleDotsProps {
   className?: string;
@@ -10,15 +11,8 @@ export const BubbleDots: React.FC<BubbleDotsProps> = ({
   label = 'Processing...',
 }) => {
   return (
-    <span
-      role="status"
-      aria-live="polite"
-      className={`chem-bubble-dots ${className}`}
-    >
-      <span className="chem-sr-only">{label}</span>
-      <span className="chem-bubble-dot" aria-hidden="true" />
-      <span className="chem-bubble-dot" aria-hidden="true" />
-      <span className="chem-bubble-dot" aria-hidden="true" />
+    <span className={`inline-flex items-center justify-center ${className}`}>
+      <LiquidLoader size="xs" label={label} />
     </span>
   );
 };

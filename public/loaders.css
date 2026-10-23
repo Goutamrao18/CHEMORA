@@ -326,3 +326,208 @@ body.light {
 [data-chem-hidden="true"] .chem-loader * {
   animation-play-state: paused !important;
 }
+
+/* ==========================================================================
+   LIQUID BLOB LOADER SYSTEM
+   ========================================================================== */
+:root {
+  --loader-from: #14a3c4;
+  --loader-to: #7fdcef;
+  --loader-dot: #f59e0b;
+}
+
+.liquid-loader-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  vertical-align: middle;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  contain: paint;
+}
+
+.liquid-loader-blob {
+  position: relative;
+  background: linear-gradient(135deg, var(--loader-from, #14a3c4) 0%, var(--loader-to, #7fdcef) 100%);
+  box-shadow: 0 0 20px rgba(20, 163, 196, 0.35);
+  transform-origin: center center;
+  will-change: border-radius, transform;
+}
+
+.liquid-loader-blob.size-xs {
+  width: 16px;
+  height: 16px;
+  animation: liquid-morph 2.4s ease-in-out infinite, liquid-rotate 8s linear infinite;
+}
+
+.liquid-loader-blob.size-sm {
+  width: 24px;
+  height: 24px;
+  animation: liquid-morph 2.4s ease-in-out infinite, liquid-rotate 8s linear infinite;
+}
+
+.liquid-loader-blob.size-md {
+  width: 48px;
+  height: 48px;
+  animation: liquid-morph 4s ease-in-out infinite, liquid-rotate 8s linear infinite;
+}
+
+.liquid-loader-blob.size-lg {
+  width: 80px;
+  height: 80px;
+  animation: liquid-morph 4s ease-in-out infinite, liquid-rotate 8s linear infinite;
+}
+
+@keyframes liquid-morph {
+  0%, 100% {
+    border-radius: 42% 58% 70% 30% / 55% 30% 70% 45%;
+  }
+  50% {
+    border-radius: 58% 42% 30% 70% / 45% 70% 30% 55%;
+  }
+}
+
+@keyframes liquid-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.liquid-loader-satellite {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  animation: liquid-satellite-orbit 3.2s linear infinite;
+  transform-origin: 0 0;
+}
+
+.liquid-loader-satellite-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--loader-dot, #f59e0b);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+  transform: translate(-50%, -50%);
+}
+
+.liquid-loader-satellite.size-lg .liquid-loader-satellite-dot {
+  width: 8px;
+  height: 8px;
+}
+
+@keyframes liquid-satellite-orbit {
+  0% {
+    transform: rotate(0deg) translateX(var(--orbit-radius, 34px)) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateX(var(--orbit-radius, 34px)) rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-loader-blob {
+    animation: liquid-reduced-pulse 1.5s ease-in-out infinite !important;
+    border-radius: 38% 62% 63% 37% / 41% 44% 56% 59% !important;
+    transform: none !important;
+  }
+  .liquid-loader-satellite {
+    animation: none !important;
+    display: none !important;
+  }
+}
+
+@keyframes liquid-reduced-pulse {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.liquid-loader-paused .liquid-loader-blob,
+.liquid-loader-paused .liquid-loader-satellite {
+  animation-play-state: paused !important;
+}
+
+/* ==========================================================================
+   NEUMORPHIC EMBOSSED OTP CARD STYLING
+   ========================================================================== */
+
+@keyframes otp-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.anim-otp-shake {
+  animation: otp-shake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.otp-surface-light {
+  background-color: #e6eaf1;
+  box-shadow: 6px 6px 14px rgba(163, 177, 198, 0.6), -6px -6px 14px rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(20, 163, 196, 0.2);
+}
+
+.otp-surface-dark {
+  background-color: #0b1620;
+  box-shadow: 6px 6px 16px rgba(0, 0, 0, 0.55), -6px -6px 16px rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(20, 163, 196, 0.2);
+}
+
+.otp-raised-light {
+  background-color: #e6eaf1;
+  box-shadow: 4px 4px 8px rgba(163, 177, 198, 0.5), -4px -4px 8px rgba(255, 255, 255, 0.9);
+}
+
+.otp-raised-dark {
+  background-color: #0b1620;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5), -4px -4px 10px rgba(255, 255, 255, 0.03);
+}
+
+.otp-pressed-light {
+  background-color: #e6eaf1;
+  box-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.7), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+}
+
+.otp-pressed-dark {
+  background-color: #0b1620;
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.7), inset -3px -3px 6px rgba(255, 255, 255, 0.06);
+}
+
+.otp-card-enter {
+  animation: otpCardEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes otpCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-card-exit {
+  animation: loginCardExit 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes loginCardExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+

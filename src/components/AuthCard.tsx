@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { GradientWaves } from './GradientWaves';
-import { BubbleDots } from './Loaders';
+import { LiquidLoader } from './ui/LiquidLoader';
 
 export interface AuthCardProps {
   isRegister: boolean;
@@ -299,7 +299,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                 aria-busy={isSubmitting}
                 className="w-full min-h-[48px] py-2.5 px-4 rounded-xl bg-[#04212b] hover:bg-[#073646] active:bg-[#02141a] text-white font-medium text-sm shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               >
-                {isSubmitting ? <BubbleDots label="Authenticating..." /> : <span>Sign In</span>}
+                {isSubmitting ? <LiquidLoader size="xs" label="Authenticating..." /> : <span>Sign In</span>}
               </button>
 
               {/* "Or" Divider and Google Sign-In */}
@@ -519,7 +519,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                 className="w-full min-h-[48px] py-2.5 px-4 rounded-xl bg-[#04212b] hover:bg-[#073646] active:bg-[#02141a] text-white font-medium text-sm shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               >
                 {isSubmitting ? (
-                  <BubbleDots label="Creating account..." />
+                  <LiquidLoader size="xs" label="Creating account..." />
                 ) : (
                   <span>Create Account</span>
                 )}

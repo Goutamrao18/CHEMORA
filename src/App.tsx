@@ -15,22 +15,18 @@ const AccountView = lazy(() => import('./components/AccountView').then((m) => ({
 const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
 
-import { AtomSpinner } from './components/Loaders/AtomSpinner';
+import { LiquidLoaderScreen } from './components/ui/LiquidLoader';
 import { BubbleTransition } from './components/BubbleTransition';
 import { CommandPalette } from './components/CommandPalette';
 import { playBubblePop } from './utils/soundEffects';
 
 function ViewSkeleton({ label }: { label: string }) {
   return (
-    <div className="w-full min-h-[500px] flex flex-col items-center justify-center p-8 text-center" role="status" aria-live="polite">
-      <div className="mb-4">
-        <AtomSpinner size="lg" label={label} />
-      </div>
-      <p className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase mb-2">
-        INITIALIZING CHAMBER
-      </p>
-      <p className="text-slate-400 text-sm max-w-xs">{label}</p>
-    </div>
+    <LiquidLoaderScreen
+      label={label}
+      subtitle="INITIALIZING CHAMBER"
+      className="min-h-[500px]"
+    />
   );
 }
 

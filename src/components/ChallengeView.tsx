@@ -10,6 +10,7 @@ import { recordStreakActivity } from '../data/streakManager';
 import { Trophy, CheckCircle2, XCircle, ArrowLeft, Flame, Clock, Award, ChevronRight, RotateCcw, Sparkles } from 'lucide-react';
 import { fireConfetti } from '../utils/confetti';
 import { playBubblePop, playSuccessChime, playWrongTap, playSoftClick } from '../utils/soundEffects';
+import { LiquidLoaderScreen } from './ui/LiquidLoader';
 
 interface ChallengeViewProps {
   onAskAI?: (topic: string) => void;
@@ -243,11 +244,11 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({ onAskAI }) => {
   // 1. Loading State
   if (loadingQuestions) {
     return (
-      <div className="min-h-[500px] flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin mb-4" />
-        <h3 className="text-xl font-bold text-white mb-1">Loading Challenge Questions</h3>
-        <p className="text-xs text-slate-400">Fetching curriculum materials from level vault...</p>
-      </div>
+      <LiquidLoaderScreen
+        label="Loading Challenge Questions"
+        subtitle="Fetching curriculum materials from level vault..."
+        className="min-h-[500px]"
+      />
     );
   }
 

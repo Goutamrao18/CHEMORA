@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
+import { LiquidLoader } from '../ui/LiquidLoader';
 import {
   Users,
   Search,
@@ -95,7 +96,7 @@ export const AdminUsersTab: React.FC = () => {
             disabled={loading}
             className="px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-semibold text-[var(--admin-text-main)] flex items-center gap-1.5 transition cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            {loading ? <LiquidLoader size="xs" label="Refreshing users..." /> : <RefreshCw className="w-3.5 h-3.5" />} Refresh
           </button>
           <span className="text-xs text-[var(--admin-text-muted)] font-mono tabular-nums">
             Total registered: {users.length}

@@ -51,17 +51,20 @@ An administrative command center modeled after an AI dashboard with floating nav
 
 ### Features
 - **Stealth Security:** Unauthenticated or unauthorized requests to `/api/admin/*` return **HTTP 404** (stealth mode, invisible to unauthorized actors).
-- **Session Protection:** Session in `httpOnly`, `Secure`, `SameSite=Strict` cookie with 30-minute idle expiration.
-- **Rate-Limiting:** 5 failed login attempts per 15 minutes per IP and email.
-- **Audit Trail:** Immutable records in `admin_audit_log` with client IP address, action type, and metadata for every administrative write.
+- **Mandatory Email OTP (2FA):** Password verification alone NEVER creates a session. Every admin login requires a single-use 6-digit email verification code delivered via the AgentMail REST API.
+- **Fail-Closed Design:** Server refuses to start or process logins if `ADMIN_SESSION_SECRET` is missing or under 32 characters, or if AgentMail email delivery is unconfigured in production.
+- **Session Protection:** Signed `chemora_admin_session` cookie (`httpOnly`, `Secure`, `SameSite=Strict`) with 30-minute idle sliding expiration and an 8-hour absolute lifetime ceiling.
+- **Rate-Limiting & Lockouts:** 5 failed login attempts per 15 minutes per IP/email. 5 failed OTP attempts permanently lock the challenge (`otp_locked`, HTTP 429). 60-second cooldown and 5 sends/hour limit on OTP resends.
+- **Audit Trail:** Immutable records in `admin_audit_log` with client IP address, action type (`OTP_SENT`, `OTP_FAILED`, `OTP_LOCKED`, `OTP_VERIFIED`, `LOGIN_SUCCESS`), and metadata. Codes are NEVER logged or returned in responses.
 - **Review Moderation:** Filter by pending/approved/rejected, keyboard shortcuts (`A` to approve, `R` to reject, `↑`/`↓` to navigate), bulk actions, and undo toast.
 - **Video Content Health:** Automated server-side HEAD checks against Supabase storage URLs for 21 manifest video streams.
 - **Operational AI Assistant:** Read-only intelligence querying live metrics, queue backlogs, and video health with zero PII and automated prompt sanitization.
 
 ### Creating the First Admin
-1. Apply the database migration in Supabase SQL Editor:
+1. Apply the database migrations in Supabase SQL Editor:
    ```bash
    cat supabase/migrations/20261022000000_admin_hardening.sql
+   cat supabase/migrations/20261022030000_admin_otp_challenges.sql
    ```
 2. Insert your authenticated user's UUID into `admin_users`:
    ```sql
@@ -72,9 +75,14 @@ An administrative command center modeled after an AI dashboard with floating nav
 ### Admin Security & Session Architecture
 - **No Hardcoded Credentials:** There are zero default or fallback credentials in the source code.
 - **Local Dev Fallback:** Allowed ONLY when `NODE_ENV=development`, `ALLOW_DEV_ADMIN=true`, and `DEV_ADMIN_PASSWORD` is explicitly set via environment variables. In production (`NODE_ENV=production`), dev fallback is strictly impossible.
-- **Stateless Sessions:** Sessions are signed using HMAC-SHA256 (`ADMIN_SESSION_SECRET`) in an `httpOnly`, `Secure`, `SameSite=Strict` cookie, re-verified against `admin_users` on every request. Re-issues cookie on activity with a rolling 30-minute idle sliding expiration. Global logout (`/logout-all`) revokes older tokens via `sessions_valid_after`.
-- **Two-Factor Authentication (2FA):** Standard RFC 6238 TOTP using `otplib` and QR code enrolment with `qrcode`. Secrets are encrypted at rest using AES-256-GCM derived from `ADMIN_2FA_ENCRYPTION_KEY`.
-- **Distributed Rate Limiting:** 5 failed login attempts per 15 minutes per IP and email tracked via Upstash Redis (or in-memory sliding window fallback).
+- **Stateless Sessions:** Sessions are signed using HMAC-SHA256 (`ADMIN_SESSION_SECRET`) in an `httpOnly`, `Secure`, `SameSite=Strict` cookie, re-verified against `admin_users` on every request. Re-issues cookie on activity with a rolling 30-minute idle sliding expiration and 8-hour maximum lifetime limit. Global logout (`/logout-all`) revokes older tokens via `sessions_valid_after`.
+- **Mandatory Email OTP Delivery:** Uses AgentMail REST API (`POST {AGENTMAIL_API_BASE}/inboxes/{AGENTMAIL_INBOX_ID}/messages/send`) without third-party email SDKs. Codes are generated via `crypto.randomInt` and stored exclusively as HMAC-SHA256 hashes (`code_hash = HMAC-SHA256(ADMIN_SESSION_SECRET + ':otp_challenge', challengeId + ':' + code)`).
+- **Required Production Environment Variables:**
+  - `ADMIN_SESSION_SECRET`: Random string of at least 32 characters for HMAC token signing.
+  - `AGENTMAIL_API_KEY`: API key from AgentMail for transactional email dispatch.
+  - `AGENTMAIL_INBOX_ID`: Full inbox address configured in AgentMail (e.g. `chemora_lab@agentmail.to`).
+  - `AGENTMAIL_API_BASE` *(optional)*: Base API URL (defaults to `https://api.agentmail.to`; use `https://api.agentmail.eu` for EU region).
+- **Distributed Rate Limiting:** 5 failed attempts per 15 minutes per IP and email tracked via Upstash Redis (or in-memory sliding window fallback).
 
 ### Clearing an Admin Lockout
 If an administrator account or IP is temporarily locked out after 5 failed attempts:
