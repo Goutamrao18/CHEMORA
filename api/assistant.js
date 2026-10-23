@@ -347,14 +347,7 @@ Carefully examine the image:
     : `<student_question>\n${prompt}\n</student_question>`;
 
   async function callGemini(targetModel) {
-    let key = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
-    if (!key || key === 'MY_GEMINI_API_KEY') {
-      try {
-        const dotenvModule = await import('dotenv');
-        dotenvModule.default.config({ override: true });
-        key = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
-      } catch {}
-    }
+    const key = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
     if (!key || key === 'MY_GEMINI_API_KEY') {
       return null;
     }
@@ -507,6 +500,15 @@ Carefully examine the image:
       }
     }
     return null;
+  }
+
+  // Verify provider availability
+  const geminiKey = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
+  const openRouterKey = (process.env.OPENROUTER_API_KEY || '').trim();
+  const hasProviderKey = Boolean((geminiKey && geminiKey !== 'MY_GEMINI_API_KEY') || openRouterKey);
+
+  if (!hasProviderKey) {
+    return res.status(503).json({ error: 'CHEMORA AI is temporarily unavailable.' });
   }
 
   // Model-routing orchestrator
