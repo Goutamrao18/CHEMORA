@@ -13,6 +13,10 @@ export function CookieConsent() {
     } catch {
       setIsVisible(false);
     }
+
+    const handleOpen = () => setIsVisible(true);
+    window.addEventListener('chemora:open_cookie_preferences', handleOpen);
+    return () => window.removeEventListener('chemora:open_cookie_preferences', handleOpen);
   }, []);
 
   const handleAcceptAll = () => {

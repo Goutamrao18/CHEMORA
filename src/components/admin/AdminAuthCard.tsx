@@ -207,7 +207,7 @@ export const AdminAuthCard: React.FC<AdminAuthCardProps> = ({
                 value={email}
                 onChange={(e) => onEmailChange(e.target.value)}
                 placeholder="admin@chemora.edu"
-                className="w-full pl-10 pr-3.5 py-3 min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-[var(--admin-card-border)] text-sm text-[var(--admin-text-main)] placeholder-[var(--admin-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition"
+                className="w-full pl-10 pr-3.5 py-3 min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-[var(--admin-card-border)] text-[16px] sm:text-sm text-[var(--admin-text-main)] placeholder-[var(--admin-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition"
               />
             </div>
           </div>
@@ -239,7 +239,7 @@ export const AdminAuthCard: React.FC<AdminAuthCardProps> = ({
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full pl-10 pr-10 py-3 min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-[var(--admin-card-border)] text-sm text-[var(--admin-text-main)] placeholder-[var(--admin-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition"
+                className="w-full pl-10 pr-10 py-3 min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-[var(--admin-card-border)] text-[16px] sm:text-sm text-[var(--admin-text-main)] placeholder-[var(--admin-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition"
               />
               <button
                 type="button"

@@ -116,8 +116,9 @@ export const AdminUsersTab: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-[var(--admin-card-border)] overflow-x-auto">
-            {/* Header */}
-            <div className="px-6 py-3 bg-black/[0.02] dark:bg-white/[0.02] text-[11px] font-bold text-[var(--admin-text-muted)] uppercase tracking-wider grid grid-cols-12 gap-4 min-w-[700px]">
+          <div>
+            {/* Desktop Table Header */}
+            <div className="hidden md:grid px-6 py-3 bg-black/[0.02] dark:bg-white/[0.02] text-[11px] font-bold text-[var(--admin-text-muted)] uppercase tracking-wider grid-cols-12 gap-4">
               <div className="col-span-4">Researcher Email</div>
               <div className="col-span-2">Role</div>
               <div className="col-span-2">Joined</div>
@@ -125,85 +126,164 @@ export const AdminUsersTab: React.FC = () => {
               <div className="col-span-2 text-right">Status / Access</div>
             </div>
 
-            {/* Rows */}
-            {users.map((user) => {
-              const isDisabled = !!user.disabled;
-              const isToggling = togglingId === user.id;
+            {/* Desktop Table Rows */}
+            <div className="hidden md:block divide-y divide-[var(--admin-card-border)]">
+              {users.map((user) => {
+                const isDisabled = !!user.disabled;
+                const isToggling = togglingId === user.id;
 
-              return (
-                <div
-                  key={user.id}
-                  className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition text-xs min-w-[700px]"
-                >
-                  {/* Email & ID */}
-                  <div className="col-span-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold flex items-center justify-center shrink-0 uppercase text-[11px]">
-                      {user.email ? user.email.slice(0, 2) : 'US'}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-[var(--admin-text-main)] truncate">
-                        {user.email || 'Anonymous Student'}
+                return (
+                  <div
+                    key={user.id}
+                    className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition text-xs"
+                  >
+                    {/* Email & ID */}
+                    <div className="col-span-4 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold flex items-center justify-center shrink-0 uppercase text-[11px]">
+                        {user.email ? user.email.slice(0, 2) : 'US'}
                       </div>
-                      <div className="text-[10px] text-[var(--admin-text-muted)] font-mono truncate">
-                        ID: {user.id}
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[var(--admin-text-main)] truncate">
+                          {user.email || 'Anonymous Student'}
+                        </div>
+                        <div className="text-[10px] text-[var(--admin-text-muted)] font-mono truncate">
+                          ID: {user.id}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Role */}
-                  <div className="col-span-2">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
-                        user.role === 'admin'
-                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                          : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                      }`}
-                    >
-                      {user.role || 'Student'}
-                    </span>
-                  </div>
-
-                  {/* Joined Date */}
-                  <div className="col-span-2 text-[var(--admin-text-muted)] font-mono text-[11px]">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </div>
-
-                  {/* XP */}
-                  <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">
-                    {user.xp ? `${user.xp.toLocaleString()} XP` : '0 XP'}
-                  </div>
-
-                  {/* Status Toggle */}
-                  <div className="col-span-2 flex items-center justify-end gap-2">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        isDisabled
-                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                      }`}
-                    >
-                      {isDisabled ? 'Disabled' : 'Active'}
-                    </span>
-
-                    {user.role !== 'admin' && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleDisabled(user.id, isDisabled)}
-                        disabled={isToggling}
-                        title={isDisabled ? 'Re-enable account' : 'Disable account'}
-                        className={`p-1.5 rounded-lg border transition cursor-pointer ${
-                          isDisabled
-                            ? 'border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10'
-                            : 'border-rose-500/30 text-rose-600 hover:bg-rose-500/10'
+                    {/* Role */}
+                    <div className="col-span-2">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                          user.role === 'admin'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                            : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
                         }`}
                       >
-                        <Power className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                        {user.role || 'Student'}
+                      </span>
+                    </div>
+
+                    {/* Joined Date */}
+                    <div className="col-span-2 text-[var(--admin-text-muted)] font-mono text-[11px]">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </div>
+
+                    {/* XP */}
+                    <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">
+                      {user.xp ? `${user.xp.toLocaleString()} XP` : '0 XP'}
+                    </div>
+
+                    {/* Status Toggle */}
+                    <div className="col-span-2 flex items-center justify-end gap-2">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isDisabled
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        }`}
+                      >
+                        {isDisabled ? 'Disabled' : 'Active'}
+                      </span>
+
+                      {user.role !== 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDisabled(user.id, isDisabled)}
+                          disabled={isToggling}
+                          title={isDisabled ? 'Re-enable account' : 'Disable account'}
+                          className={`p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg border transition cursor-pointer ${
+                            isDisabled
+                              ? 'border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10'
+                              : 'border-rose-500/30 text-rose-600 hover:bg-rose-500/10'
+                          }`}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Mobile Stacked Cards (Item 16) */}
+            <div className="md:hidden divide-y divide-[var(--admin-card-border)]">
+              {users.map((user) => {
+                const isDisabled = !!user.disabled;
+                const isToggling = togglingId === user.id;
+
+                return (
+                  <div key={user.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-cyan-500/10 text-cyan-400 font-bold flex items-center justify-center shrink-0 uppercase text-xs">
+                          {user.email ? user.email.slice(0, 2) : 'US'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-[var(--admin-text-main)] truncate">
+                            {user.email || 'Anonymous Student'}
+                          </p>
+                          <p className="text-[10px] text-[var(--admin-text-muted)] font-mono truncate">
+                            {user.id}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0 ${
+                          user.role === 'admin'
+                            ? 'bg-rose-500/10 text-rose-400'
+                            : 'bg-cyan-500/10 text-cyan-400'
+                        }`}
+                      >
+                        {user.role || 'Student'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--admin-card-border)]/50">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-[var(--admin-text-muted)] font-mono">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </span>
+                        <span className="text-xs font-semibold text-emerald-400 font-mono">
+                          {user.xp ? `${user.xp.toLocaleString()} XP` : '0 XP'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isDisabled
+                              ? 'bg-rose-500/10 text-rose-400'
+                              : 'bg-emerald-500/10 text-emerald-400'
+                          }`}
+                        >
+                          {isDisabled ? 'Disabled' : 'Active'}
+                        </span>
+
+                        {user.role !== 'admin' && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleDisabled(user.id, isDisabled)}
+                            disabled={isToggling}
+                            className={`px-3 py-1.5 min-h-[44px] rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition ${
+                              isDisabled
+                                ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                                : 'border-rose-500/40 text-rose-400 bg-rose-500/10'
+                            }`}
+                          >
+                            <Power className="w-3.5 h-3.5" />
+                            <span>{isDisabled ? 'Enable' : 'Disable'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           </div>
         )}
       </div>

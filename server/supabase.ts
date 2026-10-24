@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const isProd = process.env.NODE_ENV === 'production';
 const allowDevFallback = process.env.NODE_ENV === 'development' && process.env.ALLOW_DEV_AUTH_FALLBACK === 'true';
 
-const SITE_URL = (process.env.SITE_URL || 'https://chemora.work.gd').trim().replace(/\/$/, '');
+const SITE_URL = (process.env.SITE_URL || 'https://chemora.runs-on.dev').trim().replace(/\/$/, '');
 
 // 2.1: Supabase Keys - Split anon key from service role key; remove service role from anon fallback chain
 const SUPABASE_URL = (

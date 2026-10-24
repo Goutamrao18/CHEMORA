@@ -304,8 +304,9 @@ export const AdminReviewsTab: React.FC<AdminReviewsTabProps> = ({ onStatusChange
           </div>
         ) : (
           <div className="divide-y divide-[var(--admin-card-border)]">
-            {/* Header row */}
-            <div className="px-6 py-3 bg-black/[0.02] dark:bg-white/[0.02] text-[11px] font-bold text-[var(--admin-text-muted)] uppercase tracking-wider flex items-center gap-4">
+          <div>
+            {/* Desktop Table Header */}
+            <div className="hidden md:flex px-6 py-3 bg-black/[0.02] dark:bg-white/[0.02] text-[11px] font-bold text-[var(--admin-text-muted)] uppercase tracking-wider items-center gap-4">
               <input
                 type="checkbox"
                 checked={selectedIds.length === filteredReviews.length && filteredReviews.length > 0}
@@ -319,105 +320,190 @@ export const AdminReviewsTab: React.FC<AdminReviewsTabProps> = ({ onStatusChange
               <div className="w-32 text-right">Actions</div>
             </div>
 
-            {/* List items */}
-            {filteredReviews.map((item, idx) => {
-              const isSelected = selectedIds.includes(item.id);
-              const isKeyboardFocus = selectedIndex === idx;
+            {/* Desktop Table Rows */}
+            <div className="hidden md:block divide-y divide-[var(--admin-card-border)]">
+              {filteredReviews.map((item, idx) => {
+                const isSelected = selectedIds.includes(item.id);
+                const isKeyboardFocus = selectedIndex === idx;
 
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => setSelectedIndex(idx)}
-                  className={`px-6 py-4 flex items-center gap-4 transition text-xs ${
-                    isKeyboardFocus ? 'bg-cyan-500/5 ring-1 ring-inset ring-cyan-500/30' : 'hover:bg-black/[0.015] dark:hover:bg-white/[0.015]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(item.id)}
-                    className="w-4 h-4 rounded text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-                  />
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedIndex(idx)}
+                    className={`px-6 py-4 flex items-center gap-4 transition text-xs ${
+                      isKeyboardFocus ? 'bg-cyan-500/5 ring-1 ring-inset ring-cyan-500/30' : 'hover:bg-black/[0.015] dark:hover:bg-white/[0.015]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(item.id)}
+                      className="w-4 h-4 rounded text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                    />
 
-                  {/* Researcher & target */}
-                  <div className="w-48 shrink-0">
-                    <div className="font-semibold text-[var(--admin-text-main)] truncate">
-                      {item.user_email || 'Anonymous Student'}
+                    {/* Researcher & target */}
+                    <div className="w-48 shrink-0">
+                      <div className="font-semibold text-[var(--admin-text-main)] truncate">
+                        {item.user_email || 'Anonymous Student'}
+                      </div>
+                      <div className="text-[11px] text-[var(--admin-text-muted)] font-mono truncate">
+                        {item.experiment_id || 'General Platform'}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-[var(--admin-text-muted)] font-mono truncate">
-                      {item.experiment_id || 'General Platform'}
+
+                    {/* Rating */}
+                    <div className="w-24 shrink-0 flex items-center gap-0.5 text-amber-500">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${i < item.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Comment */}
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="text-[var(--admin-text-main)] line-clamp-2 leading-relaxed">
+                        {item.comment}
+                      </p>
+                      <span className="text-[10px] text-[var(--admin-text-muted)] flex items-center gap-1 mt-1 font-mono">
+                        <Clock className="w-3 h-3" />
+                        {new Date(item.created_at).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Status chip */}
+                    <div className="w-24 shrink-0">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                          item.status === 'approved'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            : item.status === 'rejected'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="w-32 shrink-0 flex items-center justify-end gap-1.5">
+                      {item.status !== 'approved' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleModerateSingle(item.id, 'approve');
+                          }}
+                          title="Approve (A)"
+                          className="w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      {item.status !== 'rejected' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleModerateSingle(item.id, 'reject');
+                          }}
+                          title="Reject (R)"
+                          className="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 flex items-center justify-center transition cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* Rating */}
-                  <div className="w-24 shrink-0 flex items-center gap-0.5 text-amber-500">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-3.5 h-3.5 ${i < item.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'}`}
-                      />
-                    ))}
-                  </div>
+            {/* Mobile Stacked Cards (Item 16) */}
+            <div className="md:hidden divide-y divide-[var(--admin-card-border)]">
+              {filteredReviews.map((item, idx) => {
+                const isSelected = selectedIds.includes(item.id);
 
-                  {/* Comment */}
-                  <div className="flex-1 min-w-0 pr-4">
-                    <p className="text-[var(--admin-text-main)] line-clamp-2 leading-relaxed">
+                return (
+                  <div key={item.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(item.id)}
+                          className="w-5 h-5 rounded text-cyan-600 focus:ring-cyan-500 cursor-pointer shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-[var(--admin-text-main)] truncate">
+                            {item.user_email || 'Anonymous Student'}
+                          </p>
+                          <p className="text-[10px] text-[var(--admin-text-muted)] font-mono truncate">
+                            {item.experiment_id || 'General Platform'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0 ${
+                          item.status === 'approved'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : item.status === 'rejected'
+                            ? 'bg-rose-500/10 text-rose-400'
+                            : 'bg-amber-500/10 text-amber-400'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-amber-500">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${i < item.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`}
+                        />
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-[var(--admin-text-main)] leading-relaxed break-words">
                       {item.comment}
                     </p>
-                    <span className="text-[10px] text-[var(--admin-text-muted)] flex items-center gap-1 mt-1 font-mono">
-                      <Clock className="w-3 h-3" />
-                      {new Date(item.created_at).toLocaleString()}
-                    </span>
-                  </div>
 
-                  {/* Status chip */}
-                  <div className="w-24 shrink-0">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
-                        item.status === 'approved'
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                          : item.status === 'rejected'
-                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[var(--admin-card-border)]/50">
+                      <span className="text-[10px] text-[var(--admin-text-muted)] font-mono">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </span>
 
-                  {/* Action buttons */}
-                  <div className="w-32 shrink-0 flex items-center justify-end gap-1.5">
-                    {item.status !== 'approved' && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleModerateSingle(item.id, 'approve');
-                        }}
-                        title="Approve (A)"
-                        className="w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition cursor-pointer"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-
-                    {item.status !== 'rejected' && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleModerateSingle(item.id, 'reject');
-                        }}
-                        title="Reject (R)"
-                        className="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 flex items-center justify-center transition cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                      <div className="flex items-center gap-2">
+                        {item.status !== 'approved' && (
+                          <button
+                            type="button"
+                            onClick={() => handleModerateSingle(item.id, 'approve')}
+                            className="px-3 py-1.5 min-h-[44px] rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-semibold text-xs flex items-center gap-1 transition"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Approve
+                          </button>
+                        )}
+                        {item.status !== 'rejected' && (
+                          <button
+                            type="button"
+                            onClick={() => handleModerateSingle(item.id, 'reject')}
+                            className="px-3 py-1.5 min-h-[44px] rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 font-semibold text-xs flex items-center gap-1 transition"
+                          >
+                            <X className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
           </div>
         )}
       </div>

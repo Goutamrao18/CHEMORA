@@ -72,23 +72,23 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
         aria-label="Admin Navigation Rail"
         className="admin-sticky-rail hidden md:flex flex-col justify-between py-4 px-2 xl:px-3 w-full rounded-[28px] bg-[var(--admin-rail-bg)] border border-[var(--admin-rail-border)] shadow-xl overflow-y-auto overflow-x-hidden backdrop-blur-xl select-none"
       >
-        {/* Top: Logo with tooltip "Admin" / "Chemora Admin" (No clipped "ADM" text) */}
+        {/* Top: Logo with tooltip "Admin" / "Chemora Admin" - Clickable to Admin Dashboard (Item 17) */}
         <div className="flex flex-col items-center xl:items-start xl:px-1 shrink-0">
-          <div
-            className="relative flex items-center gap-3 w-full justify-center xl:justify-start"
+          <button
+            type="button"
+            onClick={() => onSelectTab('dashboard')}
+            className="relative flex items-center gap-3 w-full justify-center xl:justify-start group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-2xl p-0.5 cursor-pointer text-left transition active:scale-[0.98]"
             onMouseEnter={() => setActiveTooltip('logo')}
             onMouseLeave={() => setActiveTooltip(null)}
             onFocus={() => setActiveTooltip('logo')}
             onBlur={() => setActiveTooltip(null)}
-            tabIndex={0}
-            role="banner"
-            aria-label="Chemora Admin"
+            aria-label="Admin dashboard"
           >
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#04212b] to-[#14a3c4] flex items-center justify-center text-white shadow-md shadow-cyan-950/40 font-black text-lg select-none shrink-0 border border-cyan-400/30">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#04212b] to-[#14a3c4] flex items-center justify-center text-white shadow-md shadow-cyan-950/40 font-black text-lg select-none shrink-0 border border-cyan-400/30 group-hover:border-cyan-400/60 transition">
               ⚗
             </div>
             <div className="hidden xl:flex flex-col min-w-0">
-              <span className="font-black text-sm text-[var(--admin-text-main)] tracking-tight leading-tight">
+              <span className="font-black text-sm text-[var(--admin-text-main)] group-hover:text-cyan-400 transition tracking-tight leading-tight">
                 CHEMORA
               </span>
               <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-400 uppercase">
@@ -110,7 +110,7 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </button>
         </div>
 
         {/* Middle: Navigation Items */}

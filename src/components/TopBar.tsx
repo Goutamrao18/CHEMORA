@@ -51,12 +51,12 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <div className="fixed top-0 right-0 left-0 h-16 z-30 px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2.5 sm:gap-4 pointer-events-none">
-      {/* Brand Logo & Name (Left side of TopBar) */}
+      {/* Brand Logo & Name (Left side of TopBar) - Clickable to Home (Item 17) */}
       <button
         type="button"
         onClick={onSelectHome}
-        aria-label="CHEMORA Home"
-        className="pointer-events-auto flex items-center gap-2 group flex-shrink-0 transition active:scale-[0.97]"
+        aria-label="Chemora home"
+        className="pointer-events-auto flex items-center gap-2 group flex-shrink-0 transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 p-1 rounded-xl"
       >
         <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 border border-cyan-500/40 flex items-center justify-center p-1.5 shadow-sm">
           <img

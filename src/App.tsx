@@ -10,9 +10,12 @@ const HomeView = lazy(() => import('./components/HomeView').then((m) => ({ defau
 const KnowView = lazy(() => import('./components/KnowView').then((m) => ({ default: m.KnowView })));
 const ChallengeView = lazy(() => import('./components/ChallengeView').then((m) => ({ default: m.ChallengeView })));
 const ExperimentsView = lazy(() => import('./components/ExperimentsView').then((m) => ({ default: m.ExperimentsView })));
+const ProgressView = lazy(() => import('./components/ProgressView').then((m) => ({ default: m.ProgressView })));
 const AccountView = lazy(() => import('./components/AccountView').then((m) => ({ default: m.AccountView })));
 const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
+import { Footer } from './components/Footer';
+import { NotFoundView } from './components/NotFoundView';
 
 import { LiquidLoaderScreen } from './components/ui/LiquidLoader';
 import { BubbleTransition } from './components/BubbleTransition';
@@ -32,10 +35,11 @@ function ViewSkeleton({ label }: { label: string }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [pendingTab, setPendingTab] = useState<ActiveTab | null>(null);
+  const [isNotFoundRoute, setIsNotFoundRoute] = useState(false);
   const [isBubbleTransitioning, setIsBubbleTransitioning] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Lock dark mode permanently & clear any legacy theme keys
   useEffect(() => {
@@ -77,12 +81,51 @@ export default function App() {
     };
   }, []);
 
-  // URL Hash synchronization for direct bookmarks (does not trigger transition on direct initial link)
+  // Document Title & URL Hash synchronization (Item 5 & Item 8)
+  useEffect(() => {
+    const titleMap: Record<ActiveTab, string> = {
+      home: 'Home | Chemora',
+      know: 'Know Library | Chemora',
+      challenge: 'Challenge Arena | Chemora',
+      experiments: 'Guided Experiments | Chemora',
+      progress: 'Learning Progress | Chemora',
+      account: 'Researcher Profile | Chemora',
+    };
+
+    if (isAdminRoute) {
+      document.title = 'Admin | Chemora';
+      let metaRobots = document.querySelector('meta[name="robots"]');
+      if (!metaRobots) {
+        metaRobots = document.createElement('meta');
+        metaRobots.setAttribute('name', 'robots');
+        document.head.appendChild(metaRobots);
+      }
+      metaRobots.setAttribute('content', 'noindex, nofollow, noarchive');
+    } else if (isNotFoundRoute) {
+      document.title = 'Page Not Found | Chemora';
+    } else {
+      document.title = titleMap[activeTab] || 'Home | Chemora';
+      const metaRobots = document.querySelector('meta[name="robots"]');
+      if (metaRobots) {
+        metaRobots.setAttribute('content', 'index, follow');
+      }
+    }
+  }, [activeTab, isAdminRoute, isNotFoundRoute]);
+
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-      if (['home', 'know', 'challenge', 'experiments', 'account'].includes(hash)) {
+      if (!hash || hash === 'home') {
+        setIsNotFoundRoute(false);
+        setActiveTab('home');
+      } else if (['know', 'challenge', 'experiments', 'progress', 'account'].includes(hash)) {
+        setIsNotFoundRoute(false);
         setActiveTab(hash as ActiveTab);
+      } else if (hash.startsWith('admin') || hash.startsWith('level-') || hash.startsWith('element-') || hash.startsWith('bioscience')) {
+        setIsNotFoundRoute(false);
+      } else {
+        // Unknown hash route (Item 8)
+        setIsNotFoundRoute(true);
       }
     };
     handleHash();
@@ -92,6 +135,7 @@ export default function App() {
 
   // Navigation with Signature Bubble Transition (Item 2)
   const handleSelectTab = (targetTab: ActiveTab) => {
+    setIsNotFoundRoute(false);
     if (targetTab === activeTab && !pendingTab) return;
     if (isBubbleTransitioning) return;
 
@@ -165,48 +209,73 @@ export default function App() {
 
       {/* Main Content Area - Fully Centered in the middle */}
       <main className="relative z-10 pt-20 px-4 sm:px-8 pb-28 max-w-[1300px] mx-auto min-h-screen">
-        {activeTab === 'home' && (
-          <ErrorBoundary tabName="Home">
-            <Suspense fallback={<ViewSkeleton label="Loading Laboratory Chamber..." />}>
-              <HomeView onSelectTab={handleSelectTab} />
-            </Suspense>
+        {isNotFoundRoute ? (
+          <ErrorBoundary tabName="404 Not Found">
+            <NotFoundView
+              onSelectTab={handleSelectTab}
+              onOpenSearch={() => setIsCommandPaletteOpen(true)}
+            />
           </ErrorBoundary>
+        ) : (
+          <>
+            {activeTab === 'home' && (
+              <ErrorBoundary tabName="Home">
+                <Suspense fallback={<ViewSkeleton label="Loading Laboratory Chamber..." />}>
+                  <HomeView onSelectTab={handleSelectTab} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === 'know' && (
+              <ErrorBoundary tabName="Knowledge Library">
+                <Suspense fallback={<ViewSkeleton label="Retrieving Apparatus & Reaction Library..." />}>
+                  <KnowView
+                    initialSearch={searchQuery}
+                    onAskAI={handleAskAI}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === 'challenge' && (
+              <ErrorBoundary tabName="Challenge Arena">
+                <Suspense fallback={<ViewSkeleton label="Compiling Chemistry Challenge Sets..." />}>
+                  <ChallengeView onAskAI={handleAskAI} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === 'experiments' && (
+              <ErrorBoundary tabName="Guided Experiments">
+                <Suspense fallback={<ViewSkeleton label="Preparing Practical Procedures..." />}>
+                  <ExperimentsView onAskAI={handleAskAI} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === 'progress' && (
+              <ErrorBoundary tabName="Learning Progress">
+                <Suspense fallback={<ViewSkeleton label="Retrieving Learning Progress & Streaks..." />}>
+                  <ProgressView
+                    onGoToChallenge={() => handleSelectTab('challenge')}
+                    onGoToExperiments={() => handleSelectTab('experiments')}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === 'account' && (
+              <ErrorBoundary tabName="Researcher Account">
+                <Suspense fallback={<ViewSkeleton label="Connecting to Researcher Profile..." />}>
+                  <AccountView />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          </>
         )}
 
-        {activeTab === 'know' && (
-          <ErrorBoundary tabName="Knowledge Library">
-            <Suspense fallback={<ViewSkeleton label="Retrieving Apparatus & Reaction Library..." />}>
-              <KnowView
-                initialSearch={searchQuery}
-                onAskAI={handleAskAI}
-              />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-
-        {activeTab === 'challenge' && (
-          <ErrorBoundary tabName="Challenge Arena">
-            <Suspense fallback={<ViewSkeleton label="Compiling Chemistry Challenge Sets..." />}>
-              <ChallengeView onAskAI={handleAskAI} />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-
-        {activeTab === 'experiments' && (
-          <ErrorBoundary tabName="Guided Experiments">
-            <Suspense fallback={<ViewSkeleton label="Preparing Practical Procedures..." />}>
-              <ExperimentsView onAskAI={handleAskAI} />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-
-        {activeTab === 'account' && (
-          <ErrorBoundary tabName="Researcher Account">
-            <Suspense fallback={<ViewSkeleton label="Connecting to Researcher Profile..." />}>
-              <AccountView />
-            </Suspense>
-          </ErrorBoundary>
-        )}
+        {/* Global Unified Footer on all public routes (Item 7) */}
+        <Footer onSelectTab={handleSelectTab} />
       </main>
 
       {/* CHEMORA AI Chemistry Assistant Modal & Launcher */}

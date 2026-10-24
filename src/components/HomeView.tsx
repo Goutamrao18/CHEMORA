@@ -526,54 +526,6 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectTab }) => {
           ))}
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="pt-8 pb-4 border-t border-cyan-950/60 text-xs text-slate-400 space-y-5">
-        {/* Architecture & Colophon Bar */}
-        <div className="py-3 px-4 rounded-2xl bg-[#061325]/90 border border-cyan-900/50 flex flex-col md:flex-row items-center justify-between gap-3 text-xs font-mono">
-          <div className="flex items-center flex-wrap gap-2 text-slate-300 justify-center md:justify-start">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-cyan-300 font-bold">Chemora lab</span>
-            <span className="text-slate-600">•</span>
-            <span>Owner: <strong className="text-white">Goutam</strong></span>
-          </div>
-          <div className="flex items-center flex-wrap justify-center gap-1.5 text-[11px] text-slate-300">
-            <span className="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-700/50 text-cyan-200">
-              AI Vibe Coding: Gemini · Claude · ChatGPT
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700/60 text-slate-200">
-              Deploy: Vercel
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-700/50 text-emerald-200">
-              DB: Supabase
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-700/50 text-amber-200">
-              Extra RAM: Upstash
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-slate-300">
-            <span className="font-bold text-cyan-400">⚗ Chemora lab</span>
-            <span>•</span>
-            <span className="tracking-wider text-[11px] font-mono text-cyan-300/80">TOUCH · MIX · REACT</span>
-          </div>
-          <div className="flex items-center flex-wrap justify-center gap-x-5 gap-y-2 text-slate-400">
-            <button type="button" onClick={() => onSelectTab('know')} className="hover:text-cyan-300 transition-colors">Library</button>
-            <button type="button" onClick={() => onSelectTab('challenge')} className="hover:text-cyan-300 transition-colors">Challenge</button>
-            <button type="button" onClick={() => onSelectTab('experiments')} className="hover:text-cyan-300 transition-colors">Experiments</button>
-            <a href="/privacy.html" className="hover:text-cyan-300 transition-colors">Privacy Policy</a>
-            <a href="/terms.html" className="hover:text-cyan-300 transition-colors">Terms of Service</a>
-            <a href="/cookie-policy.html" className="hover:text-cyan-300 transition-colors">Cookie Policy</a>
-            <a href="mailto:chemora_lab@agentmail.to" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">Support: chemora_lab@agentmail.to</a>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-cyan-950/40 text-[11px] text-slate-400 gap-2 text-center sm:text-left">
-          <p>&copy; {new Date().getFullYear()} Chemora lab &bull; Owned by Goutam</p>
-          <p className="font-mono text-[10px] text-slate-400">Created through AI coding (Gemini, Claude, ChatGPT) &bull; Vercel &bull; Supabase &bull; Upstash</p>
-        </div>
-      </footer>
     </div>
   );
 };

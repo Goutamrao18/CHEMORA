@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, Search, User as UserIcon, BookOpen, Trophy, Beaker, Home } from 'lucide-react';
+import { Sparkles, Search, User as UserIcon, BookOpen, Trophy, Beaker, Home, TrendingUp } from 'lucide-react';
 
-export type ActiveTab = 'home' | 'know' | 'challenge' | 'experiments' | 'account';
+export type ActiveTab = 'home' | 'know' | 'challenge' | 'experiments' | 'progress' | 'account';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -33,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'know', label: 'Know', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'challenge', label: 'Challenge', icon: <Trophy className="w-3.5 h-3.5" /> },
     { id: 'experiments', label: 'Experiments', icon: <Beaker className="w-3.5 h-3.5" /> },
+    { id: 'progress', label: 'Progress', icon: <TrendingUp className="w-3.5 h-3.5" /> },
   ];
 
   return (
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
         {/* Brand */}
         <button
+          type="button"
           onClick={() => onSelectTab('home')}
           className="flex items-center gap-2.5 group text-left transition flex-shrink-0"
         >
@@ -67,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => onSelectTab(item.id)}
                 className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 ${
                   isActive
@@ -97,6 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* AI Assistant Button */}
           <button
+            type="button"
             onClick={onOpenAssistant}
             aria-label="Open CHEMORA AI"
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-950/90 to-blue-950/90 border border-cyan-700/60 text-cyan-300 hover:border-cyan-400 ho[...]"
@@ -107,6 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Account Profile Button */}
           <button
+            type="button"
             onClick={() => onSelectTab('account')}
             aria-label="Account Profile"
             className={`p-2 rounded-xl border transition ${

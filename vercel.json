@@ -4,6 +4,19 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "chemora.work.gd"
+        }
+      ],
+      "destination": "https://chemora.runs-on.dev/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/assistant",

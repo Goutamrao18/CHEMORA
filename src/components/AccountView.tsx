@@ -1698,7 +1698,7 @@ export const AccountView: React.FC<AccountViewProps> = () => {
                           Contact: <a href="mailto:chemora_lab@agentmail.to" className="text-cyan-700 font-semibold underline">chemora_lab@agentmail.to</a>
                         </div>
                         <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-200">
-                          Architecture: AI vibe coding (Gemini, Claude, ChatGPT) &bull; Deployed on Vercel &bull; Supabase PostgreSQL DB &bull; Upstash In-Memory RAM
+                          Architecture: Interactive Chemistry Simulation Suite &bull; High-Performance Laboratory Engine
                         </div>
                       </div>
 

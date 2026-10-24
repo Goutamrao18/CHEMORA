@@ -341,6 +341,7 @@ async function startServer() {
     res.redirect('/#account');
   });
 
+
   // Frontend routing
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');

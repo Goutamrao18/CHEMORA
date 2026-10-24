@@ -1,15 +1,30 @@
 {
   "id": "/",
-  "name": "CHEMORA \u2014 Chemistry Learning",
-  "short_name": "CHEMORA",
-  "description": "Touch. Mix. React. Learn chemistry through interactive challenges, concepts and experiments.",
+  "name": "Chemora lab — Chemistry Learning Platform",
+  "short_name": "Chemora",
+  "description": "Interactive chemistry learning platform and virtual laboratory for apparatus discovery, curriculum-aligned challenges, and guided scientific experiments.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0a1020",
-  "theme_color": "#111a34",
+  "background_color": "#080d17",
+  "theme_color": "#080d17",
   "orientation": "any",
   "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
@@ -21,6 +36,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -5,4 +5,4 @@ Disallow: /api/
 Disallow: /challenge/data/
 Disallow: /loaders-preview.html
 
-Sitemap: https://chemora.work.gd/sitemap.xml
+Sitemap: https://chemora.runs-on.dev/sitemap.xml

@@ -21,7 +21,9 @@
     "test:security": "node scripts/test-phase7.mjs",
     "test:experiments": "node scripts/test-experiments.mjs",
     "test:avatar": "node scripts/test-avatar-upload.mjs",
-    "upload:videos": "node scripts/upload-videos.mjs"
+    "upload:videos": "node scripts/upload-videos.mjs",
+    "check:links": "node scripts/check-links.mjs",
+    "optimize:images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
     "3dmol": "^2.5.5",
@@ -62,6 +64,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.23.15",
     "typescript": "~5.7.3",

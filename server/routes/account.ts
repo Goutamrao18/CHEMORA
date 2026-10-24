@@ -24,7 +24,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // 2.6: CSRF Origin Verification on all state-changing requests
 const ALLOWED_ORIGINS = new Set([
-  'https://chemora.work.gd',
+  'https://chemora.runs-on.dev',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   process.env.SITE_URL?.trim().replace(/\/$/, ''),

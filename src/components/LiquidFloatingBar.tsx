@@ -5,8 +5,17 @@ import {
   BookOpen,
   Trophy,
   FlaskConical,
+  TrendingUp,
   User,
   Sparkles,
+  MoreHorizontal,
+  FileText,
+  Shield,
+  Cookie,
+  Mail,
+  Table,
+  Lock,
+  X,
 } from 'lucide-react';
 
 interface LiquidFloatingBarProps {
@@ -27,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'know', label: 'Know', icon: BookOpen },
   { id: 'challenge', label: 'Arena', icon: Trophy },
   { id: 'experiments', label: 'Labs', icon: FlaskConical },
+  { id: 'progress', label: 'Progress', icon: TrendingUp },
   { id: 'account', label: 'Account', icon: User },
 ];
 
@@ -37,11 +47,23 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
   isAITutorOpen = false,
 }) => {
   const [isHidden, setIsHidden] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [indicatorRect, setIndicatorRect] = useState<{ left: number; width: number } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<Map<ActiveTab, HTMLButtonElement>>(new Map());
+
+  // Close "More" drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMoreOpen) {
+        setIsMoreOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMoreOpen]);
 
   // Check reduced motion preference
   useEffect(() => {
@@ -236,8 +258,11 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
                     aria-selected={isActive}
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={tab.label}
-                    onClick={() => onSelectTab(tab.id)}
-                    className={`relative z-20 min-w-[38px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center rounded-[18px] sm:rounded-[20px] transition-transform duration-100 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-1 ${
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      onSelectTab(tab.id);
+                    }}
+                    className={`relative z-20 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[18px] sm:rounded-[20px] transition-transform duration-100 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-[#050c1c] ${
                       isActive ? 'px-2.5 sm:px-3 text-cyan-300 font-bold' : 'px-1.5 sm:px-2 text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -258,6 +283,22 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
                   </button>
                 );
               })}
+
+              {/* More Secondary Menu Trigger */}
+              <button
+                type="button"
+                aria-label="More navigation and legal options"
+                aria-expanded={isMoreOpen}
+                aria-haspopup="dialog"
+                onClick={() => setIsMoreOpen(!isMoreOpen)}
+                className={`relative z-20 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[18px] sm:rounded-[20px] transition-all duration-100 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+                  isMoreOpen
+                    ? 'text-cyan-300 bg-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <MoreHorizontal className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
             </div>
           </nav>
 
@@ -277,6 +318,111 @@ export const LiquidFloatingBar: React.FC<LiquidFloatingBarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Accessible "More" Slide-up Drawer for Secondary Pages (Item 3) */}
+      {isMoreOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="More Resources & Laboratory Settings"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setIsMoreOpen(false)}
+        >
+          <div
+            className="w-full sm:max-w-md bg-[#071329] border-t sm:border border-cyan-500/40 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl shadow-black/80 max-h-[85dvh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-cyan-950">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                  <MoreHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">More Resources</h3>
+                  <p className="text-[11px] text-slate-400">Policies, tools &amp; support</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMoreOpen(false)}
+                aria-label="Close more options"
+                className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-1">
+              <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block px-3 py-1">
+                Scientific Utilities
+              </span>
+              <a
+                href="/periodic-table.html"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition"
+              >
+                <Table className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Interactive Periodic Table of Elements</span>
+              </a>
+
+              <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block px-3 py-1 mt-3">
+                Legal &amp; Privacy
+              </span>
+              <a
+                href="/terms.html"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition"
+              >
+                <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Terms of Service</span>
+              </a>
+              <a
+                href="/privacy.html"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition"
+              >
+                <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Privacy Policy</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreOpen(false);
+                  localStorage.removeItem('chemora_cookie_consent');
+                  window.dispatchEvent(new CustomEvent('chemora:open_cookie_preferences'));
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition text-left cursor-pointer"
+              >
+                <Cookie className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Cookie Preferences</span>
+              </button>
+              <a
+                href="/cookie-policy.html"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition"
+              >
+                <Cookie className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Cookie Policy</span>
+              </a>
+
+              <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider block px-3 py-1 mt-3">
+                Laboratory Operations
+              </span>
+              <a
+                href="mailto:chemora_lab@agentmail.to"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition"
+              >
+                <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Contact Academic Support</span>
+              </a>
+              <a
+                href="#admin"
+                onClick={() => setIsMoreOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-200 hover:bg-cyan-950/50 hover:text-cyan-300 min-h-[44px] transition"
+              >
+                <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Administrative Control Room</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

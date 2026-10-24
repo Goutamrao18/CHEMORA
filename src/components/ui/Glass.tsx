@@ -87,7 +87,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     }[variant];
 
     return (
-      <button ref={ref} className={`${variantClasses} ${sizeClasses} ${className}`} {...props}>
+      <button ref={ref} type={props.type || 'button'} className={`${variantClasses} ${sizeClasses} ${className}`} {...props}>
         {icon && <span className="flex-shrink-0">{icon}</span>}
         {children && <span>{children}</span>}
       </button>

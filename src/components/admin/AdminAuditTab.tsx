@@ -548,7 +548,8 @@ export const AdminAuditTab: React.FC = () => {
           </div>
         ) : (
           <div>
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[880px]">
                 <thead>
                   <tr className="border-b border-[var(--admin-card-border)] bg-black/[0.02] dark:bg-white/[0.02] text-[11px] font-bold text-[var(--admin-text-muted)] uppercase tracking-wider">
@@ -671,6 +672,59 @@ export const AdminAuditTab: React.FC = () => {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Stacked Cards (Item 16) */}
+            <div className="md:hidden divide-y divide-[var(--admin-card-border)]">
+              {logs.map((entry) => {
+                const badge = getActionBadge(entry.action);
+                const ActionIcon = badge.icon;
+                const metaKeys = entry.metadata ? Object.keys(entry.metadata) : [];
+
+                return (
+                  <div key={entry.id} className="p-4 space-y-2.5 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border ${badge.bg}`}>
+                        <ActionIcon className="w-3 h-3 shrink-0" />
+                        <span>{entry.action}</span>
+                      </span>
+                      <span className="font-mono text-[10px] text-[var(--admin-text-muted)]">
+                        {formatRelativeTime(entry.created_at)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[var(--admin-text-muted)]">Actor:</span>
+                        <span className="font-semibold text-[var(--admin-text-main)] truncate max-w-[200px]">
+                          {entry.admin_email || 'admin@chemora.edu'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[var(--admin-text-muted)]">Target:</span>
+                        <span className="font-mono text-[var(--admin-text-main)] bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded border border-[var(--admin-card-border)]">
+                          {entry.target || 'system'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[var(--admin-text-muted)]">IP Origin:</span>
+                        <span className="font-mono text-[var(--admin-text-muted)]">{entry.ip || '127.0.0.1'}</span>
+                      </div>
+                    </div>
+
+                    {metaKeys.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEntry(entry)}
+                        className="w-full min-h-[44px] mt-2 flex items-center justify-center gap-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-cyan-500/10 text-cyan-400 border border-[var(--admin-card-border)] font-semibold text-xs transition"
+                      >
+                        <Terminal className="w-3.5 h-3.5" />
+                        <span>Inspect Payload Details ({metaKeys.length} fields)</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Pagination Footer */}
