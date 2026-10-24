@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { ActiveTab } from './components/Navbar';
 import { TopBar } from './components/TopBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -299,6 +300,9 @@ export default function App() {
 
       {/* Cookie & Storage Compliance Consent Banner */}
       <CookieConsent />
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
     </div>
   );
 }

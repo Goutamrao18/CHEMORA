@@ -27,11 +27,12 @@
     "optimize:images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
-    "3dmol": "^2.5.5",
     "@google/genai": "^2.30.0",
     "@supabase/supabase-js": "^2.117.3",
     "@upstash/ratelimit": "^2.2.0",
     "@upstash/redis": "^1.39.0",
+    "@vercel/analytics": "^2.0.1",
+    "3dmol": "^2.5.5",
     "bcryptjs": "^3.0.2",
     "canvas-confetti": "^1.9.4",
     "cookie-parser": "^1.4.7",
