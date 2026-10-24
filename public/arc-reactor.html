@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arc Reactor Loading Component</title>
+  <style>
+    /* ==========================================================================
+       1. CANVAS & LAYOUT SETUP
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #06090d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ==========================================================================
+       2. LAYER 1: OUTER METALLIC BEZEL (CASING)
+       Circular chassis with gunmetal-to-obsidian radial gradient, deep mechanical
+       inset shadow, and atmospheric neon cyan drop glow.
+       ========================================================================== */
+    .reactor-casing {
+      position: relative;
+      width: 270px;
+      height: 270px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #0e1e24 0%, #081216 65%, #04080b 100%);
+      box-shadow: 
+        0 0 40px rgba(82, 254, 254, 0.25),
+        inset 0 0 25px rgba(0, 0, 0, 0.9),
+        inset 0 0 4px 1px rgba(82, 254, 254, 0.35);
+      border: 2px solid rgba(82, 254, 254, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ==========================================================================
+       3. LAYER 2: GLOW TRACK RING
+       Circular concentric channel situated directly behind the induction coils.
+       ========================================================================== */
+    .glow-track {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 204px;
+      height: 204px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background-color: #073c4b;
+      border: 2px solid #52fefe;
+      box-shadow: 
+        0 0 15px rgba(82, 254, 254, 0.35),
+        inset 0 0 15px rgba(82, 254, 254, 0.45);
+      z-index: 1;
+    }
+
+    /* ==========================================================================
+       4. LAYER 3: SEGMENTED INDUCTION COILS / MESH RING (12 NODES)
+       Continuous 360-degree clockwise rotational assembly with 12 evenly spaced
+       neon nodes at 30-degree increments.
+       ========================================================================== */
+    .coil-assembly {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 204px;
+      height: 204px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      z-index: 2;
+      animation: rotate-coils 8s linear infinite;
+    }
+
+    .coil-node {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 26px;
+      margin-top: -13px;
+      margin-left: -7px;
+      background-color: #52fefe;
+      border-radius: 2px;
+      box-shadow: 
+        0 0 8px #52fefe,
+        0 0 16px rgba(82, 254, 254, 0.8);
+      transform-origin: center center;
+    }
+
+    /* Radial mathematical distribution (360 / 12 = 30 deg steps, radius = 86px) */
+    .coil-1  { transform: rotate(0deg)   translateY(-86px); }
+    .coil-2  { transform: rotate(30deg)  translateY(-86px); }
+    .coil-3  { transform: rotate(60deg)  translateY(-86px); }
+    .coil-4  { transform: rotate(90deg)  translateY(-86px); }
+    .coil-5  { transform: rotate(120deg) translateY(-86px); }
+    .coil-6  { transform: rotate(150deg) translateY(-86px); }
+    .coil-7  { transform: rotate(180deg) translateY(-86px); }
+    .coil-8  { transform: rotate(210deg) translateY(-86px); }
+    .coil-9  { transform: rotate(240deg) translateY(-86px); }
+    .coil-10 { transform: rotate(270deg) translateY(-86px); }
+    .coil-11 { transform: rotate(300deg) translateY(-86px); }
+    .coil-12 { transform: rotate(330deg) translateY(-86px); }
+
+    /* ==========================================================================
+       5. LAYER 4: INNER CONTAINMENT RING
+       Concentric plasma containment barrier with dual-sided internal & external glow.
+       ========================================================================== */
+    .inner-containment {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background-color: #073c4b;
+      border: 3px solid #52fefe;
+      z-index: 3;
+      animation: pulse-containment 2.5s ease-in-out infinite alternate;
+    }
+
+    /* ==========================================================================
+       6. LAYER 5: LUMINOUS CENTER CORE
+       Superheated plasma epicenter with pure white center, cyan rim, and intense
+       multi-tiered glow bloom.
+       ========================================================================== */
+    .center-core {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffffff 18%, #a8ffff 46%, #52fefe 82%, #148c9f 100%);
+      z-index: 4;
+      animation: pulse-core 2.5s ease-in-out infinite alternate;
+    }
+
+    /* ==========================================================================
+       7. MOTION & ANIMATION KEYFRAMES
+       ========================================================================== */
+    /* Continuous clockwise rotational energy */
+    @keyframes rotate-coils {
+      from {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    /* Rhythmic breathing & magnetic flux pulse on the containment ring */
+    @keyframes pulse-containment {
+      0% {
+        transform: translate(-50%, -50%) scale(0.97);
+        box-shadow: 
+          0 0 16px rgba(82, 254, 254, 0.55),
+          inset 0 0 16px rgba(82, 254, 254, 0.65);
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1.03);
+        box-shadow: 
+          0 0 28px rgba(82, 254, 254, 0.9),
+          inset 0 0 24px rgba(82, 254, 254, 0.95);
+      }
+    }
+
+    /* High-energy plasma breathing pulse for the luminous core */
+    @keyframes pulse-core {
+      0% {
+        transform: translate(-50%, -50%) scale(0.97);
+        box-shadow: 
+          0 0 18px 4px #52fefe,
+          0 0 38px 10px rgba(82, 254, 254, 0.75);
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1.03);
+        box-shadow: 
+          0 0 26px 5px #52fefe,
+          0 0 52px 14px rgba(82, 254, 254, 0.95);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       ARC REACTOR LOADING COMPONENT (BACK TO FRONT ARCHITECTURE)
+       ======================================================================== -->
+  <!-- Layer 1: Outer Metallic Bezel (Casing) -->
+  <div class="reactor-casing">
+    
+    <!-- Layer 2: Glow Track Ring -->
+    <div class="glow-track"></div>
+
+    <!-- Layer 3: Segmented Induction Coils / Mesh Ring (12 Radial Nodes) -->
+    <div class="coil-assembly">
+      <div class="coil-node coil-1"></div>
+      <div class="coil-node coil-2"></div>
+      <div class="coil-node coil-3"></div>
+      <div class="coil-node coil-4"></div>
+      <div class="coil-node coil-5"></div>
+      <div class="coil-node coil-6"></div>
+      <div class="coil-node coil-7"></div>
+      <div class="coil-node coil-8"></div>
+      <div class="coil-node coil-9"></div>
+      <div class="coil-node coil-10"></div>
+      <div class="coil-node coil-11"></div>
+      <div class="coil-node coil-12"></div>
+    </div>
+
+    <!-- Layer 4: Inner Containment Ring -->
+    <div class="inner-containment"></div>
+
+    <!-- Layer 5: Luminous Center Core -->
+    <div class="center-core"></div>
+
+  </div>
+
+</body>
+</html>
