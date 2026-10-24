@@ -118,6 +118,13 @@ export const AccountView: React.FC<AccountViewProps> = () => {
   const [authPassword, setAuthPassword] = useState('');
   const [authFullName, setAuthFullName] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [loginAgreeTerms, setLoginAgreeTerms] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('chemora_terms_accepted') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [confirmAge, setConfirmAge] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -559,6 +566,10 @@ export const AccountView: React.FC<AccountViewProps> = () => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword) {
       setAuthError('Please enter both your email address and password.');
+      return;
+    }
+    if (!loginAgreeTerms) {
+      setAuthError('Please accept the Chemora Lab Terms & Privacy Policy to sign in.');
       return;
     }
 
@@ -1144,6 +1155,8 @@ export const AccountView: React.FC<AccountViewProps> = () => {
                 onFullNameChange={setAuthFullName}
                 agreeTerms={agreeTerms}
                 onAgreeTermsChange={setAgreeTerms}
+                loginAgreeTerms={loginAgreeTerms}
+                onLoginAgreeTermsChange={setLoginAgreeTerms}
                 confirmAge={confirmAge}
                 onConfirmAgeChange={setConfirmAge}
                 rememberMe={true}

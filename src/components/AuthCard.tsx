@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { GradientWaves } from './GradientWaves';
 import { LiquidLoader } from './ui/LiquidLoader';
+import { TermsPolicyModal } from './TermsPolicyModal';
 
 export interface AuthCardProps {
   isRegister: boolean;
@@ -14,6 +15,8 @@ export interface AuthCardProps {
   onFullNameChange?: (fullName: string) => void;
   agreeTerms?: boolean;
   onAgreeTermsChange?: (agree: boolean) => void;
+  loginAgreeTerms?: boolean;
+  onLoginAgreeTermsChange?: (agree: boolean) => void;
   confirmAge?: boolean;
   onConfirmAgeChange?: (confirm: boolean) => void;
   rememberMe?: boolean;
@@ -40,6 +43,8 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   onFullNameChange,
   agreeTerms = false,
   onAgreeTermsChange,
+  loginAgreeTerms,
+  onLoginAgreeTermsChange,
   confirmAge = false,
   onConfirmAgeChange,
   rememberMe = true,
@@ -56,7 +61,33 @@ export const AuthCard: React.FC<AuthCardProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState(email);
+  const [internalLoginAgreeTerms, setInternalLoginAgreeTerms] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('chemora_terms_accepted') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const isLoginTermsAgreed = loginAgreeTerms !== undefined ? loginAgreeTerms : internalLoginAgreeTerms;
+  const setLoginTermsAgreed = (val: boolean) => {
+    setInternalLoginAgreeTerms(val);
+    onLoginAgreeTermsChange?.(val);
+    try {
+      if (val) localStorage.setItem('chemora_terms_accepted', 'true');
+      else localStorage.removeItem('chemora_terms_accepted');
+    } catch {}
+  };
+
+  const handleAcceptTermsInModal = () => {
+    setLoginTermsAgreed(true);
+    onAgreeTermsChange?.(true);
+    try {
+      localStorage.setItem('chemora_terms_accepted', 'true');
+    } catch {}
+  };
 
   // Accessible focus management: focus moves to the first field after switching
   const loginEmailRef = useRef<HTMLInputElement | null>(null);
@@ -205,7 +236,17 @@ export const AuthCard: React.FC<AuthCardProps> = ({
               )}
             </div>
 
-            <form onSubmit={onSignIn} className="space-y-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!isLoginTermsAgreed) {
+                  setShowTermsModal(true);
+                  return;
+                }
+                onSignIn(e);
+              }}
+              className="space-y-3"
+            >
               {/* Email Address */}
               <div>
                 <label
@@ -273,21 +314,45 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                 </div>
               </div>
 
-              {/* Remember Me Checkbox */}
-              <div className="flex items-center gap-2 pt-0.5">
-                <input
-                  id="login-remember"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => onRememberMeChange?.(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-[#04212b] accent-[#04212b] focus-visible:ring-cyan-500 cursor-pointer"
-                />
-                <label
-                  htmlFor="login-remember"
-                  className="text-xs text-slate-600 select-none cursor-pointer"
-                >
-                  Remember me
-                </label>
+              {/* Remember Me & Terms Acceptance */}
+              <div className="space-y-1.5 pt-0.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="login-remember"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => onRememberMeChange?.(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-[#04212b] accent-[#04212b] focus-visible:ring-cyan-500 cursor-pointer"
+                  />
+                  <label
+                    htmlFor="login-remember"
+                    className="text-xs text-slate-600 select-none cursor-pointer"
+                  >
+                    Remember me
+                  </label>
+                </div>
+
+                {/* Chemora Lab Terms & Privacy Policy Acceptance */}
+                <div className="flex items-start gap-2 text-[11px] text-slate-600">
+                  <input
+                    id="login-terms"
+                    type="checkbox"
+                    required
+                    checked={isLoginTermsAgreed}
+                    onChange={(e) => setLoginTermsAgreed(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded mt-0.5 border-slate-300 text-[#04212b] accent-[#04212b] cursor-pointer"
+                  />
+                  <label htmlFor="login-terms" className="leading-tight cursor-pointer">
+                    I accept the{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-[#04212b] font-semibold underline hover:text-cyan-700"
+                    >
+                      Chemora Lab Terms &amp; Privacy Policy
+                    </button>
+                  </label>
+                </div>
               </div>
 
               {/* Dark Primary Submit Button */}
@@ -304,13 +369,14 @@ export const AuthCard: React.FC<AuthCardProps> = ({
             {/* Small Legal Text */}
             <p className="text-[10px] text-center text-slate-400 pt-0.5">
               By signing in, you agree to our{' '}
-              <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-slate-900 underline">
-                Terms
-              </a>{' '}
-              &amp;{' '}
-              <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-slate-900 underline">
-                Privacy
-              </a>.
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-slate-600 hover:text-slate-900 underline font-medium"
+              >
+                Terms &amp; Privacy Policy
+              </button>{' '}
+              (Free educational use, AI disclaimer, secure Supabase login, and student protection).
             </p>
           </div>
         </div>
@@ -457,13 +523,13 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                   />
                   <span className="leading-tight">
                     I agree to the{' '}
-                    <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-[#04212b] font-medium underline">
-                      Terms
-                    </a>{' '}
-                    and{' '}
-                    <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-[#04212b] font-medium underline">
-                      Privacy Policy
-                    </a>.
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-[#04212b] font-semibold underline hover:text-cyan-700 inline"
+                    >
+                      Chemora Lab Terms &amp; Privacy Policy
+                    </button>.
                   </span>
                 </label>
 
@@ -559,6 +625,14 @@ export const AuthCard: React.FC<AuthCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Chemora Lab Terms & Privacy Policy Interactive Modal */}
+      <TermsPolicyModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={handleAcceptTermsInModal}
+        hasAccepted={isLoginTermsAgreed || agreeTerms}
+      />
     </div>
   );
 };

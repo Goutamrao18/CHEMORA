@@ -10,6 +10,7 @@ import { AdminVideosTab } from './AdminVideosTab';
 import { AdminChallengesTab } from './AdminChallengesTab';
 import { AdminAuditTab } from './AdminAuditTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
+import { AdminDevOpsTab } from './AdminDevOpsTab';
 import { AdminExperimentDrawer } from './AdminExperimentDrawer';
 import { AdminAIAssistant, AdminAIOrbTrigger } from './AdminAIAssistant';
 import { Experiment } from '../../data/experimentsData';
@@ -488,6 +489,8 @@ export const AdminView: React.FC = () => {
           {activeTab === 'challenges' && <AdminChallengesTab />}
 
           {activeTab === 'audit' && <AdminAuditTab />}
+
+          {activeTab === 'devops' && <AdminDevOpsTab />}
 
           {activeTab === 'settings' && <AdminSettingsTab />}
         </main>

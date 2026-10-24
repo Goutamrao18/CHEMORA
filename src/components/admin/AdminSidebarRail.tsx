@@ -11,9 +11,10 @@ import {
   LogOut,
   MoreHorizontal,
   X,
+  Terminal,
 } from 'lucide-react';
 
-export type AdminTab = 'dashboard' | 'reviews' | 'users' | 'content' | 'challenges' | 'audit' | 'settings';
+export type AdminTab = 'dashboard' | 'reviews' | 'users' | 'content' | 'challenges' | 'audit' | 'settings' | 'devops';
 
 interface AdminSidebarRailProps {
   activeTab: AdminTab;
@@ -49,6 +50,7 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
     { id: 'content', label: 'Content Health', icon: Video },
     { id: 'challenges', label: 'Challenges', icon: Trophy },
     { id: 'audit', label: 'Audit Log', icon: ShieldCheck },
+    { id: 'devops', label: 'DevOps & Cloud', icon: Terminal },
   ];
 
   const safeAdminName = typeof adminName === 'string' && adminName.trim() ? adminName : 'Administrator';
