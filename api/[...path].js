@@ -1339,6 +1339,9 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     console.warn("\u26A0\uFE0F Could not connect to Upstash Redis for middleware limiter, using memory fallback:", err);
   }
 }
+function isRedisConfigured() {
+  return sharedRedis !== null;
+}
 function getClientIp(req) {
   const vercelIp = req.headers["x-vercel-forwarded-for"];
   if (typeof vercelIp === "string" && vercelIp.trim().length > 0) {
@@ -1382,7 +1385,8 @@ function createRateLimiter(options) {
     name = "rate-limiter",
     keyGenerator = getClientIp,
     skip,
-    maxTrackedKeys = 5e3
+    maxTrackedKeys = 5e3,
+    failClosedInProd = false
   } = options;
   let upstashLimiter = null;
   if (sharedRedis) {
@@ -1428,6 +1432,7 @@ function createRateLimiter(options) {
     }
     const key = keyGenerator(req);
     const now = Date.now();
+    const isProd6 = process.env.NODE_ENV === "production";
     if (upstashLimiter) {
       try {
         const result = await upstashLimiter.limit(key);
@@ -1456,7 +1461,22 @@ function createRateLimiter(options) {
         }
         return next();
       } catch (redisErr) {
+        if (isProd6 && failClosedInProd) {
+          console.error(`[RateLimiter:FailClosed] Upstash error on ${name}:`, redisErr);
+          res.setHeader("Retry-After", 60);
+          return res.status(503).json({
+            error: "Authentication and security service temporarily unavailable. Please try again later.",
+            retryAfter: 60
+          });
+        }
       }
+    } else if (isProd6 && failClosedInProd) {
+      console.error(`[RateLimiter:FailClosed] Upstash Redis is missing in production for ${name}. Failing closed.`);
+      res.setHeader("Retry-After", 60);
+      return res.status(503).json({
+        error: "Authentication and security service temporarily unavailable. Please try again later.",
+        retryAfter: 60
+      });
     }
     const timestamps = hitMap.get(key) || [];
     const validTimestamps = timestamps.filter((t) => now - t < windowMs);
@@ -1527,6 +1547,8 @@ var authRateLimiter = createRateLimiter({
   // 15 minutes
   max: 10,
   // 10 attempts / 15 minutes (strictly stops brute force within 10 tries)
+  failClosedInProd: true,
+  // FAIL CLOSED in production when Upstash is missing or throws
   message: "Too many authentication attempts from this IP. Please wait 15 minutes before trying again."
 });
 var apiRateLimiter = createRateLimiter({
@@ -1954,8 +1976,15 @@ async function getFailureCount(prefix, identifier) {
         return typeof val === "number" ? val : parseInt(String(val), 10) || 0;
       }
       return 0;
-    } catch {
+    } catch (err) {
+      if (isProd2) {
+        safeLogError(`Redis getFailureCount error in production for ${key}:`, err);
+        throw err;
+      }
     }
+  } else if (isProd2) {
+    safeLogError(`Redis is not configured in production for rate limit getFailureCount (${key})`);
+    throw new Error("Rate limit service unavailable");
   }
   const record = inMemoryFailures.get(key);
   if (!record || Date.now() > record.resetAt) {
@@ -1972,8 +2001,15 @@ async function recordFailure(prefix, identifier, windowSeconds = 900) {
         await redisClient.expire(key, windowSeconds);
       }
       return count;
-    } catch {
+    } catch (err) {
+      if (isProd2) {
+        safeLogError(`Redis recordFailure error in production for ${key}:`, err);
+        throw err;
+      }
     }
+  } else if (isProd2) {
+    safeLogError(`Redis is not configured in production for rate limit recordFailure (${key})`);
+    throw new Error("Rate limit service unavailable");
   }
   const now = Date.now();
   const record = inMemoryFailures.get(key);
@@ -2025,6 +2061,14 @@ async function clearAdminLockouts(options) {
 }
 async function adminLoginRateLimiter(req, res, next) {
   const ip = getClientIp(req);
+  if (isProd2 && !redisClient) {
+    safeLogError("Admin rate limiter unavailable in production: Upstash Redis is not configured. Failing closed.");
+    res.setHeader("Retry-After", 60);
+    return res.status(503).json({
+      error: "Administrative authentication service temporarily unavailable. Please try again later.",
+      retryAfterSeconds: 60
+    });
+  }
   try {
     const ipFailures = await getFailureCount("ip", ip);
     if (ipFailures >= 5) {
@@ -2036,6 +2080,14 @@ async function adminLoginRateLimiter(req, res, next) {
     }
     next();
   } catch (err) {
+    if (isProd2) {
+      safeLogError("Admin rate limiter error in production. Failing closed:", err);
+      res.setHeader("Retry-After", 60);
+      return res.status(503).json({
+        error: "Administrative authentication service temporarily unavailable. Please try again later.",
+        retryAfterSeconds: 60
+      });
+    }
     next();
   }
 }
@@ -3596,6 +3648,14 @@ router2.get("/me", async (req, res) => {
   }
 });
 router2.post("/signup", async (req, res) => {
+  if (isProd3 && !isRedisConfigured()) {
+    safeLogError("Signup blocked in production: Upstash Redis is not configured. Failing closed.");
+    res.setHeader("Retry-After", 60);
+    return res.status(503).json({
+      error: "Registration service temporarily unavailable. Please try again later.",
+      retryAfter: 60
+    });
+  }
   try {
     const parsed = SignUpSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -3716,6 +3776,15 @@ router2.put("/password", async (req, res) => {
 });
 var emailResetStore = /* @__PURE__ */ new Map();
 async function checkPasswordResetRateLimit(email) {
+  if (isProd3 && !isRedisConfigured()) {
+    safeLogError("Password reset rate limiter unavailable in production: Upstash Redis is not configured. Failing closed.");
+    return {
+      allowed: false,
+      statusCode: 503,
+      retryAfter: 60,
+      error: "Password reset service temporarily unavailable. Please try again later."
+    };
+  }
   const normEmail = email.toLowerCase().trim();
   const now = Date.now();
   const record = emailResetStore.get(normEmail);
@@ -3724,6 +3793,7 @@ async function checkPasswordResetRateLimit(email) {
     if (cooldownRemaining > 0) {
       return {
         allowed: false,
+        statusCode: 429,
         retryAfter: cooldownRemaining,
         error: `Please wait ${cooldownRemaining}s before requesting another password reset email.`
       };
@@ -3732,6 +3802,7 @@ async function checkPasswordResetRateLimit(email) {
       const waitSeconds = Math.ceil((record.resetAt - now) / 1e3);
       return {
         allowed: false,
+        statusCode: 429,
         retryAfter: waitSeconds,
         error: "Too many password reset attempts for this email. Please wait 1 hour."
       };
@@ -3760,7 +3831,7 @@ router2.post("/forgot-password", async (req, res) => {
       if (rateCheck.retryAfter) {
         res.setHeader("Retry-After", rateCheck.retryAfter);
       }
-      return res.status(429).json({
+      return res.status(rateCheck.statusCode || 429).json({
         error: rateCheck.error,
         retryAfter: rateCheck.retryAfter
       });

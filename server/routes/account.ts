@@ -19,6 +19,7 @@ import {
   safeLogError,
 } from '../supabase.ts';
 import { verifyAdminToken } from './admin.ts';
+import { isRedisConfigured } from '../middleware/rateLimit.ts';
 
 const router = express.Router();
 const isProd = process.env.NODE_ENV === 'production';
@@ -314,6 +315,14 @@ router.get('/me', async (req: Request, res: Response) => {
 
 // 2.5 & 2.7: POST /api/account/signup - No token returned in JSON body; cookie only
 router.post('/signup', async (req: Request, res: Response) => {
+  if (isProd && !isRedisConfigured()) {
+    safeLogError('Signup blocked in production: Upstash Redis is not configured. Failing closed.');
+    res.setHeader('Retry-After', 60);
+    return res.status(503).json({
+      error: 'Registration service temporarily unavailable. Please try again later.',
+      retryAfter: 60,
+    });
+  }
   try {
     const parsed = SignUpSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -467,7 +476,17 @@ router.put('/password', async (req: Request, res: Response) => {
 // RL-04: Per-email rate limiting on password reset (stops single-victim email bombing)
 const emailResetStore = new Map<string, { count: number; resetAt: number; lastSentAt: number }>();
 
-async function checkPasswordResetRateLimit(email: string): Promise<{ allowed: boolean; retryAfter?: number; error?: string }> {
+async function checkPasswordResetRateLimit(email: string): Promise<{ allowed: boolean; retryAfter?: number; error?: string; statusCode?: number }> {
+  if (isProd && !isRedisConfigured()) {
+    safeLogError('Password reset rate limiter unavailable in production: Upstash Redis is not configured. Failing closed.');
+    return {
+      allowed: false,
+      statusCode: 503,
+      retryAfter: 60,
+      error: 'Password reset service temporarily unavailable. Please try again later.',
+    };
+  }
+
   const normEmail = email.toLowerCase().trim();
   const now = Date.now();
   const record = emailResetStore.get(normEmail);
@@ -478,6 +497,7 @@ async function checkPasswordResetRateLimit(email: string): Promise<{ allowed: bo
     if (cooldownRemaining > 0) {
       return {
         allowed: false,
+        statusCode: 429,
         retryAfter: cooldownRemaining,
         error: `Please wait ${cooldownRemaining}s before requesting another password reset email.`,
       };
@@ -488,6 +508,7 @@ async function checkPasswordResetRateLimit(email: string): Promise<{ allowed: bo
       const waitSeconds = Math.ceil((record.resetAt - now) / 1000);
       return {
         allowed: false,
+        statusCode: 429,
         retryAfter: waitSeconds,
         error: 'Too many password reset attempts for this email. Please wait 1 hour.',
       };
@@ -524,7 +545,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       if (rateCheck.retryAfter) {
         res.setHeader('Retry-After', rateCheck.retryAfter);
       }
-      return res.status(429).json({
+      return res.status(rateCheck.statusCode || 429).json({
         error: rateCheck.error,
         retryAfter: rateCheck.retryAfter,
       });

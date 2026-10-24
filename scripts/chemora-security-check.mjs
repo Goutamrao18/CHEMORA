@@ -14,7 +14,7 @@
  *
  * Optional flags (each one sends a few extra requests and may briefly trip YOUR OWN rate limiter):
  *   --rate-limit-test     12 failed logins to confirm HTTP 429 appears
- *   --try-default-admin   1 login attempt with the old default admin credentials (must fail)
+ *   --try-default-admin   1 login attempt with legacy credentials via TEST_DEFAULT_ADMIN_PASSWORD (must fail)
  */
 
 const args = process.argv.slice(2);
@@ -347,7 +347,12 @@ async function testRateLimit() {
 
 async function testDefaultAdmin() {
   if (!has('--try-default-admin')) return record('INFO', 'Default-admin test skipped', 'add --try-default-admin to run it');
-  const r = await jsonPost('/api/admin/login', { email: 'admin@chemora.edu', password: 'ChemoraAdmin2026!' });
+  const testPassword = (process.env.TEST_DEFAULT_ADMIN_PASSWORD || process.env.OLD_ADMIN_PASSWORD || '').trim();
+  if (!testPassword) {
+    return record('INFO', 'Default-admin test skipped', 'set TEST_DEFAULT_ADMIN_PASSWORD environment variable to run this check');
+  }
+  const testEmail = (process.env.TEST_DEFAULT_ADMIN_EMAIL || 'admin@chemora.edu').trim();
+  const r = await jsonPost('/api/admin/login', { email: testEmail, password: testPassword });
   if (r.status === 200) record('FAIL', 'DEFAULT ADMIN CREDENTIALS STILL WORK — remove immediately');
   else record('PASS', 'Default admin credentials rejected', `HTTP ${r.status}`);
 }

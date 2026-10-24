@@ -639,9 +639,16 @@ async function getFailureCount(prefix: string, identifier: string): Promise<numb
         return typeof val === 'number' ? val : parseInt(String(val), 10) || 0;
       }
       return 0;
-    } catch {
-      // fallback to memory below
+    } catch (err) {
+      if (isProd) {
+        safeLogError(`Redis getFailureCount error in production for ${key}:`, err);
+        throw err;
+      }
+      // fallback to memory below in non-prod
     }
+  } else if (isProd) {
+    safeLogError(`Redis is not configured in production for rate limit getFailureCount (${key})`);
+    throw new Error('Rate limit service unavailable');
   }
 
   const record = inMemoryFailures.get(key);
@@ -660,9 +667,16 @@ async function recordFailure(prefix: string, identifier: string, windowSeconds =
         await redisClient.expire(key, windowSeconds);
       }
       return count;
-    } catch {
-      // fallback to memory
+    } catch (err) {
+      if (isProd) {
+        safeLogError(`Redis recordFailure error in production for ${key}:`, err);
+        throw err;
+      }
+      // fallback to memory below in non-prod
     }
+  } else if (isProd) {
+    safeLogError(`Redis is not configured in production for rate limit recordFailure (${key})`);
+    throw new Error('Rate limit service unavailable');
   }
 
   const now = Date.now();
@@ -721,9 +735,21 @@ export async function clearAdminLockouts(options: { email?: string; ip?: string;
 /**
  * Express middleware for admin login & OTP endpoints.
  * Returns 429 if the IP is already locked out (>= 5 failures within 15 min).
+ * Fails closed in production with 503 if Upstash Redis is missing or throws.
  */
 export async function adminLoginRateLimiter(req: Request, res: Response, next: NextFunction) {
   const ip = getClientIp(req);
+
+  // In production, Upstash Redis must be present; fail closed if missing
+  if (isProd && !redisClient) {
+    safeLogError('Admin rate limiter unavailable in production: Upstash Redis is not configured. Failing closed.');
+    res.setHeader('Retry-After', 60);
+    return res.status(503).json({
+      error: 'Administrative authentication service temporarily unavailable. Please try again later.',
+      retryAfterSeconds: 60,
+    });
+  }
+
   try {
     const ipFailures = await getFailureCount('ip', ip);
     if (ipFailures >= 5) {
@@ -735,6 +761,14 @@ export async function adminLoginRateLimiter(req: Request, res: Response, next: N
     }
     next();
   } catch (err) {
+    if (isProd) {
+      safeLogError('Admin rate limiter error in production. Failing closed:', err);
+      res.setHeader('Retry-After', 60);
+      return res.status(503).json({
+        error: 'Administrative authentication service temporarily unavailable. Please try again later.',
+        retryAfterSeconds: 60,
+      });
+    }
     next();
   }
 }

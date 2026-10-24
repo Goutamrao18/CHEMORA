@@ -35,6 +35,8 @@ export interface RateLimiterOptions {
   skip?: (req: Request) => boolean;
   /** Maximum number of unique keys to hold in memory before aggressive purge (default: 5000) */
   maxTrackedKeys?: number;
+  /** In production (NODE_ENV=production), fail closed if Upstash Redis is missing or throws (returns 503) */
+  failClosedInProd?: boolean;
 }
 
 export interface RateLimitInfo {
@@ -115,6 +117,7 @@ export function createRateLimiter(options: RateLimiterOptions) {
     keyGenerator = getClientIp,
     skip,
     maxTrackedKeys = 5000,
+    failClosedInProd = false,
   } = options;
 
   let upstashLimiter: Ratelimit | null = null;
@@ -171,6 +174,7 @@ export function createRateLimiter(options: RateLimiterOptions) {
 
     const key = keyGenerator(req);
     const now = Date.now();
+    const isProd = process.env.NODE_ENV === 'production';
 
     // 1. Try Upstash distributed sliding-window limiter if configured (RL-02)
     if (upstashLimiter) {
@@ -208,8 +212,23 @@ export function createRateLimiter(options: RateLimiterOptions) {
 
         return next();
       } catch (redisErr) {
+        if (isProd && failClosedInProd) {
+          console.error(`[RateLimiter:FailClosed] Upstash error on ${name}:`, redisErr);
+          res.setHeader('Retry-After', 60);
+          return res.status(503).json({
+            error: 'Authentication and security service temporarily unavailable. Please try again later.',
+            retryAfter: 60,
+          });
+        }
         // Fall back gracefully to memory limiter below
       }
+    } else if (isProd && failClosedInProd) {
+      console.error(`[RateLimiter:FailClosed] Upstash Redis is missing in production for ${name}. Failing closed.`);
+      res.setHeader('Retry-After', 60);
+      return res.status(503).json({
+        error: 'Authentication and security service temporarily unavailable. Please try again later.',
+        retryAfter: 60,
+      });
     }
 
     // 2. In-memory sliding window fallback
@@ -309,6 +328,7 @@ export const authRateLimiter = createRateLimiter({
   name: 'auth-limiter',
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 attempts / 15 minutes (strictly stops brute force within 10 tries)
+  failClosedInProd: true, // FAIL CLOSED in production when Upstash is missing or throws
   message: 'Too many authentication attempts from this IP. Please wait 15 minutes before trying again.',
 });
 

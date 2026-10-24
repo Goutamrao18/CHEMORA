@@ -1,4 +1,4 @@
-const CACHE_NAME = "chemora-shell-v5";
+const CACHE_NAME = "chemora-shell-v6";
 const PRECACHE = [
   "/",
   "/index.html",
