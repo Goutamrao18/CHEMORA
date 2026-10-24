@@ -75,6 +75,8 @@ export const AdminUsersTab: React.FC = () => {
     }
   };
 
+  const safeUsers = Array.isArray(users) ? users : [];
+
   return (
     <div className="space-y-6">
       {/* Search and summary */}
@@ -99,7 +101,7 @@ export const AdminUsersTab: React.FC = () => {
             {loading ? <LiquidLoader size="xs" label="Refreshing users..." /> : <RefreshCw className="w-3.5 h-3.5" />} Refresh
           </button>
           <span className="text-xs text-[var(--admin-text-muted)] font-mono tabular-nums">
-            Total registered: {users.length}
+            Total registered: {safeUsers.length}
           </span>
         </div>
       </div>
@@ -108,7 +110,7 @@ export const AdminUsersTab: React.FC = () => {
       <div className="bg-[var(--admin-card-bg)] rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-[var(--admin-card-border)] overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-xs text-[var(--admin-text-muted)]">Loading researchers directory...</div>
-        ) : users.length === 0 ? (
+        ) : safeUsers.length === 0 ? (
           <div className="p-12 text-center">
             <Users className="w-10 h-10 text-[var(--admin-text-muted)] mx-auto mb-3 opacity-40" />
             <p className="text-sm font-semibold text-[var(--admin-text-main)]">No researchers found</p>
@@ -128,7 +130,7 @@ export const AdminUsersTab: React.FC = () => {
 
             {/* Desktop Table Rows */}
             <div className="hidden md:block divide-y divide-[var(--admin-card-border)]">
-              {users.map((user) => {
+              {safeUsers.map((user) => {
                 const isDisabled = !!user.disabled;
                 const isToggling = togglingId === user.id;
 
@@ -210,7 +212,7 @@ export const AdminUsersTab: React.FC = () => {
 
             {/* Mobile Stacked Cards (Item 16) */}
             <div className="md:hidden divide-y divide-[var(--admin-card-border)]">
-              {users.map((user) => {
+              {safeUsers.map((user) => {
                 const isDisabled = !!user.disabled;
                 const isToggling = togglingId === user.id;
 

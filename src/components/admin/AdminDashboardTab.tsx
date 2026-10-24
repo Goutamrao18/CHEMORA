@@ -34,16 +34,17 @@ interface AdminDashboardTabProps {
 
 // Sparkline SVG helper
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  if (!data || data.length < 2) return null;
+  if (!Array.isArray(data) || data.length < 2) return null;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
   const width = 64;
   const height = 24;
+  const divisor = Math.max(data.length - 1, 1);
 
   const points = data
     .map((val, idx) => {
-      const x = (idx / (data.length - 1)) * width;
+      const x = (idx / divisor) * width;
       const y = height - ((val - min) / range) * (height - 4) - 2;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
@@ -117,15 +118,17 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
     trendStatus: statsData?.stats?.trendStatus || ((statsData?.totalUsers || 0) > 0 ? 'Live platform' : 'System ready'),
   };
 
+  const rawActivity = statsData?.activity?.[activityRange];
   const activityData: { date: string; count: number }[] =
-    statsData?.activity?.[activityRange] || [];
+    Array.isArray(rawActivity) ? rawActivity : [];
 
-  const sparklineData = (statsData?.activity?.['7d'] || []).map((d: any) => d.count);
+  const rawSparklineList = Array.isArray(statsData?.activity?.['7d']) ? statsData.activity['7d'] : [];
+  const sparklineData = rawSparklineList.map((d: any) => (typeof d?.count === 'number' ? d.count : 0));
   const realSparkline = sparklineData.length >= 2 ? sparklineData : [0, 0];
 
-  const reviewsQueue = statsData?.reviewsQueue || [];
-  const topExperiments = statsData?.topExperiments || [];
-  const recentAudit = statsData?.recentAudit || [];
+  const reviewsQueue = Array.isArray(statsData?.reviewsQueue) ? statsData.reviewsQueue : [];
+  const topExperiments = Array.isArray(statsData?.topExperiments) ? statsData.topExperiments : [];
+  const recentAudit = Array.isArray(statsData?.recentAudit) ? statsData.recentAudit : [];
 
   // Discipline Pastel Background & Border Mapping
   const getDisciplineTint = (discipline?: string) => {
@@ -342,9 +345,10 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
               const maxCount = Math.max(...activityData.map((d) => d.count), 1);
               const minCount = Math.min(...activityData.map((d) => d.count), 0);
               const range = maxCount - minCount || 1;
+              const divisor = Math.max(activityData.length - 1, 1);
 
               const coords = activityData.map((item, idx) => {
-                const x = (idx / (activityData.length - 1)) * svgW;
+                const x = (idx / divisor) * svgW;
                 const y = svgH - ((item.count - minCount) / range) * (svgH - 30) - 15;
                 return { x, y, item };
               });

@@ -433,7 +433,7 @@ export const AdminView: React.FC = () => {
   }
 
   // Authenticated Admin Dashboard Layout (CSS Grid: Dedicated rail column + Centered content)
-  const adminFirstName = adminUser.name ? adminUser.name.split(' ')[0] : 'Administrator';
+  const adminFirstName = typeof adminUser?.name === 'string' && adminUser.name.trim() ? adminUser.name.split(' ')[0] : 'Administrator';
   const pendingReviewsCount = statsData?.pendingReviewsCount || 0;
 
   return (

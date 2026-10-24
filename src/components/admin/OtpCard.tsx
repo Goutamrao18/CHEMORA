@@ -104,7 +104,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
     }
 
     // Auto-submit after 6th digit entered (150ms debounce)
-    const isComplete = next.every((d) => d.length === 1);
+    const isComplete = Array.isArray(next) && next.length === 6 && next.every((d) => Boolean(d && typeof d === 'string' && d.length === 1));
     if (isComplete) {
       if (submitDebounceRef.current) clearTimeout(submitDebounceRef.current);
       submitDebounceRef.current = setTimeout(() => {
@@ -137,8 +137,8 @@ export const OtpCard: React.FC<OtpCardProps> = ({
       setFocusedIndex(index + 1);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const code = digits.join('');
-      if (code.length === 6 && !isSubmitting) {
+      const code = Array.isArray(digits) ? digits.join('') : '';
+      if (code && code.length === 6 && !isSubmitting) {
         onVerifyOtp(code);
       }
     }
@@ -147,7 +147,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     if (onClearError) onClearError();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
     if (!pasted) return;
 
     const next = ['', '', '', '', '', ''];
@@ -169,7 +169,7 @@ export const OtpCard: React.FC<OtpCardProps> = ({
     }
   };
 
-  const isComplete = digits.every((d) => d.length === 1);
+  const isComplete = Array.isArray(digits) && digits.length === 6 && digits.every((d) => Boolean(d && typeof d === 'string' && d.length === 1));
   const isLocked = errorCode === 'otp_locked';
   const isExpired = errorCode === 'otp_expired' || timeRemaining === 0;
 

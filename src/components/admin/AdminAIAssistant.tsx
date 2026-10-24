@@ -25,7 +25,8 @@ const SUGGESTIONS = [
 ];
 
 function renderSafeFormattedMessage(text: string): React.ReactNode {
-  const lines = text.split('\n');
+  const safeText = typeof text === 'string' ? text : '';
+  const lines = safeText.split('\n');
   return lines.map((line, lineIdx) => {
     const parts: React.ReactNode[] = [];
     const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`)/g;
@@ -77,11 +78,12 @@ export const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({
   adminName,
   initialQuery,
 }) => {
+  const safeAdminFirstName = typeof adminName === 'string' && adminName.trim() ? adminName.split(' ')[0] : 'Administrator';
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: 'welcome',
       sender: 'ai',
-      text: `Hello ${adminName.split(' ')[0]}. I'm Chemora Operational AI. I monitor challenge pass rates, review moderation queues, and video streaming health. How can I assist your laboratory overview today?`,
+      text: `Hello ${safeAdminFirstName}. I'm Chemora Operational AI. I monitor challenge pass rates, review moderation queues, and video streaming health. How can I assist your laboratory overview today?`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);

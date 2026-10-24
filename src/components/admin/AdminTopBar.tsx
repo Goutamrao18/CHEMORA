@@ -20,7 +20,7 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
 }) => {
   const [searchVal, setSearchVal] = useState('');
 
-  const firstName = adminName.split(' ')[0] || 'Administrator';
+  const firstName = typeof adminName === 'string' && adminName.trim() ? (adminName.split(' ')[0] || 'Administrator') : 'Administrator';
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

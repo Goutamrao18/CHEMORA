@@ -112,8 +112,9 @@ export const AdminAuditTab: React.FC = () => {
       }
 
       const data = await res.json();
-      setLogs(data.logs || []);
-      setTotalCount(data.total || (data.logs ? data.logs.length : 0));
+      const logsArray = Array.isArray(data?.logs) ? data.logs : [];
+      setLogs(logsArray);
+      setTotalCount(typeof data?.total === 'number' ? data.total : logsArray.length);
       if (data.source) setDataSource(data.source);
       if (data.stats) setStats(data.stats);
     } catch (err: any) {
@@ -401,7 +402,7 @@ export const AdminAuditTab: React.FC = () => {
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono tabular-nums">
-              {stats?.last24hCount ?? logs.length}
+              {stats?.last24hCount ?? (Array.isArray(logs) ? logs.length : 0)}
             </div>
             <p className="text-[11px] text-[var(--admin-text-muted)] mt-0.5">
               Recent forensic audit throughput
@@ -502,7 +503,7 @@ export const AdminAuditTab: React.FC = () => {
           SECTION 3: MAIN AUDIT LOG TABLE
           ========================================================================= */}
       <div className="bg-[var(--admin-card-bg)] rounded-[24px] shadow-[var(--admin-card-shadow)] border border-[var(--admin-card-border)] overflow-hidden">
-        {loading && logs.length === 0 ? (
+        {loading && (!Array.isArray(logs) || logs.length === 0) ? (
           <div className="p-16 text-center space-y-3">
             <LiquidLoader size="md" label="Querying cryptographic records from Supabase admin_audit_logs..." />
             <p className="text-xs font-medium text-[var(--admin-text-muted)]">
@@ -524,7 +525,7 @@ export const AdminAuditTab: React.FC = () => {
               Retry Query
             </button>
           </div>
-        ) : logs.length === 0 ? (
+        ) : !Array.isArray(logs) || logs.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <ShieldCheck className="w-10 h-10 text-[var(--admin-text-muted)] opacity-30 mx-auto" />
             <h4 className="text-sm font-bold text-[var(--admin-text-main)]">No Audit Records Found</h4>

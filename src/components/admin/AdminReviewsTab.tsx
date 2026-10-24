@@ -66,12 +66,18 @@ export const AdminReviewsTab: React.FC<AdminReviewsTabProps> = ({ onStatusChange
 
   // Filtered reviews
   const filteredReviews = useMemo(() => {
-    return reviews.filter((r) => {
+    const list = Array.isArray(reviews) ? reviews : [];
+    const q = (searchQuery || '').trim().toLowerCase();
+    return list.filter((r) => {
+      if (!r) return false;
+      const comment = typeof r.comment === 'string' ? r.comment.toLowerCase() : '';
+      const email = typeof r.user_email === 'string' ? r.user_email.toLowerCase() : '';
+      const expId = typeof r.experiment_id === 'string' ? r.experiment_id.toLowerCase() : '';
       const matchesSearch =
-        !searchQuery ||
-        r.comment.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (r.user_email && r.user_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (r.experiment_id && r.experiment_id.toLowerCase().includes(searchQuery.toLowerCase()));
+        !q ||
+        comment.includes(q) ||
+        email.includes(q) ||
+        expId.includes(q);
       return matchesSearch;
     });
   }, [reviews, searchQuery]);

@@ -2008,7 +2008,7 @@ router.post('/users/:id/toggle-disabled', requireAdmin, async (req: Authenticate
 // ============================================================================
 // 12. Video Streaming Health
 // ============================================================================
-router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+const handleVideoHealthCheck = async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const manifestPath = path.join(rootDir, 'videos/manifest.json');
     let manifestData: Record<string, any> = {};
@@ -2079,18 +2079,24 @@ router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest
       });
     }
 
-    return res.json({
+    const responsePayload = {
       total: results.length,
       healthy: results.filter((r) => r.status === 'ok').length,
       missing: results.filter((r) => r.status === 'missing').length,
       wrongType: results.filter((r) => r.status === 'wrong_content_type').length,
       videos: results,
-    });
+      results: results,
+    };
+    return res.json(responsePayload);
   } catch (err: any) {
     safeLogError('Error checking video content health:', err);
     return res.status(500).json({ error: 'Video health check failed' });
   }
-});
+};
+
+router.get('/videos/health', requireAdmin, handleVideoHealthCheck);
+router.post('/videos/check', requireAdmin, handleVideoHealthCheck);
+router.get('/videos/check', requireAdmin, handleVideoHealthCheck);
 
 // ============================================================================
 // 13. System Settings & Audit Log

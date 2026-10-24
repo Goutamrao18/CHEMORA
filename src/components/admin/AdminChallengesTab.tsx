@@ -159,8 +159,9 @@ function buildAllChallenges(): ChallengeStatsItem[] {
 
   for (let lvl = 1; lvl <= 100; lvl++) {
     const group = TOPIC_TEMPLATES.find((g) => lvl >= g.range[0] && lvl <= g.range[1]) || TOPIC_TEMPLATES[0];
-    const offset = lvl - group.range[0];
-    const title = group.baseTitles[offset % group.baseTitles.length];
+    const offset = Math.max(0, lvl - group.range[0]);
+    const titles = Array.isArray(group?.baseTitles) && group.baseTitles.length > 0 ? group.baseTitles : ['Chemical Principles'];
+    const title = titles[offset % titles.length];
     
     // Check real user performance
     const isCompleted = completedSet.has(lvl);
@@ -257,7 +258,7 @@ export const AdminChallengesTab: React.FC = () => {
 
       {/* Summary Chips */}
       <div className="flex items-center justify-between text-xs text-[var(--admin-text-muted)] px-1">
-        <span>Showing {filtered.length} of 100 curriculum levels</span>
+        <span>Showing {Array.isArray(filtered) ? filtered.length : 0} of 100 curriculum levels</span>
         <span className="font-mono text-[11px] text-cyan-400 font-bold">1,000 Questions Synchronized</span>
       </div>
 

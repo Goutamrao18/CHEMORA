@@ -62,6 +62,12 @@ export const AdminVideosTab: React.FC = () => {
     fetchHealth(false);
   }, []);
 
+  const videoResults: VideoResult[] = Array.isArray(data?.results)
+    ? data.results
+    : Array.isArray((data as any)?.videos)
+    ? (data as any).videos
+    : [];
+
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -73,7 +79,7 @@ export const AdminVideosTab: React.FC = () => {
           <div>
             <div className="text-xs text-[var(--admin-text-muted)]">Manifest Manifested</div>
             <div className="text-2xl font-bold tracking-tight text-[var(--admin-text-main)] tabular-nums">
-              {data?.total || 21}
+              {data?.total || (videoResults.length > 0 ? videoResults.length : 21)}
             </div>
           </div>
         </div>
@@ -85,7 +91,7 @@ export const AdminVideosTab: React.FC = () => {
           <div>
             <div className="text-xs text-[var(--admin-text-muted)]">Healthy (200 OK)</div>
             <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums">
-              {data?.ok || 0}
+              {data?.ok ?? (data as any)?.healthy ?? (videoResults.filter((v) => v.status === 'ok').length)}
             </div>
           </div>
         </div>
@@ -97,7 +103,7 @@ export const AdminVideosTab: React.FC = () => {
           <div>
             <div className="text-xs text-[var(--admin-text-muted)]">Failing / Missing</div>
             <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400 tabular-nums">
-              {data?.failed || 0}
+              {data?.failed ?? (data as any)?.missing ?? (videoResults.filter((v) => v.status !== 'ok').length)}
             </div>
           </div>
         </div>
@@ -127,7 +133,7 @@ export const AdminVideosTab: React.FC = () => {
             <LiquidLoader size="md" label="Executing server-side HEAD requests across storage bucket..." />
             <p>Executing server-side HEAD requests across storage bucket...</p>
           </div>
-        ) : !data || data.results.length === 0 ? (
+        ) : !data || videoResults.length === 0 ? (
           <div className="p-12 text-center text-xs text-[var(--admin-text-muted)]">
             No video manifest entries loaded.
           </div>
@@ -143,7 +149,7 @@ export const AdminVideosTab: React.FC = () => {
             </div>
 
             {/* Rows */}
-            {data.results.map((vid) => {
+            {videoResults.map((vid) => {
               const isOk = vid.status === 'ok';
 
               return (

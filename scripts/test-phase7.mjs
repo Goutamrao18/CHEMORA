@@ -131,10 +131,10 @@ let passedTests = 0;
   const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'));
   assert.ok(files.length > 0, 'At least one SQL migration file must be written');
   
-  const migrationContent = fs.readFileSync(path.join(migrationsDir, files[0]), 'utf8');
-  assert.ok(migrationContent.includes('ALTER TABLE chemora_reviews ENABLE ROW LEVEL SECURITY'), 'Migration must enable RLS');
-  assert.ok(migrationContent.includes('review_votes'), 'Migration must declare review_votes table');
-  console.log(`✓ Test 6: Database migration "${files[0]}" written for manual review.`);
+  const allMigrations = files.map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8')).join('\n');
+  assert.ok(allMigrations.includes('ALTER TABLE chemora_reviews ENABLE ROW LEVEL SECURITY'), 'Migration must enable RLS');
+  assert.ok(allMigrations.includes('review_votes'), 'Migration must declare review_votes table');
+  console.log(`✓ Test 6: Database migration files verified.`);
   passedTests++;
 }
 

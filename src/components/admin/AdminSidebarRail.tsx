@@ -51,7 +51,8 @@ export const AdminSidebarRail: React.FC<AdminSidebarRailProps> = ({
     { id: 'audit', label: 'Audit Log', icon: ShieldCheck },
   ];
 
-  const adminInitials = adminName
+  const safeAdminName = typeof adminName === 'string' && adminName.trim() ? adminName : 'Administrator';
+  const adminInitials = safeAdminName
     .split(' ')
     .filter(Boolean)
     .map((n) => n[0])

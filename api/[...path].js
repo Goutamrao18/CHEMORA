@@ -3025,7 +3025,7 @@ router.post("/users/:id/toggle-disabled", requireAdmin, async (req, res) => {
   await writeAdminAudit(req.admin.id, req.admin.email, "USER_TOGGLE_DISABLED", id, { disabled: shouldDisable }, getClientIp(req));
   return res.json({ success: true, id, disabled: shouldDisable });
 });
-router.get("/videos/health", requireAdmin, async (req, res) => {
+var handleVideoHealthCheck = async (req, res) => {
   try {
     const manifestPath = path.join(rootDir, "videos/manifest.json");
     let manifestData = {};
@@ -3090,18 +3090,23 @@ router.get("/videos/health", requireAdmin, async (req, res) => {
         latencyMs
       });
     }
-    return res.json({
+    const responsePayload = {
       total: results.length,
       healthy: results.filter((r) => r.status === "ok").length,
       missing: results.filter((r) => r.status === "missing").length,
       wrongType: results.filter((r) => r.status === "wrong_content_type").length,
-      videos: results
-    });
+      videos: results,
+      results
+    };
+    return res.json(responsePayload);
   } catch (err) {
     safeLogError("Error checking video content health:", err);
     return res.status(500).json({ error: "Video health check failed" });
   }
-});
+};
+router.get("/videos/health", requireAdmin, handleVideoHealthCheck);
+router.post("/videos/check", requireAdmin, handleVideoHealthCheck);
+router.get("/videos/check", requireAdmin, handleVideoHealthCheck);
 router.get("/settings", requireAdmin, (req, res) => {
   return res.json({ settings: fallbackSettings });
 });
@@ -4191,7 +4196,7 @@ app.use((_req, res, next) => {
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co; media-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov; media-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk"
   );
   next();
 });
