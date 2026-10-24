@@ -175,44 +175,44 @@ console.log('🧪 Starting Rate Limit Middleware Tests...\n');
   console.log('✓ Test 5 Passed: OPTIONS requests bypass rate limiters for CORS compatibility');
 }
 
-// 6. Test AI Rate Limiter configuration
+// 6. Test AI Rate Limiter configuration (60 req/min)
 {
   aiRateLimiter.reset();
   const ip = '4.4.4.4';
 
-  // Fire 20 requests (allowed max for AI)
-  for (let i = 0; i < 20; i++) {
+  // Fire 60 requests (allowed max for AI)
+  for (let i = 0; i < 60; i++) {
     const r = createMockReqRes({ ip, path: '/api/assistant' });
     const res = await runMiddleware(aiRateLimiter, r.req, r.res);
     assert.equal(res.nextCalled, true, `AI request #${i + 1} should be permitted`);
   }
 
-  // 21st request should be rejected to protect Gemini / OpenRouter quotas
-  const r21 = createMockReqRes({ ip, path: '/api/assistant' });
-  await runMiddleware(aiRateLimiter, r21.req, r21.res);
-  assert.equal(r21.res.statusCode, 429, 'AI endpoint must block after 20 queries/min');
-  assert.match(r21.res.payload.error, /Too many AI Assistant requests/i);
+  // 61st request should be rejected to protect Gemini / OpenRouter quotas
+  const r61 = createMockReqRes({ ip, path: '/api/assistant' });
+  await runMiddleware(aiRateLimiter, r61.req, r61.res);
+  assert.equal(r61.res.statusCode, 429, 'AI endpoint must block after 60 queries/min');
+  assert.match(r61.res.payload.error, /Too many AI Assistant requests/i);
 
   console.log('✓ Test 6 Passed: AI assistant rate limiter strictly prevents model & token abuse');
 }
 
-// 7. Test Database Rate Limiter configuration
+// 7. Test Database Rate Limiter configuration (300 req/min)
 {
   databaseRateLimiter.reset();
   const ip = '5.5.5.5';
 
-  // Fire 60 requests (allowed max for DB)
-  for (let i = 0; i < 60; i++) {
+  // Fire 300 requests (allowed max for DB)
+  for (let i = 0; i < 300; i++) {
     const r = createMockReqRes({ ip, path: '/api/account/sync' });
     const res = await runMiddleware(databaseRateLimiter, r.req, r.res);
     assert.equal(res.nextCalled, true, `DB request #${i + 1} should be permitted`);
   }
 
-  // 61st request should be rejected to protect database
-  const r61 = createMockReqRes({ ip, path: '/api/account/sync' });
-  await runMiddleware(databaseRateLimiter, r61.req, r61.res);
-  assert.equal(r61.res.statusCode, 429, 'Database endpoints must block after 60 ops/min');
-  assert.match(r61.res.payload.error, /Too many database operations/i);
+  // 301st request should be rejected to protect database
+  const r301 = createMockReqRes({ ip, path: '/api/account/sync' });
+  await runMiddleware(databaseRateLimiter, r301.req, r301.res);
+  assert.equal(r301.res.statusCode, 429, 'Database endpoints must block after 300 ops/min');
+  assert.match(r301.res.payload.error, /Too many database operations/i);
 
   console.log('✓ Test 7 Passed: Database rate limiter strictly prevents DB read/write abuse');
 }

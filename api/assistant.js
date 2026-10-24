@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const MAX_PROMPT_CHARS = 4000;
 const MAX_CONTEXT_CHARS = 1200;
-const TIMEOUT_MS = 4500; // 4.5-second per-model timeout to strictly prevent Vercel 10s gateway aborts (F-010)
+const TIMEOUT_MS = 8000; // 8-second per-model timeout to avoid premature model aborts
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB decoded limit
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -79,32 +79,32 @@ let userDayLimiter = null;
 let userImageLimiter = null;
 let globalDayLimiter = null;
 
-const AI_DAILY_CAP = process.env.AI_DAILY_CAP ? parseInt(process.env.AI_DAILY_CAP, 10) : 1000;
+const AI_DAILY_CAP = process.env.AI_DAILY_CAP ? parseInt(process.env.AI_DAILY_CAP, 10) : 10000;
 
 if (redisClient) {
   anonMinLimiter = new Ratelimit({
     redis: redisClient,
-    limiter: Ratelimit.slidingWindow(5, '1 m'),
+    limiter: Ratelimit.slidingWindow(30, '1 m'),
     prefix: 'rl:asst:anon:1m',
   });
   anonDayLimiter = new Ratelimit({
     redis: redisClient,
-    limiter: Ratelimit.slidingWindow(30, '1 d'),
+    limiter: Ratelimit.slidingWindow(150, '1 d'),
     prefix: 'rl:asst:anon:1d',
   });
   userMinLimiter = new Ratelimit({
     redis: redisClient,
-    limiter: Ratelimit.slidingWindow(20, '1 m'),
+    limiter: Ratelimit.slidingWindow(60, '1 m'),
     prefix: 'rl:asst:user:1m',
   });
   userDayLimiter = new Ratelimit({
     redis: redisClient,
-    limiter: Ratelimit.slidingWindow(200, '1 d'),
+    limiter: Ratelimit.slidingWindow(600, '1 d'),
     prefix: 'rl:asst:user:1d',
   });
   userImageLimiter = new Ratelimit({
     redis: redisClient,
-    limiter: Ratelimit.slidingWindow(5, '1 d'),
+    limiter: Ratelimit.slidingWindow(30, '1 d'),
     prefix: 'rl:asst:img:1d',
   });
   globalDayLimiter = new Ratelimit({
@@ -282,8 +282,8 @@ export default async function handler(req, res) {
       if (!gCheck.success) {
         return res.status(503).json({ error: 'Service daily capacity reached. Please try again tomorrow.' });
       }
-      const minMax = client.isUser ? 20 : 5;
-      const dayMax = client.isUser ? 200 : 30;
+      const minMax = client.isUser ? 60 : 30;
+      const dayMax = client.isUser ? 600 : 150;
       const mCheck = checkDevLimit(`${client.key}:min`, minMax, 60_000);
       if (!mCheck.success) {
         rateLimitPassed = false;
@@ -301,8 +301,8 @@ export default async function handler(req, res) {
     if (!gCheck.success) {
       return res.status(503).json({ error: 'Service daily capacity reached. Please try again tomorrow.' });
     }
-    const minMax = client.isUser ? 20 : 5;
-    const dayMax = client.isUser ? 200 : 30;
+    const minMax = client.isUser ? 60 : 30;
+    const dayMax = client.isUser ? 600 : 150;
     const mCheck = checkDevLimit(`${client.key}:min`, minMax, 60_000);
     if (!mCheck.success) {
       rateLimitPassed = false;
@@ -411,13 +411,10 @@ Carefully examine the image:
       if (targetModel) candidateList.push(targetModel);
       if (process.env.GEMINI_MODEL) candidateList.push(process.env.GEMINI_MODEL);
       candidateList.push(
-        'gemini-3.5-flash',
-        'gemini-3.6-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-3.8-flash',
-        'gemini-3.7-flash',
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite'
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash'
       );
       const uniqueModels = Array.from(new Set(candidateList));
 

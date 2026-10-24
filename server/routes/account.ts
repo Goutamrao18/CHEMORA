@@ -17,6 +17,7 @@ import {
   backendDeleteAccount,
   getUserScopedSupabaseClient,
   safeLogError,
+  safeLogWarn,
 } from '../supabase.ts';
 import { verifyAdminToken } from './admin.ts';
 import { isRedisConfigured } from '../middleware/rateLimit.ts';
@@ -478,13 +479,7 @@ const emailResetStore = new Map<string, { count: number; resetAt: number; lastSe
 
 async function checkPasswordResetRateLimit(email: string): Promise<{ allowed: boolean; retryAfter?: number; error?: string; statusCode?: number }> {
   if (isProd && !isRedisConfigured()) {
-    safeLogError('Password reset rate limiter unavailable in production: Upstash Redis is not configured. Failing closed.');
-    return {
-      allowed: false,
-      statusCode: 503,
-      retryAfter: 60,
-      error: 'Password reset service temporarily unavailable. Please try again later.',
-    };
+    safeLogWarn('Upstash Redis not configured for password reset rate limit; using resilient in-memory sliding window.');
   }
 
   const normEmail = email.toLowerCase().trim();

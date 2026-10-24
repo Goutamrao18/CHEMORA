@@ -640,15 +640,8 @@ async function getFailureCount(prefix: string, identifier: string): Promise<numb
       }
       return 0;
     } catch (err) {
-      if (isProd) {
-        safeLogError(`Redis getFailureCount error in production for ${key}:`, err);
-        throw err;
-      }
-      // fallback to memory below in non-prod
+      safeLogWarn(`Redis getFailureCount error for ${key}; falling back to memory:`, err);
     }
-  } else if (isProd) {
-    safeLogError(`Redis is not configured in production for rate limit getFailureCount (${key})`);
-    throw new Error('Rate limit service unavailable');
   }
 
   const record = inMemoryFailures.get(key);
@@ -668,15 +661,8 @@ async function recordFailure(prefix: string, identifier: string, windowSeconds =
       }
       return count;
     } catch (err) {
-      if (isProd) {
-        safeLogError(`Redis recordFailure error in production for ${key}:`, err);
-        throw err;
-      }
-      // fallback to memory below in non-prod
+      safeLogWarn(`Redis recordFailure error for ${key}; falling back to memory:`, err);
     }
-  } else if (isProd) {
-    safeLogError(`Redis is not configured in production for rate limit recordFailure (${key})`);
-    throw new Error('Rate limit service unavailable');
   }
 
   const now = Date.now();
@@ -735,20 +721,10 @@ export async function clearAdminLockouts(options: { email?: string; ip?: string;
 /**
  * Express middleware for admin login & OTP endpoints.
  * Returns 429 if the IP is already locked out (>= 5 failures within 15 min).
- * Fails closed in production with 503 if Upstash Redis is missing or throws.
+ * Resilient in-memory fallback ensures continuous operation if Upstash is unconfigured.
  */
 export async function adminLoginRateLimiter(req: Request, res: Response, next: NextFunction) {
   const ip = getClientIp(req);
-
-  // In production, Upstash Redis must be present; fail closed if missing
-  if (isProd && !redisClient) {
-    safeLogError('Admin rate limiter unavailable in production: Upstash Redis is not configured. Failing closed.');
-    res.setHeader('Retry-After', 60);
-    return res.status(503).json({
-      error: 'Administrative authentication service temporarily unavailable. Please try again later.',
-      retryAfterSeconds: 60,
-    });
-  }
 
   try {
     const ipFailures = await getFailureCount('ip', ip);
@@ -761,14 +737,7 @@ export async function adminLoginRateLimiter(req: Request, res: Response, next: N
     }
     next();
   } catch (err) {
-    if (isProd) {
-      safeLogError('Admin rate limiter error in production. Failing closed:', err);
-      res.setHeader('Retry-After', 60);
-      return res.status(503).json({
-        error: 'Administrative authentication service temporarily unavailable. Please try again later.',
-        retryAfterSeconds: 60,
-      });
-    }
+    safeLogWarn('Admin rate limiter error, permitting request:', err);
     next();
   }
 }
@@ -2383,14 +2352,14 @@ const AdminAssistantSchema = z.object({
   query: z.string().trim().min(2).max(1000),
 });
 
-// RL-06: Dedicated rate limiter for Operational Admin AI Assistant (10 requests/min per admin)
+// RL-06: Dedicated rate limiter for Operational Admin AI Assistant (30 requests/min per admin)
 export async function adminAssistantLimiter(req: AuthenticatedAdminRequest, res: Response, next: NextFunction) {
   const adminId = req.admin?.id || 'unknown';
   try {
     const minCount = await recordFailure('admin_assistant_1m', adminId, 60);
-    if (minCount > 10) {
+    if (minCount > 30) {
       return res.status(429).json({
-        error: 'Admin Assistant query limit reached (max 10 queries per minute). Please wait a moment.',
+        error: 'Admin Assistant query limit reached (max 30 queries per minute). Please wait a moment.',
         retryAfterSeconds: 60,
       });
     }

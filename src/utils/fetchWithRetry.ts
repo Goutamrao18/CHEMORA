@@ -27,9 +27,9 @@ export class FetchError extends Error {
 export async function fetchWithRetry(url: string, options: FetchOptions = {}): Promise<Response> {
   const {
     timeoutMs = 12000,
-    retries = 2,
+    retries = 3,
     retryDelayMs = 600,
-    retryOnStatus = [502, 503, 504],
+    retryOnStatus = [429, 502, 503, 504],
     credentials = 'include',
     ...fetchInit
   } = options;
@@ -66,10 +66,19 @@ export async function fetchWithRetry(url: string, options: FetchOptions = {}): P
 
       if (timeoutId) clearTimeout(timeoutId);
 
-      // Check if response status warrants retry (e.g. 502/503/504)
+      // Check if response status warrants retry (e.g. 429 rate limit or 502/503/504)
       if (retryOnStatus.includes(response.status) && attempt < retries) {
         attempt++;
-        const backoff = retryDelayMs * Math.pow(2, attempt - 1);
+        let backoff = retryDelayMs * Math.pow(2, attempt - 1);
+        if (response.status === 429) {
+          const retryHeader = response.headers.get('retry-after') || response.headers.get('Retry-After');
+          if (retryHeader) {
+            const parsedSeconds = parseInt(retryHeader, 10);
+            if (!isNaN(parsedSeconds) && parsedSeconds > 0) {
+              backoff = Math.min(parsedSeconds * 1000, 4000);
+            }
+          }
+        }
         await new Promise((r) => setTimeout(r, backoff));
         continue;
       }

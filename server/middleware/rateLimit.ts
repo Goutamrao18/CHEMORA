@@ -302,13 +302,13 @@ export function createRateLimiter(options: RateLimiterOptions) {
 
 /**
  * 1. AI Rate Limiter:
- * Strictly protects expensive LLM generation & vision processing routes (/api/assistant).
- * Limits to 20 requests per minute per IP.
+ * Protects LLM generation & vision processing routes (/api/assistant).
+ * Relaxed to 60 requests per minute per IP.
  */
 export const aiRateLimiter = createRateLimiter({
   name: 'ai-limiter',
   windowMs: 60 * 1000, // 1 minute
-  max: 20, // 20 requests / minute
+  max: 60, // 60 requests / minute
   message: 'Too many AI Assistant requests from this IP. Please wait a minute before submitting further chemistry inquiries.',
 });
 
@@ -316,37 +316,38 @@ export const aiRateLimiter = createRateLimiter({
  * 2. Database Rate Limiter:
  * Protects database storage, Supabase API quotas, and persistent JSON operations
  * across account management and reviews endpoints (/api/account, /api/reviews).
- * Limits to 60 operations per minute per IP.
+ * Generous 300 operations per minute with bypass for read-only health checks.
  */
 export const databaseRateLimiter = createRateLimiter({
   name: 'database-limiter',
   windowMs: 60 * 1000, // 1 minute
-  max: 60, // 60 requests / minute
+  max: 300, // 300 requests / minute
+  skip: (req) => req.method === 'GET' && (req.path === '/status' || req.path === '/diagnostics'),
   message: 'Too many database operations from this IP. Please slow down and try again shortly.',
 });
 
 /**
  * 3. Authentication Rate Limiter:
  * High-security rate limiter for sensitive authentication mutations (/api/account/login, /api/account/signup, /api/account/password).
- * Protects against credential stuffing and brute force password guessing attacks.
- * Limits to 10 attempts per 15 minutes per IP.
+ * Protects against credential stuffing while allowing classrooms and multiple users on shared IPs.
+ * 50 attempts per 15 minutes with resilient in-memory fallback.
  */
 export const authRateLimiter = createRateLimiter({
   name: 'auth-limiter',
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts / 15 minutes (strictly stops brute force within 10 tries)
-  failClosedInProd: true, // FAIL CLOSED in production when Upstash is missing or throws
+  max: 50, // 50 attempts / 15 minutes
+  failClosedInProd: false, // Gracefully fall back to in-memory sliding window
   message: 'Too many authentication attempts from this IP. Please wait 15 minutes before trying again.',
 });
 
 /**
  * 4. General API Rate Limiter:
  * Overarching baseline protection for all /api/* routes against denial of service and automated flooding.
- * Limits to 120 requests per minute per IP.
+ * 600 requests per minute per IP.
  */
 export const apiRateLimiter = createRateLimiter({
   name: 'api-general-limiter',
   windowMs: 60 * 1000, // 1 minute
-  max: 120, // 120 requests / minute
+  max: 600, // 600 requests / minute
   message: 'Too many requests to the CHEMORA API from this IP. Please slow down.',
 });

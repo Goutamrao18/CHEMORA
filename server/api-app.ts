@@ -40,13 +40,12 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-XSS-Protection', '0');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // Note: Omit restrictive X-Frame-Options / COOP so preview iframe can render correctly
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov https://lh3.googleusercontent.com; media-src 'self' blob: https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk; object-src 'none'; base-uri 'self'; form-action 'self';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov https://lh3.googleusercontent.com; media-src 'self' blob: https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors *;"
   );
   next();
 });
