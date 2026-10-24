@@ -6,6 +6,7 @@ import reviewsRouter from './routes/reviews.ts';
 import adminRouter, { adminLoginRateLimiter } from './routes/admin.ts';
 import {
   apiRateLimiter,
+  aiRateLimiter,
   authRateLimiter,
   databaseRateLimiter,
 } from './middleware/rateLimit.ts';
@@ -54,6 +55,7 @@ app.use(cookieParser());
 
 // Rate limiters
 app.use('/api', apiRateLimiter);
+app.use('/api/assistant', aiRateLimiter);
 app.use('/api/account/signup', authRateLimiter);
 app.use('/api/account/login', authRateLimiter);
 app.use('/api/account/forgot-password', authRateLimiter);
@@ -109,6 +111,118 @@ app.get('/api/science/compound', async (req: Request, res: Response) => {
     return res.json({ cid, properties: propsData?.PropertyTable?.Properties?.[0] });
   } catch {
     return res.status(502).json({ error: 'PubChem query failed or timed out' });
+  }
+});
+
+// PubChem Periodic Table & Element Data Cache
+let cachedPeriodicTable: any = null;
+let cachedPeriodicTableTime = 0;
+const elementDetailCache = new Map<string, { data: any; timestamp: number }>();
+
+app.get('/api/science/element', async (req: Request, res: Response) => {
+  try {
+    const query = (req.query.q as string || req.query.symbol as string || req.query.number as string || '').trim();
+    const now = Date.now();
+
+    // Check cache first
+    if (query && elementDetailCache.has(query.toLowerCase())) {
+      const cached = elementDetailCache.get(query.toLowerCase())!;
+      if (now - cached.timestamp < 86400000) {
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+        return res.json(cached.data);
+      }
+    }
+
+    // Fetch or use cached full periodic table from PubChem
+    if (!cachedPeriodicTable || now - cachedPeriodicTableTime > 86400000) {
+      try {
+        const ptRes = await fetch('https://pubchem.ncbi.nlm.nih.gov/rest/pug/periodictable/JSON', {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (ptRes.ok) {
+          cachedPeriodicTable = await ptRes.json();
+          cachedPeriodicTableTime = now;
+        }
+      } catch (fetchErr) {
+        console.warn('PubChem periodic table fetch fallback:', fetchErr);
+      }
+    }
+
+    // If no query requested, return the full table
+    if (!query) {
+      if (cachedPeriodicTable) {
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+        return res.json(cachedPeriodicTable);
+      }
+      return res.status(503).json({ error: 'PubChem periodic table temporarily unavailable' });
+    }
+
+    // Find the element in the periodic table
+    const columns: string[] = cachedPeriodicTable?.Table?.Columns?.Column || [];
+    const rows: any[] = cachedPeriodicTable?.Table?.Row || [];
+    const queryLower = query.toLowerCase();
+
+    const numIdx = columns.indexOf('AtomicNumber');
+    const symIdx = columns.indexOf('Symbol');
+    const nameIdx = columns.indexOf('Name');
+
+    const matchedRow: any = rows.find((r: any) => {
+      const num = String(r?.Cell?.[numIdx] || '');
+      const sym = String(r?.Cell?.[symIdx] || '').toLowerCase();
+      const name = String(r?.Cell?.[nameIdx] || '').toLowerCase();
+      return num === queryLower || sym === queryLower || name === queryLower;
+    });
+
+    const elementData: Record<string, any> = {};
+    if (matchedRow) {
+      columns.forEach((col, idx) => {
+        elementData[col] = matchedRow?.Cell?.[idx];
+      });
+    }
+
+    // Fetch PubChem CID & compound properties if element name is known
+    const elementName = elementData.Name || query;
+    let pubchemCompound = null;
+    try {
+      const cidRes = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(elementName)}/cids/JSON`,
+        { signal: AbortSignal.timeout(6000) }
+      );
+      if (cidRes.ok) {
+        const cidData = (await cidRes.json()) as any;
+        const cid = cidData?.IdentifierList?.CID?.[0];
+        if (cid) {
+          const propRes = await fetch(
+            `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChIKey,Complexity/JSON`,
+            { signal: AbortSignal.timeout(6000) }
+          );
+          if (propRes.ok) {
+            const propData = (await propRes.json()) as any;
+            pubchemCompound = {
+              cid,
+              properties: propData?.PropertyTable?.Properties?.[0],
+              structure2DUrl: `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG?image_size=300x300`,
+              pubchemUrl: `https://pubchem.ncbi.nlm.nih.gov/compound/${cid}`,
+            };
+          }
+        }
+      }
+    } catch (cidErr) {
+      console.warn(`PubChem compound lookup skipped for ${elementName}:`, cidErr);
+    }
+
+    const result = {
+      element: elementData,
+      pubchemCompound,
+      source: 'PubChem PUG REST API',
+    };
+
+    elementDetailCache.set(queryLower, { data: result, timestamp: now });
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    return res.json(result);
+  } catch (err: any) {
+    console.error('PubChem element proxy error:', err);
+    return res.status(502).json({ error: 'PubChem proxy error or timeout' });
   }
 });
 

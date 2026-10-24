@@ -188,26 +188,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ onOpenAuth, curr
 
       const resData = await res.json();
       if (!res.ok) {
-        // Direct Supabase client insertion fallback
-        if (supabase && currentUser?.id) {
-          const { error: sbErr } = await supabase.from('chemora_reviews').insert({
-            id: `rev_${Date.now()}`,
-            user_id: currentUser.id,
-            author_name: formAuthorName || currentUser.full_name || 'Verified Chemist',
-            role: formRole,
-            rating: formRating,
-            category: formCategory,
-            title: formTitle.trim(),
-            comment: formContent.trim(),
-            would_recommend: formRecommend,
-            helpful: 0,
-            verified: true,
-            status: 'pending',
-          });
-          if (sbErr) throw new Error(sbErr.message);
-        } else {
-          throw new Error(resData.error || 'Failed to submit review');
-        }
+        throw new Error(resData.error || 'Failed to submit review. Please try again.');
       }
 
       setSubmitSuccess(true);

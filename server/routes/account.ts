@@ -13,6 +13,7 @@ import {
   backendGetProgress,
   getSupabaseSystemDiagnostics,
   isSupabaseConfigured,
+  getSupabaseAdminClient,
   backendDeleteAccount,
   getUserScopedSupabaseClient,
   safeLogError,
@@ -199,18 +200,38 @@ function clearSessionCookies(res: Response) {
   }
 }
 
-// GET /api/account/status - Anonymous users get only {"status":"online"}, detailed diagnostics require verified admin
-router.get('/status', (req: Request, res: Response) => {
+// GET /api/account/status - Active health telemetry (F-013)
+router.get('/status', async (req: Request, res: Response) => {
   const token =
     req.cookies?.chemora_admin_session ||
     (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
   const admin = token ? verifyAdminToken(token) : null;
-  if (admin) {
-    return res.json({
-      status: 'online',
-      databaseConnected: isSupabaseConfigured(),
-    });
+  const deepCheck = req.query.deep === '1' || req.query.deep === 'true' || Boolean(admin);
+
+  if (deepCheck) {
+    let dbHealthy = false;
+    const adminClient = getSupabaseAdminClient();
+    if (adminClient) {
+      try {
+        const { error } = await adminClient.from('profiles').select('id').limit(1);
+        dbHealthy = !error;
+      } catch {
+        dbHealthy = false;
+      }
+    } else {
+      dbHealthy = !isProd; // In dev/non-prod, in-memory store is healthy
+    }
+
+    const payload = {
+      status: dbHealthy ? 'online' : 'degraded',
+      databaseHealthy: dbHealthy,
+      databaseConfigured: isSupabaseConfigured(),
+      timestamp: new Date().toISOString(),
+    };
+
+    return res.status(dbHealthy ? 200 : 503).json(payload);
   }
+
   return res.json({ status: 'online' });
 });
 
@@ -443,7 +464,51 @@ router.put('/password', async (req: Request, res: Response) => {
   }
 });
 
-// 2.7: POST /api/account/forgot-password - Generic response, prevents enumeration
+// RL-04: Per-email rate limiting on password reset (stops single-victim email bombing)
+const emailResetStore = new Map<string, { count: number; resetAt: number; lastSentAt: number }>();
+
+async function checkPasswordResetRateLimit(email: string): Promise<{ allowed: boolean; retryAfter?: number; error?: string }> {
+  const normEmail = email.toLowerCase().trim();
+  const now = Date.now();
+  const record = emailResetStore.get(normEmail);
+
+  if (record) {
+    // 60-second cooldown between requests for the same email
+    const cooldownRemaining = Math.ceil((record.lastSentAt + 60 * 1000 - now) / 1000);
+    if (cooldownRemaining > 0) {
+      return {
+        allowed: false,
+        retryAfter: cooldownRemaining,
+        error: `Please wait ${cooldownRemaining}s before requesting another password reset email.`,
+      };
+    }
+
+    // Maximum 3 requests per hour per email
+    if (now < record.resetAt && record.count >= 3) {
+      const waitSeconds = Math.ceil((record.resetAt - now) / 1000);
+      return {
+        allowed: false,
+        retryAfter: waitSeconds,
+        error: 'Too many password reset attempts for this email. Please wait 1 hour.',
+      };
+    }
+
+    if (now >= record.resetAt) {
+      emailResetStore.set(normEmail, { count: 1, resetAt: now + 3600 * 1000, lastSentAt: now });
+      return { allowed: true };
+    }
+
+    record.count += 1;
+    record.lastSentAt = now;
+    emailResetStore.set(normEmail, record);
+    return { allowed: true };
+  }
+
+  emailResetStore.set(normEmail, { count: 1, resetAt: now + 3600 * 1000, lastSentAt: now });
+  return { allowed: true };
+}
+
+// 2.7: POST /api/account/forgot-password - Generic response, prevents enumeration, with per-email rate limit
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const parsed = ForgotPasswordSchema.safeParse(req.body);
@@ -451,7 +516,21 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'A valid email address is required.' });
     }
 
-    await backendResetPasswordRequest(parsed.data.email);
+    const { email } = parsed.data;
+
+    // RL-04: Enforce per-email cooldown and hourly cap
+    const rateCheck = await checkPasswordResetRateLimit(email);
+    if (!rateCheck.allowed) {
+      if (rateCheck.retryAfter) {
+        res.setHeader('Retry-After', rateCheck.retryAfter);
+      }
+      return res.status(429).json({
+        error: rateCheck.error,
+        retryAfter: rateCheck.retryAfter,
+      });
+    }
+
+    await backendResetPasswordRequest(email);
     return res.json({
       success: true,
       message: 'If an account exists with that email, password reset instructions have been sent.',

@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const MAX_PROMPT_CHARS = 4000;
 const MAX_CONTEXT_CHARS = 1200;
-const TIMEOUT_MS = 12000; // 12-second per-model timeout
+const TIMEOUT_MS = 4500; // 4.5-second per-model timeout to strictly prevent Vercel 10s gateway aborts (F-010)
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB decoded limit
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -24,6 +24,24 @@ if (hasUpstash) {
 // Supabase anon client for verifying session tokens server-side
 const supabaseUrl = process.env.SUPABASE_URL || 'https://mcwadkgzplurjtstrhdd.supabase.co';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || '';
+
+let aiTutorEnabledCache = { value: true, timestamp: 0 };
+async function isAiTutorEnabled() {
+  const now = Date.now();
+  if (now - aiTutorEnabledCache.timestamp < 30000) {
+    return aiTutorEnabledCache.value;
+  }
+  if (!supabaseUrl || !supabaseAnonKey) return true;
+  try {
+    const sb = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
+    const { data } = await sb.from('admin_settings').select('value').eq('key', 'ai_tutor_enabled').maybeSingle();
+    if (data && typeof data.value === 'boolean') {
+      aiTutorEnabledCache = { value: data.value, timestamp: now };
+      return data.value;
+    }
+  } catch {}
+  return true;
+}
 
 function createAuthVerifier(token) {
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -217,6 +235,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed.' });
   }
 
+  // F-05: Enforce administrative kill-switch
+  const tutorEnabled = await isAiTutorEnabled();
+  if (!tutorEnabled) {
+    return res.status(503).json({ error: 'AI Chemistry Assistant is temporarily offline for maintenance.' });
+  }
+
   const client = await resolveClient(req);
 
   // Resilient Rate Limiting: Try Redis first; seamlessly fall back to memory if Redis is unavailable
@@ -253,7 +277,11 @@ export default async function handler(req, res) {
       }
     } catch (redisErr) {
       console.warn('[Assistant Redis Warning] Falling back to memory limiter:', redisErr?.message || redisErr);
-      // Graceful fallback to memory limiter below
+      // Graceful fallback to memory limiter below (RL-09: Enforce global daily cap)
+      const gCheck = checkDevLimit('global_ai_daily', AI_DAILY_CAP, 86_400_000);
+      if (!gCheck.success) {
+        return res.status(503).json({ error: 'Service daily capacity reached. Please try again tomorrow.' });
+      }
       const minMax = client.isUser ? 20 : 5;
       const dayMax = client.isUser ? 200 : 30;
       const mCheck = checkDevLimit(`${client.key}:min`, minMax, 60_000);
@@ -268,7 +296,11 @@ export default async function handler(req, res) {
       }
     }
   } else {
-    // In-memory sliding window limiter
+    // In-memory sliding window limiter (RL-09: Enforce global daily cap)
+    const gCheck = checkDevLimit('global_ai_daily', AI_DAILY_CAP, 86_400_000);
+    if (!gCheck.success) {
+      return res.status(503).json({ error: 'Service daily capacity reached. Please try again tomorrow.' });
+    }
     const minMax = client.isUser ? 20 : 5;
     const dayMax = client.isUser ? 200 : 30;
     const mCheck = checkDevLimit(`${client.key}:min`, minMax, 60_000);
@@ -389,7 +421,7 @@ Carefully examine the image:
       );
       const uniqueModels = Array.from(new Set(candidateList));
 
-      for (const chosen of uniqueModels) {
+      for (const chosen of uniqueModels.slice(0, 2)) {
         try {
           const response = await Promise.race([
             ai.models.generateContent({
@@ -446,9 +478,9 @@ Carefully examine the image:
 
     const uniqueModels = Array.from(new Set(candidateModels));
 
-    for (const model of uniqueModels) {
+    for (const model of uniqueModels.slice(0, 2)) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 9000);
+      const timer = setTimeout(() => controller.abort(), 4000);
 
       try {
         const userContent = imageData

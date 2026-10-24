@@ -461,11 +461,13 @@ export async function incrementChallengeAttempts(challengeId: string, userId: st
           .select('attempts')
           .eq('id', challengeId)
           .maybeSingle();
-        const nextAttempts = (data?.attempts || 0) + 1;
+        const currentAttempts = data?.attempts || 0;
+        const nextAttempts = currentAttempts + 1;
         await client
           .from('admin_otp_challenges')
           .update({ attempts: nextAttempts })
-          .eq('id', challengeId);
+          .eq('id', challengeId)
+          .eq('attempts', currentAttempts); // optimistic concurrency check
         return nextAttempts;
       }
     } catch (err) {
@@ -1122,6 +1124,29 @@ router.post('/login', adminLoginRateLimiter, async (req: Request, res: Response)
           error: 'Email verification is not configured on this server.',
         });
       }
+    }
+
+    // RL-05: Enforce 60-second cooldown and 5/hour limit on login OTP generation
+    const latestChallenge = await getLatestChallenge(authenticatedAdmin.id);
+    if (latestChallenge && !authenticatedAdmin.id.startsWith('admin_dev')) {
+      const elapsedMs = Date.now() - new Date(latestChallenge.created_at).getTime();
+      if (elapsedMs < 60 * 1000) {
+        const waitSeconds = Math.ceil((60 * 1000 - elapsedMs) / 1000);
+        return res.status(429).json({
+          code: 'otp_cooldown',
+          error: `A verification code was recently sent. Please wait ${waitSeconds}s before requesting a new one.`,
+          retryAfterSeconds: waitSeconds,
+        });
+      }
+    }
+
+    const hourlyChallengeCount = await recordFailure('otp_hourly_login', authenticatedAdmin.id, 3600);
+    if (hourlyChallengeCount > 5 && !authenticatedAdmin.id.startsWith('admin_dev')) {
+      return res.status(429).json({
+        code: 'otp_hourly_limit',
+        error: 'Hourly verification code limit reached (max 5 per hour). Please wait before trying again.',
+        retryAfterSeconds: 3600,
+      });
     }
 
     // Invalidate older unconsumed challenges for that user
@@ -1823,34 +1848,37 @@ router.delete('/reviews/:id', requireAdmin, async (req: AuthenticatedAdminReques
 router.post('/reviews/bulk', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   const ids = req.body.ids || req.body.reviewIds;
   const action = req.body.action;
-  if (!Array.isArray(ids) || !['approve', 'reject', 'delete'].includes(action)) {
-    return res.status(400).json({ error: 'Invalid bulk action parameters.' });
+  // RL-07: Constrain array size between 1 and 100 items to prevent DoS & timeout
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100 || !['approve', 'reject', 'delete'].includes(action)) {
+    return res.status(400).json({ error: 'Please provide between 1 and 100 review IDs, and a valid action (approve, reject, delete).' });
   }
 
   const newStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : null;
+  const sanitizedIds = ids.map((id) => String(id)).slice(0, 100);
 
-  for (const rawId of ids) {
-    const id = String(rawId);
-    if (action === 'delete') {
+  if (action === 'delete') {
+    for (const id of sanitizedIds) {
       fallbackAdminReviews.delete(id);
-      if (isSupabaseAdminConfigured()) {
-        try {
-          await getSupabaseAdminClient()?.from('chemora_reviews').delete().eq('id', id);
-        } catch {}
-      }
-    } else if (newStatus) {
+    }
+    if (isSupabaseAdminConfigured()) {
+      try {
+        await getSupabaseAdminClient()?.from('chemora_reviews').delete().in('id', sanitizedIds);
+      } catch {}
+    }
+  } else if (newStatus) {
+    for (const id of sanitizedIds) {
       const r = fallbackAdminReviews.get(id);
       if (r) r.status = newStatus;
-      if (isSupabaseAdminConfigured()) {
-        try {
-          await getSupabaseAdminClient()?.from('chemora_reviews').update({ status: newStatus }).eq('id', id);
-        } catch {}
-      }
+    }
+    if (isSupabaseAdminConfigured()) {
+      try {
+        await getSupabaseAdminClient()?.from('chemora_reviews').update({ status: newStatus }).in('id', sanitizedIds);
+      } catch {}
     }
   }
 
-  await writeAdminAudit(req.admin!.id, req.admin!.email, `REVIEW_BULK_${action.toUpperCase()}`, `${ids.length} reviews`, { ids }, getClientIp(req));
-  return res.json({ success: true, count: ids.length, action });
+  await writeAdminAudit(req.admin!.id, req.admin!.email, `REVIEW_BULK_${action.toUpperCase()}`, `${sanitizedIds.length} reviews`, { ids: sanitizedIds }, getClientIp(req));
+  return res.json({ success: true, count: sanitizedIds.length, action });
 });
 
 // ============================================================================
@@ -1975,7 +2003,21 @@ router.get('/videos/health', requireAdmin, async (req: AuthenticatedAdminRequest
 
         latencyMs = Date.now() - startTime;
         if (!headRes.ok) {
-          status = headRes.status === 404 ? 'missing' : 'error';
+          if (headRes.status === 404 && cdnBase.includes('chemora-videos')) {
+            const fallbackUrl = url.replace('chemora-videos', 'videos');
+            try {
+              const fbRes = await fetch(fallbackUrl, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+              if (fbRes.ok) {
+                status = 'ok';
+              } else {
+                status = 'missing';
+              }
+            } catch {
+              status = 'missing';
+            }
+          } else {
+            status = headRes.status === 404 ? 'missing' : 'error';
+          }
         } else {
           const ct = headRes.headers.get('content-type') || '';
           if (ct && !ct.includes('video/') && !ct.includes('octet-stream')) {
@@ -2301,7 +2343,24 @@ const AdminAssistantSchema = z.object({
   query: z.string().trim().min(2).max(1000),
 });
 
-router.post('/assistant', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+// RL-06: Dedicated rate limiter for Operational Admin AI Assistant (10 requests/min per admin)
+export async function adminAssistantLimiter(req: AuthenticatedAdminRequest, res: Response, next: NextFunction) {
+  const adminId = req.admin?.id || 'unknown';
+  try {
+    const minCount = await recordFailure('admin_assistant_1m', adminId, 60);
+    if (minCount > 10) {
+      return res.status(429).json({
+        error: 'Admin Assistant query limit reached (max 10 queries per minute). Please wait a moment.',
+        retryAfterSeconds: 60,
+      });
+    }
+    next();
+  } catch {
+    next();
+  }
+}
+
+router.post('/assistant', requireAdmin, adminAssistantLimiter, async (req: AuthenticatedAdminRequest, res: Response) => {
   const parsed = AdminAssistantSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'Invalid question format.' });

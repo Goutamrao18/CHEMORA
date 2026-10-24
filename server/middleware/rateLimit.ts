@@ -1,4 +1,22 @@
 import type { Request, Response, NextFunction } from 'express';
+import { Redis } from '@upstash/redis';
+import { Ratelimit } from '@upstash/ratelimit';
+
+let sharedRedis: Redis | null = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  try {
+    sharedRedis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  } catch (err) {
+    console.warn('⚠️ Could not connect to Upstash Redis for middleware limiter, using memory fallback:', err);
+  }
+}
+
+export function isRedisConfigured(): boolean {
+  return sharedRedis !== null;
+}
 
 export interface RateLimiterOptions {
   /** Time window in milliseconds (default: 60,000 ms = 1 minute) */
@@ -27,34 +45,34 @@ export interface RateLimitInfo {
 
 /**
  * Robustly extracts and normalizes the client IP address from Express requests,
- * accounting for reverse proxies (Cloud Run, Vercel, Nginx), Cloudflare, and IPv6 mappings.
+ * accounting for reverse proxies (Vercel, Cloud Run, Nginx), Cloudflare, and IPv6 /64 masking.
+ * Fixes RL-01 (X-Forwarded-For spoofing bypass) and RL-08 (IPv6 rotation).
  */
 export function getClientIp(req: Request): string {
-  // Check standard reverse proxy header
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim().length > 0) {
-    const firstIp = forwarded.split(',')[0].trim();
-    if (firstIp) return normalizeIp(firstIp);
+  // 1. Prefer Vercel's trusted edge client IP header if present
+  const vercelIp = req.headers['x-vercel-forwarded-for'];
+  if (typeof vercelIp === 'string' && vercelIp.trim().length > 0) {
+    return normalizeIp(vercelIp.trim());
   }
 
-  // Check Cloudflare connecting IP
+  // 2. Prefer Express req.ip when 'trust proxy' is enabled (safely parsed from proxy chain)
+  if (req.ip && typeof req.ip === 'string') {
+    return normalizeIp(req.ip);
+  }
+
+  // 3. Fallback to Cloudflare connecting IP
   const cfIp = req.headers['cf-connecting-ip'];
   if (typeof cfIp === 'string' && cfIp.trim().length > 0) {
     return normalizeIp(cfIp.trim());
   }
 
-  // Check standard real IP header
+  // 4. Fallback to standard real IP header
   const realIp = req.headers['x-real-ip'];
   if (typeof realIp === 'string' && realIp.trim().length > 0) {
     return normalizeIp(realIp.trim());
   }
 
-  // Fallback to Express req.ip
-  if (req.ip && typeof req.ip === 'string') {
-    return normalizeIp(req.ip);
-  }
-
-  // Fallback to socket remote address
+  // 5. Fallback to socket remote address
   if (req.socket?.remoteAddress) {
     return normalizeIp(req.socket.remoteAddress);
   }
@@ -62,18 +80,29 @@ export function getClientIp(req: Request): string {
   return '127.0.0.1';
 }
 
-function normalizeIp(ip: string): string {
+export function normalizeIp(ip: string): string {
   let cleaned = ip.trim();
   // Strip IPv4-mapped IPv6 address (e.g. ::ffff:192.168.1.1 -> 192.168.1.1)
   if (cleaned.startsWith('::ffff:')) {
     cleaned = cleaned.slice(7);
   }
+
+  // RL-08: IPv6 subnet masking (/64) to prevent rotation abuse
+  if (cleaned.includes(':')) {
+    const segments = cleaned.split(':');
+    if (segments.length >= 4) {
+      cleaned = segments.slice(0, 4).join(':') + '::/64';
+    }
+  }
+
   // Sanitize to reasonable length to avoid memory exploits
   return cleaned.slice(0, 80) || '127.0.0.1';
 }
 
 /**
- * Creates an in-memory sliding-window rate limiting middleware for Express.
+ * Creates an Express sliding-window rate limiting middleware.
+ * Uses distributed Upstash Redis sliding window when configured (RL-02),
+ * with graceful in-memory sliding window fallback for local development.
  * Implements standard RateLimit headers (RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Retry-After).
  */
 export function createRateLimiter(options: RateLimiterOptions) {
@@ -87,6 +116,18 @@ export function createRateLimiter(options: RateLimiterOptions) {
     skip,
     maxTrackedKeys = 5000,
   } = options;
+
+  let upstashLimiter: Ratelimit | null = null;
+  if (sharedRedis) {
+    try {
+      const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
+      upstashLimiter = new Ratelimit({
+        redis: sharedRedis,
+        limiter: Ratelimit.slidingWindow(max, `${windowSec} s`),
+        prefix: `rl:${name}`,
+      });
+    } catch {}
+  }
 
   // Stores timestamps array per client key: Map<key, number[]>
   const hitMap = new Map<string, number[]>();
@@ -103,7 +144,6 @@ export function createRateLimiter(options: RateLimiterOptions) {
       }
     }
 
-    // If still too large, drop oldest entries
     if (hitMap.size > maxTrackedKeys) {
       let toDelete = hitMap.size - Math.floor(maxTrackedKeys * 0.8);
       for (const key of hitMap.keys()) {
@@ -114,12 +154,11 @@ export function createRateLimiter(options: RateLimiterOptions) {
     }
   }, Math.min(windowMs, 30_000));
 
-  // Ensure Node doesn't hold open process solely for this interval
   if (cleanupInterval.unref) {
     cleanupInterval.unref();
   }
 
-  const middleware = (req: Request, res: Response, next: NextFunction) => {
+  const middleware = async (req: Request, res: Response, next: NextFunction) => {
     // Always skip CORS preflight checks
     if (req.method === 'OPTIONS') {
       return next();
@@ -133,26 +172,61 @@ export function createRateLimiter(options: RateLimiterOptions) {
     const key = keyGenerator(req);
     const now = Date.now();
 
-    // Fetch and filter timestamps within the sliding window
+    // 1. Try Upstash distributed sliding-window limiter if configured (RL-02)
+    if (upstashLimiter) {
+      try {
+        const result = await upstashLimiter.limit(key);
+        const resetInSeconds = Math.max(1, Math.ceil((result.reset - now) / 1000));
+
+        res.setHeader('RateLimit-Limit', max);
+        res.setHeader('RateLimit-Remaining', Math.max(0, result.remaining));
+        res.setHeader('RateLimit-Reset', resetInSeconds);
+
+        if (!result.success) {
+          res.setHeader('Retry-After', resetInSeconds);
+          const payload =
+            typeof message === 'string'
+              ? {
+                  error: message,
+                  retryAfter: resetInSeconds,
+                  limit: max,
+                  remaining: 0,
+                  resetInSeconds,
+                  name,
+                }
+              : {
+                  ...message,
+                  retryAfter: resetInSeconds,
+                  limit: max,
+                  remaining: 0,
+                  resetInSeconds,
+                  name,
+                };
+
+          return res.status(statusCode).json(payload);
+        }
+
+        return next();
+      } catch (redisErr) {
+        // Fall back gracefully to memory limiter below
+      }
+    }
+
+    // 2. In-memory sliding window fallback
     const timestamps = hitMap.get(key) || [];
     const validTimestamps = timestamps.filter((t) => now - t < windowMs);
 
     const hitCount = validTimestamps.length;
     const remaining = Math.max(0, max - hitCount);
-    
-    // Calculate reset in seconds based on oldest hit in active window
     const oldestHit = validTimestamps.length > 0 ? validTimestamps[0] : now;
     const resetInSeconds = Math.max(1, Math.ceil((oldestHit + windowMs - now) / 1000));
 
-    // Expose standard RateLimit response headers
     res.setHeader('RateLimit-Limit', max);
     res.setHeader('RateLimit-Remaining', Math.max(0, remaining - 1));
     res.setHeader('RateLimit-Reset', resetInSeconds);
 
-    // If threshold breached, deny request with 429
     if (hitCount >= max) {
       res.setHeader('Retry-After', resetInSeconds);
-
       const payload =
         typeof message === 'string'
           ? {
@@ -175,7 +249,6 @@ export function createRateLimiter(options: RateLimiterOptions) {
       return res.status(statusCode).json(payload);
     }
 
-    // Record this hit and proceed
     validTimestamps.push(now);
     hitMap.set(key, validTimestamps);
     return next();

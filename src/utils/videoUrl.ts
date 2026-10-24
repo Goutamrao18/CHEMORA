@@ -14,7 +14,13 @@ export function getVideoBaseUrl(): string {
     (typeof process !== 'undefined' && process.env?.VITE_VIDEO_CDN_URL) ||
     ''
   ).trim().replace(/\/$/, '');
-  return cdn || '/videos';
+  if (cdn) return cdn;
+
+  // Resilient fallback (F-06): If deployed without VITE_VIDEO_CDN_URL, route to default Supabase video storage
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+    return 'https://mcwadkgzplurjtstrhdd.supabase.co/storage/v1/object/public/chemora-videos';
+  }
+  return '/videos';
 }
 
 /**

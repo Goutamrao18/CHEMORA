@@ -38,7 +38,10 @@ export interface ServerUserProfile {
 }
 
 export function isDevFallbackAllowed(): boolean {
-  return !isSupabaseConfigured() || !isProd || allowDevFallback;
+  if (isProd) {
+    return false;
+  }
+  return !isSupabaseConfigured() || allowDevFallback;
 }
 
 export function isSupabaseConfigured(): boolean {
@@ -698,6 +701,13 @@ export async function backendDeleteAccount(userId: string, email: string, passwo
 
     if (authErr) {
       throw new Error('Incorrect password. Account deletion aborted.');
+    }
+
+    // Clean up user avatar object in storage to prevent orphaned files (F-011)
+    try {
+      await adminClient.storage.from('avatars').remove([`${userId}/avatar`]);
+    } catch {
+      // Non-fatal if avatar did not exist
     }
 
     // Delete user via admin client with cascading deletions

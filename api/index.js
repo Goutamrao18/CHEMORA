@@ -22,9 +22,26 @@ __export(assistant_exports, {
   default: () => handler
 });
 import { z as z4 } from "zod";
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis as Redis2 } from "@upstash/redis";
+import { Ratelimit as Ratelimit2 } from "@upstash/ratelimit";
+import { Redis as Redis3 } from "@upstash/redis";
 import { createClient as createClient2 } from "@supabase/supabase-js";
+async function isAiTutorEnabled() {
+  const now = Date.now();
+  if (now - aiTutorEnabledCache.timestamp < 3e4) {
+    return aiTutorEnabledCache.value;
+  }
+  if (!supabaseUrl || !supabaseAnonKey) return true;
+  try {
+    const sb = createClient2(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
+    const { data } = await sb.from("admin_settings").select("value").eq("key", "ai_tutor_enabled").maybeSingle();
+    if (data && typeof data.value === "boolean") {
+      aiTutorEnabledCache = { value: data.value, timestamp: now };
+      return data.value;
+    }
+  } catch {
+  }
+  return true;
+}
 function createAuthVerifier(token) {
   return createClient2(supabaseUrl, supabaseAnonKey, {
     auth: {
@@ -130,6 +147,10 @@ async function handler(req, res) {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed." });
   }
+  const tutorEnabled = await isAiTutorEnabled();
+  if (!tutorEnabled) {
+    return res.status(503).json({ error: "AI Chemistry Assistant is temporarily offline for maintenance." });
+  }
   const client = await resolveClient(req);
   let rateLimitPassed = true;
   let rateLimitResetSeconds = 60;
@@ -162,6 +183,10 @@ async function handler(req, res) {
       }
     } catch (redisErr) {
       console.warn("[Assistant Redis Warning] Falling back to memory limiter:", redisErr?.message || redisErr);
+      const gCheck = checkDevLimit("global_ai_daily", AI_DAILY_CAP, 864e5);
+      if (!gCheck.success) {
+        return res.status(503).json({ error: "Service daily capacity reached. Please try again tomorrow." });
+      }
       const minMax = client.isUser ? 20 : 5;
       const dayMax = client.isUser ? 200 : 30;
       const mCheck = checkDevLimit(`${client.key}:min`, minMax, 6e4);
@@ -176,6 +201,10 @@ async function handler(req, res) {
       }
     }
   } else {
+    const gCheck = checkDevLimit("global_ai_daily", AI_DAILY_CAP, 864e5);
+    if (!gCheck.success) {
+      return res.status(503).json({ error: "Service daily capacity reached. Please try again tomorrow." });
+    }
     const minMax = client.isUser ? 20 : 5;
     const dayMax = client.isUser ? 200 : 30;
     const mCheck = checkDevLimit(`${client.key}:min`, minMax, 6e4);
@@ -282,7 +311,7 @@ ${prompt}
         "gemini-3.1-flash-lite"
       );
       const uniqueModels = Array.from(new Set(candidateList));
-      for (const chosen of uniqueModels) {
+      for (const chosen of uniqueModels.slice(0, 2)) {
         try {
           const response = await Promise.race([
             ai.models.generateContent({
@@ -333,9 +362,9 @@ ${prompt}
       candidateModels.push("minimax/minimax-m3.1-flash:free");
     }
     const uniqueModels = Array.from(new Set(candidateModels));
-    for (const model of uniqueModels) {
+    for (const model of uniqueModels.slice(0, 2)) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 9e3);
+      const timer = setTimeout(() => controller.abort(), 4e3);
       try {
         const userContent = imageData ? [
           { type: "text", text: userMessage },
@@ -606,12 +635,12 @@ When solving chemistry questions regarding **"${prompt}"**, apply core thermodyn
 
 *Explore the CHEMORA Know Library or Guided Experiments for interactive visual simulations and apparatus reference!*`;
 }
-var MAX_PROMPT_CHARS, MAX_CONTEXT_CHARS, TIMEOUT_MS, MAX_IMAGE_BYTES, isProd5, upstashUrl, upstashToken, hasUpstash, redisClient2, supabaseUrl, supabaseAnonKey, devAssistantMem, anonMinLimiter, anonDayLimiter, userMinLimiter, userDayLimiter, userImageLimiter, globalDayLimiter, AI_DAILY_CAP, ALLOWED_MIME_TYPES, AssistantRequestSchema;
+var MAX_PROMPT_CHARS, MAX_CONTEXT_CHARS, TIMEOUT_MS, MAX_IMAGE_BYTES, isProd5, upstashUrl, upstashToken, hasUpstash, redisClient2, supabaseUrl, supabaseAnonKey, aiTutorEnabledCache, devAssistantMem, anonMinLimiter, anonDayLimiter, userMinLimiter, userDayLimiter, userImageLimiter, globalDayLimiter, AI_DAILY_CAP, ALLOWED_MIME_TYPES, AssistantRequestSchema;
 var init_assistant = __esm({
   "api/assistant.js"() {
     MAX_PROMPT_CHARS = 4e3;
     MAX_CONTEXT_CHARS = 1200;
-    TIMEOUT_MS = 12e3;
+    TIMEOUT_MS = 4500;
     MAX_IMAGE_BYTES = 5 * 1024 * 1024;
     isProd5 = process.env.NODE_ENV === "production";
     upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -619,13 +648,14 @@ var init_assistant = __esm({
     hasUpstash = Boolean(upstashUrl && upstashToken);
     redisClient2 = null;
     if (hasUpstash) {
-      redisClient2 = new Redis2({
+      redisClient2 = new Redis3({
         url: upstashUrl,
         token: upstashToken
       });
     }
     supabaseUrl = process.env.SUPABASE_URL || "https://mcwadkgzplurjtstrhdd.supabase.co";
     supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
+    aiTutorEnabledCache = { value: true, timestamp: 0 };
     devAssistantMem = /* @__PURE__ */ new Map();
     anonMinLimiter = null;
     anonDayLimiter = null;
@@ -635,34 +665,34 @@ var init_assistant = __esm({
     globalDayLimiter = null;
     AI_DAILY_CAP = process.env.AI_DAILY_CAP ? parseInt(process.env.AI_DAILY_CAP, 10) : 1e3;
     if (redisClient2) {
-      anonMinLimiter = new Ratelimit({
+      anonMinLimiter = new Ratelimit2({
         redis: redisClient2,
-        limiter: Ratelimit.slidingWindow(5, "1 m"),
+        limiter: Ratelimit2.slidingWindow(5, "1 m"),
         prefix: "rl:asst:anon:1m"
       });
-      anonDayLimiter = new Ratelimit({
+      anonDayLimiter = new Ratelimit2({
         redis: redisClient2,
-        limiter: Ratelimit.slidingWindow(30, "1 d"),
+        limiter: Ratelimit2.slidingWindow(30, "1 d"),
         prefix: "rl:asst:anon:1d"
       });
-      userMinLimiter = new Ratelimit({
+      userMinLimiter = new Ratelimit2({
         redis: redisClient2,
-        limiter: Ratelimit.slidingWindow(20, "1 m"),
+        limiter: Ratelimit2.slidingWindow(20, "1 m"),
         prefix: "rl:asst:user:1m"
       });
-      userDayLimiter = new Ratelimit({
+      userDayLimiter = new Ratelimit2({
         redis: redisClient2,
-        limiter: Ratelimit.slidingWindow(200, "1 d"),
+        limiter: Ratelimit2.slidingWindow(200, "1 d"),
         prefix: "rl:asst:user:1d"
       });
-      userImageLimiter = new Ratelimit({
+      userImageLimiter = new Ratelimit2({
         redis: redisClient2,
-        limiter: Ratelimit.slidingWindow(5, "1 d"),
+        limiter: Ratelimit2.slidingWindow(5, "1 d"),
         prefix: "rl:asst:img:1d"
       });
-      globalDayLimiter = new Ratelimit({
+      globalDayLimiter = new Ratelimit2({
         redis: redisClient2,
-        limiter: Ratelimit.slidingWindow(AI_DAILY_CAP, "1 d"),
+        limiter: Ratelimit2.slidingWindow(AI_DAILY_CAP, "1 d"),
         prefix: "rl:asst:global:1d"
       });
     }
@@ -695,12 +725,15 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 var isProd = process.env.NODE_ENV === "production";
 var allowDevFallback = process.env.NODE_ENV === "development" && process.env.ALLOW_DEV_AUTH_FALLBACK === "true";
-var SITE_URL = (process.env.SITE_URL || "https://chemora.work.gd").trim().replace(/\/$/, "");
+var SITE_URL = (process.env.SITE_URL || "https://chemora.runs-on.dev").trim().replace(/\/$/, "");
 var SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://mcwadkgzplurjtstrhdd.supabase.co").trim().replace(/\/$/, "");
 var SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
 var SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 function isDevFallbackAllowed() {
-  return !isSupabaseConfigured() || !isProd || allowDevFallback;
+  if (isProd) {
+    return false;
+  }
+  return !isSupabaseConfigured() || allowDevFallback;
 }
 function isSupabaseConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.startsWith("https://"));
@@ -1195,6 +1228,10 @@ async function backendDeleteAccount(userId, email, passwordConfirm) {
     if (authErr) {
       throw new Error("Incorrect password. Account deletion aborted.");
     }
+    try {
+      await adminClient.storage.from("avatars").remove([`${userId}/avatar`]);
+    } catch {
+    }
     const { error: delErr } = await adminClient.auth.admin.deleteUser(userId);
     if (delErr) {
       throw new Error("Failed to delete account. Please try again.");
@@ -1286,14 +1323,29 @@ import bcrypt2 from "bcryptjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Redis } from "@upstash/redis";
+import { Redis as Redis2 } from "@upstash/redis";
 
 // server/middleware/rateLimit.ts
+import { Redis } from "@upstash/redis";
+import { Ratelimit } from "@upstash/ratelimit";
+var sharedRedis = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  try {
+    sharedRedis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN
+    });
+  } catch (err) {
+    console.warn("\u26A0\uFE0F Could not connect to Upstash Redis for middleware limiter, using memory fallback:", err);
+  }
+}
 function getClientIp(req) {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.trim().length > 0) {
-    const firstIp = forwarded.split(",")[0].trim();
-    if (firstIp) return normalizeIp(firstIp);
+  const vercelIp = req.headers["x-vercel-forwarded-for"];
+  if (typeof vercelIp === "string" && vercelIp.trim().length > 0) {
+    return normalizeIp(vercelIp.trim());
+  }
+  if (req.ip && typeof req.ip === "string") {
+    return normalizeIp(req.ip);
   }
   const cfIp = req.headers["cf-connecting-ip"];
   if (typeof cfIp === "string" && cfIp.trim().length > 0) {
@@ -1302,9 +1354,6 @@ function getClientIp(req) {
   const realIp = req.headers["x-real-ip"];
   if (typeof realIp === "string" && realIp.trim().length > 0) {
     return normalizeIp(realIp.trim());
-  }
-  if (req.ip && typeof req.ip === "string") {
-    return normalizeIp(req.ip);
   }
   if (req.socket?.remoteAddress) {
     return normalizeIp(req.socket.remoteAddress);
@@ -1315,6 +1364,12 @@ function normalizeIp(ip) {
   let cleaned = ip.trim();
   if (cleaned.startsWith("::ffff:")) {
     cleaned = cleaned.slice(7);
+  }
+  if (cleaned.includes(":")) {
+    const segments = cleaned.split(":");
+    if (segments.length >= 4) {
+      cleaned = segments.slice(0, 4).join(":") + "::/64";
+    }
   }
   return cleaned.slice(0, 80) || "127.0.0.1";
 }
@@ -1329,6 +1384,18 @@ function createRateLimiter(options) {
     skip,
     maxTrackedKeys = 5e3
   } = options;
+  let upstashLimiter = null;
+  if (sharedRedis) {
+    try {
+      const windowSec = Math.max(1, Math.ceil(windowMs / 1e3));
+      upstashLimiter = new Ratelimit({
+        redis: sharedRedis,
+        limiter: Ratelimit.slidingWindow(max, `${windowSec} s`),
+        prefix: `rl:${name}`
+      });
+    } catch {
+    }
+  }
   const hitMap = /* @__PURE__ */ new Map();
   const cleanupInterval = setInterval(() => {
     const now = Date.now();
@@ -1352,7 +1419,7 @@ function createRateLimiter(options) {
   if (cleanupInterval.unref) {
     cleanupInterval.unref();
   }
-  const middleware = (req, res, next) => {
+  const middleware = async (req, res, next) => {
     if (req.method === "OPTIONS") {
       return next();
     }
@@ -1361,6 +1428,36 @@ function createRateLimiter(options) {
     }
     const key = keyGenerator(req);
     const now = Date.now();
+    if (upstashLimiter) {
+      try {
+        const result = await upstashLimiter.limit(key);
+        const resetInSeconds2 = Math.max(1, Math.ceil((result.reset - now) / 1e3));
+        res.setHeader("RateLimit-Limit", max);
+        res.setHeader("RateLimit-Remaining", Math.max(0, result.remaining));
+        res.setHeader("RateLimit-Reset", resetInSeconds2);
+        if (!result.success) {
+          res.setHeader("Retry-After", resetInSeconds2);
+          const payload = typeof message === "string" ? {
+            error: message,
+            retryAfter: resetInSeconds2,
+            limit: max,
+            remaining: 0,
+            resetInSeconds: resetInSeconds2,
+            name
+          } : {
+            ...message,
+            retryAfter: resetInSeconds2,
+            limit: max,
+            remaining: 0,
+            resetInSeconds: resetInSeconds2,
+            name
+          };
+          return res.status(statusCode).json(payload);
+        }
+        return next();
+      } catch (redisErr) {
+      }
+    }
     const timestamps = hitMap.get(key) || [];
     const validTimestamps = timestamps.filter((t) => now - t < windowMs);
     const hitCount = validTimestamps.length;
@@ -1732,8 +1829,9 @@ async function incrementChallengeAttempts(challengeId, userId) {
       const client = getSupabaseAdminClient();
       if (client) {
         const { data } = await client.from("admin_otp_challenges").select("attempts").eq("id", challengeId).maybeSingle();
-        const nextAttempts = (data?.attempts || 0) + 1;
-        await client.from("admin_otp_challenges").update({ attempts: nextAttempts }).eq("id", challengeId);
+        const currentAttempts = data?.attempts || 0;
+        const nextAttempts = currentAttempts + 1;
+        await client.from("admin_otp_challenges").update({ attempts: nextAttempts }).eq("id", challengeId).eq("attempts", currentAttempts);
         return nextAttempts;
       }
     } catch (err) {
@@ -1838,7 +1936,7 @@ function getDevAdmin() {
 var redisClient = null;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   try {
-    redisClient = new Redis({
+    redisClient = new Redis2({
       url: process.env.UPSTASH_REDIS_REST_URL,
       token: process.env.UPSTASH_REDIS_REST_TOKEN
     });
@@ -2189,6 +2287,26 @@ router.post("/login", adminLoginRateLimiter, async (req, res) => {
           error: "Email verification is not configured on this server."
         });
       }
+    }
+    const latestChallenge = await getLatestChallenge(authenticatedAdmin.id);
+    if (latestChallenge && !authenticatedAdmin.id.startsWith("admin_dev")) {
+      const elapsedMs = Date.now() - new Date(latestChallenge.created_at).getTime();
+      if (elapsedMs < 60 * 1e3) {
+        const waitSeconds = Math.ceil((60 * 1e3 - elapsedMs) / 1e3);
+        return res.status(429).json({
+          code: "otp_cooldown",
+          error: `A verification code was recently sent. Please wait ${waitSeconds}s before requesting a new one.`,
+          retryAfterSeconds: waitSeconds
+        });
+      }
+    }
+    const hourlyChallengeCount = await recordFailure("otp_hourly_login", authenticatedAdmin.id, 3600);
+    if (hourlyChallengeCount > 5 && !authenticatedAdmin.id.startsWith("admin_dev")) {
+      return res.status(429).json({
+        code: "otp_hourly_limit",
+        error: "Hourly verification code limit reached (max 5 per hour). Please wait before trying again.",
+        retryAfterSeconds: 3600
+      });
     }
     await invalidateUserChallenges(authenticatedAdmin.id);
     const codeNum = crypto2.randomInt(1e5, 1e6);
@@ -2753,33 +2871,35 @@ router.delete("/reviews/:id", requireAdmin, async (req, res) => {
 router.post("/reviews/bulk", requireAdmin, async (req, res) => {
   const ids = req.body.ids || req.body.reviewIds;
   const action = req.body.action;
-  if (!Array.isArray(ids) || !["approve", "reject", "delete"].includes(action)) {
-    return res.status(400).json({ error: "Invalid bulk action parameters." });
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100 || !["approve", "reject", "delete"].includes(action)) {
+    return res.status(400).json({ error: "Please provide between 1 and 100 review IDs, and a valid action (approve, reject, delete)." });
   }
   const newStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : null;
-  for (const rawId of ids) {
-    const id = String(rawId);
-    if (action === "delete") {
+  const sanitizedIds = ids.map((id) => String(id)).slice(0, 100);
+  if (action === "delete") {
+    for (const id of sanitizedIds) {
       fallbackAdminReviews.delete(id);
-      if (isSupabaseAdminConfigured()) {
-        try {
-          await getSupabaseAdminClient()?.from("chemora_reviews").delete().eq("id", id);
-        } catch {
-        }
+    }
+    if (isSupabaseAdminConfigured()) {
+      try {
+        await getSupabaseAdminClient()?.from("chemora_reviews").delete().in("id", sanitizedIds);
+      } catch {
       }
-    } else if (newStatus) {
+    }
+  } else if (newStatus) {
+    for (const id of sanitizedIds) {
       const r = fallbackAdminReviews.get(id);
       if (r) r.status = newStatus;
-      if (isSupabaseAdminConfigured()) {
-        try {
-          await getSupabaseAdminClient()?.from("chemora_reviews").update({ status: newStatus }).eq("id", id);
-        } catch {
-        }
+    }
+    if (isSupabaseAdminConfigured()) {
+      try {
+        await getSupabaseAdminClient()?.from("chemora_reviews").update({ status: newStatus }).in("id", sanitizedIds);
+      } catch {
       }
     }
   }
-  await writeAdminAudit(req.admin.id, req.admin.email, `REVIEW_BULK_${action.toUpperCase()}`, `${ids.length} reviews`, { ids }, getClientIp(req));
-  return res.json({ success: true, count: ids.length, action });
+  await writeAdminAudit(req.admin.id, req.admin.email, `REVIEW_BULK_${action.toUpperCase()}`, `${sanitizedIds.length} reviews`, { ids: sanitizedIds }, getClientIp(req));
+  return res.json({ success: true, count: sanitizedIds.length, action });
 });
 router.get("/users", requireAdmin, async (req, res) => {
   const search = (req.query.search || "").toLowerCase().trim();
@@ -2878,7 +2998,21 @@ router.get("/videos/health", requireAdmin, async (req, res) => {
         });
         latencyMs = Date.now() - startTime;
         if (!headRes.ok) {
-          status = headRes.status === 404 ? "missing" : "error";
+          if (headRes.status === 404 && cdnBase.includes("chemora-videos")) {
+            const fallbackUrl = url.replace("chemora-videos", "videos");
+            try {
+              const fbRes = await fetch(fallbackUrl, { method: "HEAD", signal: AbortSignal.timeout(3e3) });
+              if (fbRes.ok) {
+                status = "ok";
+              } else {
+                status = "missing";
+              }
+            } catch {
+              status = "missing";
+            }
+          } else {
+            status = headRes.status === 404 ? "missing" : "error";
+          }
         } else {
           const ct = headRes.headers.get("content-type") || "";
           if (ct && !ct.includes("video/") && !ct.includes("octet-stream")) {
@@ -3153,7 +3287,22 @@ router.get("/audit-logs/export", requireAdmin, handleAuditExport);
 var AdminAssistantSchema = z.object({
   query: z.string().trim().min(2).max(1e3)
 });
-router.post("/assistant", requireAdmin, async (req, res) => {
+async function adminAssistantLimiter(req, res, next) {
+  const adminId = req.admin?.id || "unknown";
+  try {
+    const minCount = await recordFailure("admin_assistant_1m", adminId, 60);
+    if (minCount > 10) {
+      return res.status(429).json({
+        error: "Admin Assistant query limit reached (max 10 queries per minute). Please wait a moment.",
+        retryAfterSeconds: 60
+      });
+    }
+    next();
+  } catch {
+    next();
+  }
+}
+router.post("/assistant", requireAdmin, adminAssistantLimiter, async (req, res) => {
   const parsed = AdminAssistantSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid question format." });
@@ -3228,7 +3377,7 @@ var admin_default = router;
 var router2 = express2.Router();
 var isProd3 = process.env.NODE_ENV === "production";
 var ALLOWED_ORIGINS = new Set([
-  "https://chemora.work.gd",
+  "https://chemora.runs-on.dev",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   process.env.SITE_URL?.trim().replace(/\/$/, "")
@@ -3360,14 +3509,30 @@ function clearSessionCookies(res) {
     });
   }
 }
-router2.get("/status", (req, res) => {
+router2.get("/status", async (req, res) => {
   const token = req.cookies?.chemora_admin_session || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
   const admin = token ? verifyAdminToken(token) : null;
-  if (admin) {
-    return res.json({
-      status: "online",
-      databaseConnected: isSupabaseConfigured()
-    });
+  const deepCheck = req.query.deep === "1" || req.query.deep === "true" || Boolean(admin);
+  if (deepCheck) {
+    let dbHealthy = false;
+    const adminClient = getSupabaseAdminClient();
+    if (adminClient) {
+      try {
+        const { error } = await adminClient.from("profiles").select("id").limit(1);
+        dbHealthy = !error;
+      } catch {
+        dbHealthy = false;
+      }
+    } else {
+      dbHealthy = !isProd3;
+    }
+    const payload = {
+      status: dbHealthy ? "online" : "degraded",
+      databaseHealthy: dbHealthy,
+      databaseConfigured: isSupabaseConfigured(),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    return res.status(dbHealthy ? 200 : 503).json(payload);
   }
   return res.json({ status: "online" });
 });
@@ -3549,13 +3714,58 @@ router2.put("/password", async (req, res) => {
     return res.status(400).json({ error: err.message || "Failed to update password." });
   }
 });
+var emailResetStore = /* @__PURE__ */ new Map();
+async function checkPasswordResetRateLimit(email) {
+  const normEmail = email.toLowerCase().trim();
+  const now = Date.now();
+  const record = emailResetStore.get(normEmail);
+  if (record) {
+    const cooldownRemaining = Math.ceil((record.lastSentAt + 60 * 1e3 - now) / 1e3);
+    if (cooldownRemaining > 0) {
+      return {
+        allowed: false,
+        retryAfter: cooldownRemaining,
+        error: `Please wait ${cooldownRemaining}s before requesting another password reset email.`
+      };
+    }
+    if (now < record.resetAt && record.count >= 3) {
+      const waitSeconds = Math.ceil((record.resetAt - now) / 1e3);
+      return {
+        allowed: false,
+        retryAfter: waitSeconds,
+        error: "Too many password reset attempts for this email. Please wait 1 hour."
+      };
+    }
+    if (now >= record.resetAt) {
+      emailResetStore.set(normEmail, { count: 1, resetAt: now + 3600 * 1e3, lastSentAt: now });
+      return { allowed: true };
+    }
+    record.count += 1;
+    record.lastSentAt = now;
+    emailResetStore.set(normEmail, record);
+    return { allowed: true };
+  }
+  emailResetStore.set(normEmail, { count: 1, resetAt: now + 3600 * 1e3, lastSentAt: now });
+  return { allowed: true };
+}
 router2.post("/forgot-password", async (req, res) => {
   try {
     const parsed = ForgotPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: "A valid email address is required." });
     }
-    await backendResetPasswordRequest(parsed.data.email);
+    const { email } = parsed.data;
+    const rateCheck = await checkPasswordResetRateLimit(email);
+    if (!rateCheck.allowed) {
+      if (rateCheck.retryAfter) {
+        res.setHeader("Retry-After", rateCheck.retryAfter);
+      }
+      return res.status(429).json({
+        error: rateCheck.error,
+        retryAfter: rateCheck.retryAfter
+      });
+    }
+    await backendResetPasswordRequest(email);
     return res.json({
       success: true,
       message: "If an account exists with that email, password reset instructions have been sent."
@@ -3918,6 +4128,7 @@ app.use(express4.json({ limit: "100kb" }));
 app.use(express4.urlencoded({ extended: true, limit: "100kb" }));
 app.use(cookieParser());
 app.use("/api", apiRateLimiter);
+app.use("/api/assistant", aiRateLimiter);
 app.use("/api/account/signup", authRateLimiter);
 app.use("/api/account/login", authRateLimiter);
 app.use("/api/account/forgot-password", authRateLimiter);
@@ -3964,6 +4175,100 @@ app.get("/api/science/compound", async (req, res) => {
     return res.json({ cid, properties: propsData?.PropertyTable?.Properties?.[0] });
   } catch {
     return res.status(502).json({ error: "PubChem query failed or timed out" });
+  }
+});
+var cachedPeriodicTable = null;
+var cachedPeriodicTableTime = 0;
+var elementDetailCache = /* @__PURE__ */ new Map();
+app.get("/api/science/element", async (req, res) => {
+  try {
+    const query = (req.query.q || req.query.symbol || req.query.number || "").trim();
+    const now = Date.now();
+    if (query && elementDetailCache.has(query.toLowerCase())) {
+      const cached = elementDetailCache.get(query.toLowerCase());
+      if (now - cached.timestamp < 864e5) {
+        res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+        return res.json(cached.data);
+      }
+    }
+    if (!cachedPeriodicTable || now - cachedPeriodicTableTime > 864e5) {
+      try {
+        const ptRes = await fetch("https://pubchem.ncbi.nlm.nih.gov/rest/pug/periodictable/JSON", {
+          signal: AbortSignal.timeout(1e4)
+        });
+        if (ptRes.ok) {
+          cachedPeriodicTable = await ptRes.json();
+          cachedPeriodicTableTime = now;
+        }
+      } catch (fetchErr) {
+        console.warn("PubChem periodic table fetch fallback:", fetchErr);
+      }
+    }
+    if (!query) {
+      if (cachedPeriodicTable) {
+        res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+        return res.json(cachedPeriodicTable);
+      }
+      return res.status(503).json({ error: "PubChem periodic table temporarily unavailable" });
+    }
+    const columns = cachedPeriodicTable?.Table?.Columns?.Column || [];
+    const rows = cachedPeriodicTable?.Table?.Row || [];
+    const queryLower = query.toLowerCase();
+    const numIdx = columns.indexOf("AtomicNumber");
+    const symIdx = columns.indexOf("Symbol");
+    const nameIdx = columns.indexOf("Name");
+    const matchedRow = rows.find((r) => {
+      const num = String(r?.Cell?.[numIdx] || "");
+      const sym = String(r?.Cell?.[symIdx] || "").toLowerCase();
+      const name = String(r?.Cell?.[nameIdx] || "").toLowerCase();
+      return num === queryLower || sym === queryLower || name === queryLower;
+    });
+    const elementData = {};
+    if (matchedRow) {
+      columns.forEach((col, idx) => {
+        elementData[col] = matchedRow?.Cell?.[idx];
+      });
+    }
+    const elementName = elementData.Name || query;
+    let pubchemCompound = null;
+    try {
+      const cidRes = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(elementName)}/cids/JSON`,
+        { signal: AbortSignal.timeout(6e3) }
+      );
+      if (cidRes.ok) {
+        const cidData = await cidRes.json();
+        const cid = cidData?.IdentifierList?.CID?.[0];
+        if (cid) {
+          const propRes = await fetch(
+            `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChIKey,Complexity/JSON`,
+            { signal: AbortSignal.timeout(6e3) }
+          );
+          if (propRes.ok) {
+            const propData = await propRes.json();
+            pubchemCompound = {
+              cid,
+              properties: propData?.PropertyTable?.Properties?.[0],
+              structure2DUrl: `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG?image_size=300x300`,
+              pubchemUrl: `https://pubchem.ncbi.nlm.nih.gov/compound/${cid}`
+            };
+          }
+        }
+      }
+    } catch (cidErr) {
+      console.warn(`PubChem compound lookup skipped for ${elementName}:`, cidErr);
+    }
+    const result = {
+      element: elementData,
+      pubchemCompound,
+      source: "PubChem PUG REST API"
+    };
+    elementDetailCache.set(queryLower, { data: result, timestamp: now });
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+    return res.json(result);
+  } catch (err) {
+    console.error("PubChem element proxy error:", err);
+    return res.status(502).json({ error: "PubChem proxy error or timeout" });
   }
 });
 app.use((_req, res) => {
