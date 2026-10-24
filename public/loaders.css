@@ -520,3 +520,177 @@
   }
 }
 
+/* ==========================================================================
+   IRON MAN ARC REACTOR LOADING ANIMATION
+   ========================================================================== */
+.arc-reactor-wrapper {
+  contain: layout style;
+}
+
+.arc-reactor-scaler {
+  overflow: visible;
+}
+
+.arc-reactor-origin {
+  width: 270px;
+  height: 270px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Layer 1: Outer Metallic Bezel (Casing) */
+.arc-casing {
+  position: relative;
+  width: 270px;
+  height: 270px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #0e1e24 0%, #081216 65%, #04080b 100%);
+  box-shadow: 
+    0 0 40px rgba(82, 254, 254, 0.25),
+    inset 0 0 25px rgba(0, 0, 0, 0.9),
+    inset 0 0 4px 1px rgba(82, 254, 254, 0.35);
+  border: 2px solid rgba(82, 254, 254, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Layer 2: Glow Track Ring */
+.arc-glow-track {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 204px;
+  height: 204px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: #073c4b;
+  border: 2px solid #52fefe;
+  box-shadow: 
+    0 0 15px rgba(82, 254, 254, 0.35),
+    inset 0 0 15px rgba(82, 254, 254, 0.45);
+  z-index: 1;
+}
+
+/* Layer 3: Segmented Induction Coils / Mesh Ring (12 Nodes) */
+.arc-coil-assembly {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 204px;
+  height: 204px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 2;
+  animation: arc-rotate-coils 8s linear infinite;
+}
+
+.arc-coil-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 26px;
+  margin-top: -13px;
+  margin-left: -7px;
+  background-color: #52fefe;
+  border-radius: 2px;
+  box-shadow: 
+    0 0 8px #52fefe,
+    0 0 16px rgba(82, 254, 254, 0.8);
+  transform-origin: center center;
+}
+
+.arc-node-1  { transform: rotate(0deg)   translateY(-86px); }
+.arc-node-2  { transform: rotate(30deg)  translateY(-86px); }
+.arc-node-3  { transform: rotate(60deg)  translateY(-86px); }
+.arc-node-4  { transform: rotate(90deg)  translateY(-86px); }
+.arc-node-5  { transform: rotate(120deg) translateY(-86px); }
+.arc-node-6  { transform: rotate(150deg) translateY(-86px); }
+.arc-node-7  { transform: rotate(180deg) translateY(-86px); }
+.arc-node-8  { transform: rotate(210deg) translateY(-86px); }
+.arc-node-9  { transform: rotate(240deg) translateY(-86px); }
+.arc-node-10 { transform: rotate(270deg) translateY(-86px); }
+.arc-node-11 { transform: rotate(300deg) translateY(-86px); }
+.arc-node-12 { transform: rotate(330deg) translateY(-86px); }
+
+/* Layer 4: Inner Containment Ring */
+.arc-containment {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-color: #073c4b;
+  border: 3px solid #52fefe;
+  z-index: 3;
+  animation: arc-pulse-containment 2.5s ease-in-out infinite alternate;
+}
+
+/* Layer 5: Luminous Center Core */
+.arc-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 18%, #a8ffff 46%, #52fefe 82%, #148c9f 100%);
+  z-index: 4;
+  animation: arc-pulse-core 2.5s ease-in-out infinite alternate;
+}
+
+/* Keyframes */
+@keyframes arc-rotate-coils {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes arc-pulse-containment {
+  0% {
+    transform: translate(-50%, -50%) scale(0.97);
+    box-shadow: 
+      0 0 16px rgba(82, 254, 254, 0.55),
+      inset 0 0 16px rgba(82, 254, 254, 0.65);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.03);
+    box-shadow: 
+      0 0 28px rgba(82, 254, 254, 0.9),
+      inset 0 0 24px rgba(82, 254, 254, 0.95);
+  }
+}
+
+@keyframes arc-pulse-core {
+  0% {
+    transform: translate(-50%, -50%) scale(0.97);
+    box-shadow: 
+      0 0 18px 4px #52fefe,
+      0 0 38px 10px rgba(82, 254, 254, 0.75);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.03);
+    box-shadow: 
+      0 0 26px 5px #52fefe,
+      0 0 52px 14px rgba(82, 254, 254, 0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-coil-assembly {
+    animation-duration: 24s;
+  }
+  .arc-containment,
+  .arc-core {
+    animation-duration: 5s;
+  }
+}
+

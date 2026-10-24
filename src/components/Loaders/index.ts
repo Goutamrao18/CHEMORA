@@ -6,3 +6,4 @@ export * from './BubbleDots';
 export * from './BeakerFill';
 export * from './Skeleton';
 export * from './DropperDrip';
+export * from './ArcReactor';

@@ -18,15 +18,16 @@ import { Footer } from './components/Footer';
 import { NotFoundView } from './components/NotFoundView';
 
 import { LiquidLoaderScreen } from './components/ui/LiquidLoader';
+import { ArcReactorScreen } from './components/Loaders/ArcReactor';
 import { BubbleTransition } from './components/BubbleTransition';
 import { CommandPalette } from './components/CommandPalette';
 import { playBubblePop } from './utils/soundEffects';
 
 function ViewSkeleton({ label }: { label: string }) {
   return (
-    <LiquidLoaderScreen
+    <ArcReactorScreen
       label={label}
-      subtitle="INITIALIZING CHAMBER"
+      subtitle="ARC REACTOR CORE // INITIALIZING CHAMBER"
       className="min-h-[500px]"
     />
   );

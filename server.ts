@@ -69,13 +69,12 @@ async function startServer() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-XSS-Protection', '0');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    // Note: Omit restrictive X-Frame-Options / COOP so AI Studio preview iframe can render correctly
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=()');
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov https://lh3.googleusercontent.com; media-src 'self' blob: https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk; object-src 'none'; base-uri 'self'; form-action 'self';"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov https://lh3.googleusercontent.com; media-src 'self' blob: https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' ws: wss: https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors *;"
     );
     next();
   });
@@ -108,6 +107,19 @@ async function startServer() {
       return res.status(403).json({ error: 'Access forbidden: Path traversal detected.' });
     }
 
+    // Allow Vite internal dev assets and frontend modules in development mode
+    if (!isProd) {
+      if (
+        rawPath.startsWith('/@vite') ||
+        rawPath.startsWith('/@fs') ||
+        rawPath.startsWith('/@id') ||
+        rawPath.startsWith('/node_modules') ||
+        rawPath.startsWith('/src')
+      ) {
+        return next();
+      }
+    }
+
     // 2. Block dotfiles and hidden folders (e.g. /.git, /.aistudio, /.env, /.vscode, etc.)
     if (rawPath.startsWith('/.') || rawPath.includes('/.')) {
       return res.status(403).json({ error: 'Access forbidden.' });
@@ -119,8 +131,8 @@ async function startServer() {
       rawPath.startsWith('/scripts') ||
       rawPath.startsWith('/supabase') ||
       rawPath.startsWith('/data') ||
-      rawPath.startsWith('/node_modules') ||
-      rawPath.startsWith('/.aistudio')
+      rawPath.startsWith('/.aistudio') ||
+      (isProd && rawPath.startsWith('/node_modules'))
     ) {
       return res.status(403).json({ error: 'Access forbidden: Internal resource.' });
     }
@@ -145,10 +157,7 @@ async function startServer() {
       rawPath.endsWith('.sql') ||
       rawPath.endsWith('.bak')
     ) {
-      // In dev mode, allow frontend bundler requests within /src/
-      if (!rawPath.startsWith('/src/')) {
-        return res.status(403).json({ error: 'Access forbidden: Protected file type.' });
-      }
+      return res.status(403).json({ error: 'Access forbidden: Protected file type.' });
     }
 
     next();
@@ -209,9 +218,8 @@ async function startServer() {
   app.use('/api/account', databaseRateLimiter);
   app.use('/api/reviews', databaseRateLimiter);
 
-  // Security Hardening: X-Frame-Options DENY + noindex on /admin
+  // Security Hardening: noindex on /admin
   app.use('/admin', (_req: Request, res: Response, next: express.NextFunction) => {
-    res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     next();
   });
