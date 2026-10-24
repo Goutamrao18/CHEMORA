@@ -74,7 +74,14 @@ export function getClientIp(req: Request): string {
     return normalizeIp(realIp.trim());
   }
 
-  // 5. Fallback to socket remote address
+  // 5. Fallback to standard X-Forwarded-For header (first hop)
+  const fwdIp = req.headers['x-forwarded-for'];
+  if (typeof fwdIp === 'string' && fwdIp.trim().length > 0) {
+    const first = fwdIp.split(',')[0].trim();
+    if (first) return normalizeIp(first);
+  }
+
+  // 6. Fallback to socket remote address
   if (req.socket?.remoteAddress) {
     return normalizeIp(req.socket.remoteAddress);
   }

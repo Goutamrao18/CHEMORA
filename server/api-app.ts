@@ -42,10 +42,69 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-XSS-Protection', '0');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov; media-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net https://mcwadkgzplurjtstrhdd.supabase.co https://pubchem.ncbi.nlm.nih.gov https://lh3.googleusercontent.com; media-src 'self' blob: https://mcwadkgzplurjtstrhdd.supabase.co; connect-src 'self' https://mcwadkgzplurjtstrhdd.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://pubchem.ncbi.nlm.nih.gov https://files.rcsb.org https://data.rcsb.org https://alphafold.ebi.ac.uk; object-src 'none'; base-uri 'self'; form-action 'self';"
   );
+  next();
+});
+
+// Security Hardening: Block sensitive directories, source code, internal configs, dotfiles, and path traversal
+app.use((req: Request, res: Response, next: NextFunction) => {
+  let rawPath = '';
+  try {
+    rawPath = decodeURIComponent(req.path || '').toLowerCase();
+  } catch {
+    return res.status(400).json({ error: 'Bad Request: Malformed URI sequence' });
+  }
+
+  // 1. Block directory traversal attempts
+  if (rawPath.includes('..') || rawPath.includes('\\') || req.url.includes('%2e%2e') || req.url.includes('%252e')) {
+    return res.status(403).json({ error: 'Access forbidden: Path traversal detected.' });
+  }
+
+  // 2. Block dotfiles and hidden folders (e.g. /.git, /.aistudio, /.env, /.vscode, etc.)
+  if (rawPath.startsWith('/.') || rawPath.includes('/.')) {
+    return res.status(403).json({ error: 'Access forbidden.' });
+  }
+
+  // 3. Block sensitive internal server, script, database, and admin directories
+  if (
+    rawPath.startsWith('/server') ||
+    rawPath.startsWith('/scripts') ||
+    rawPath.startsWith('/supabase') ||
+    rawPath.startsWith('/data') ||
+    rawPath.startsWith('/node_modules') ||
+    rawPath.startsWith('/.aistudio')
+  ) {
+    return res.status(403).json({ error: 'Access forbidden: Internal resource.' });
+  }
+
+  // 4. Block build configs, package manifests, lockfiles, and server source files
+  if (
+    rawPath.includes('.env') ||
+    rawPath.includes('/reviews.json') ||
+    rawPath.includes('/package.json') ||
+    rawPath.includes('/package-lock.json') ||
+    rawPath.includes('/bun.lock') ||
+    rawPath.includes('/tsconfig') ||
+    rawPath.includes('/metadata.json') ||
+    rawPath.includes('/makefile') ||
+    rawPath.includes('/vite.config') ||
+    rawPath.includes('/postcss.config') ||
+    rawPath.includes('/tailwind.config') ||
+    rawPath.endsWith('.ts') ||
+    rawPath.endsWith('.tsx') ||
+    rawPath.endsWith('.mjs') ||
+    rawPath.endsWith('.sh') ||
+    rawPath.endsWith('.sql') ||
+    rawPath.endsWith('.bak')
+  ) {
+    return res.status(403).json({ error: 'Access forbidden: Protected file type.' });
+  }
+
   next();
 });
 
@@ -89,9 +148,9 @@ app.all('/api/assistant', assistantJsonParser, async (req: Request, res: Respons
 // PubChem Compound proxy route with timeout & cache
 app.get('/api/science/compound', async (req: Request, res: Response) => {
   try {
-    const name = req.query.name;
-    if (!name || typeof name !== 'string' || name.length > 120) {
-      return res.status(400).json({ error: 'Compound name must be between 1 and 120 characters' });
+    const name = typeof req.query.name === 'string' ? req.query.name.trim() : '';
+    if (!name || name.length > 120 || /[\r\n\t\0]/.test(name) || !/^[a-zA-Z0-9\s\-–—,()[\]'+*]+$/.test(name)) {
+      return res.status(400).json({ error: 'Compound name contains invalid characters or exceeds 120 characters' });
     }
 
     const cidRes = await fetch(
@@ -101,7 +160,9 @@ app.get('/api/science/compound', async (req: Request, res: Response) => {
     if (!cidRes.ok) return res.status(404).json({ error: 'Compound not found in PubChem' });
     const cidData = await cidRes.json();
     const cid = cidData?.IdentifierList?.CID?.[0];
-    if (!cid) return res.status(404).json({ error: 'No CID resolved' });
+    if (typeof cid !== 'number' || cid <= 0 || !Number.isInteger(cid)) {
+      return res.status(404).json({ error: 'No valid numeric CID resolved' });
+    }
 
     const propsUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChIKey,XLogP,TPSA,HBondDonorCount,HBondAcceptorCount/JSON`;
     const propsRes = await fetch(propsUrl, { signal: AbortSignal.timeout(8000) });

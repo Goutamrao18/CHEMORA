@@ -6,13 +6,16 @@ import {
   databaseRateLimiter,
 } from '../server/middleware/rateLimit.ts';
 
-function createMockReqRes({ ip = '203.0.113.195', headers = {}, method = 'GET', path = '/api/test' } = {}) {
+function createMockReqRes({ ip, headers = {}, method = 'GET', path = '/api/test' } = {}) {
+  const resolvedIp = ip !== undefined
+    ? ip
+    : (headers['x-forwarded-for'] ? headers['x-forwarded-for'].split(',')[0].trim() : (headers['x-real-ip'] || '203.0.113.195'));
   const req = {
-    ip,
+    ip: resolvedIp,
     headers: { ...headers },
     method,
     path,
-    socket: { remoteAddress: ip },
+    socket: { remoteAddress: resolvedIp },
   };
 
   const responseHeaders = {};

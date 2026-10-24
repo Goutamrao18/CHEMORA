@@ -613,12 +613,15 @@ export async function backendSyncProgress(
     progress.challengesCompleted !== undefined ? progress.challengesCompleted : 0
   );
 
-  // 2.9: Limit streak jumps: cannot jump by more than +1
+  // 2.9: Limit streak jumps: cannot jump by more than +1 (allow initial registration migration up to 365 days)
   const requestedStreak = progress.streakDays !== undefined ? progress.streakDays : current.streakDays;
-  const streakDays = Math.max(
-    current.streakDays,
-    Math.min(requestedStreak, current.streakDays + 1)
-  );
+  const isInitialStreak = current.streakDays === 0 && current.totalXp === 0 && current.experimentsCompleted === 0;
+  const streakDays = isInitialStreak
+    ? Math.min(requestedStreak, 365)
+    : Math.max(
+        current.streakDays,
+        Math.min(requestedStreak, current.streakDays + 1)
+      );
 
   // 2.9: Cap per-sync XP gain to 5000 max
   const MAX_PER_SYNC_XP_DELTA = 5000;
